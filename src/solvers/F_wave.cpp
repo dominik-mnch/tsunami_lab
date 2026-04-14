@@ -117,7 +117,7 @@ void tsunami_lab::solvers::F_wave::netUpdates( t_real i_hL,
     if( l_sL < 0 ) {
       o_netUpdateL[l_qt] += l_Z1[l_qt];
     }
-    else {
+    else if (l_sL > 0) {
       o_netUpdateR[l_qt] += l_Z1[l_qt];
     }
 
@@ -125,7 +125,7 @@ void tsunami_lab::solvers::F_wave::netUpdates( t_real i_hL,
     if( l_sR > 0 ) {
       o_netUpdateR[l_qt] += l_Z2[l_qt];
     }
-    else {
+    else if (l_sR < 0) {
       o_netUpdateL[l_qt] += l_Z2[l_qt];
     }
   }
