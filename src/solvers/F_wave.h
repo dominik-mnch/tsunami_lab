@@ -80,8 +80,6 @@ class tsunami_lab::solvers::F_wave {
                                 t_real i_huR,
                                 t_real o_netUpdateL[2],
                                 t_real o_netUpdateR[2] );
-            
-        
 };
 
 #endif
