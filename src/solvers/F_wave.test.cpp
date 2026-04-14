@@ -132,7 +132,7 @@ TEST_CASE( "Test the derivation of the F wave net-updates.", "[FWaveUpdates]" ) 
    *
    *      left | right
    *   h:  10  | 10
-   *   hu: 100 | 100
+   *   hu: 80  | 120
    *
    * Roe speeds are given as:
    *
@@ -151,39 +151,39 @@ TEST_CASE( "Test the derivation of the F wave net-updates.", "[FWaveUpdates]" ) 
    *
    * Multiplicaton with the jump in flux gives the wave strengths:
    *
-   *        |                                       100 - 100                                          |   | -49.514 |   | a1 |
-   * Rinv * |                                                                                          | = |         | = |    |
-   *        |  (100)^2 / 10 + 0.5 * 3.131557121^2 * 10^2 - (100^2) / 10 + 0.5 * 3.131557121^2 * 10^2 ) |   |  49.514 |   | a2 |
+   *        |                                     120 - 80                                  |   | -0.19584  |   | a1 |
+   * Rinv * |                                                                               | = |           | = |    |
+   *        |  (120)^2 / 10 + 0.5 * 9.80665 * 10^2 - ((80^2) / 10 + 0.5 * 9.80665 * 10^2 )) |   |  40.1959  |   | a2 |
    *
    * The net-updates are given through the scaled eigenvectors.
    *
-   *                      |  1 |   |  -49.514 |
+   *                      |  1 |   | -0.1959  |
    * wave #1: z1 = a1 *   |    | = |          |
-   *                      | s1 |   |  -4.803  |
+   *                      | s1 |   |  -0.0190 |
    *
-   *                      |  1 |   |  49.514  |
+   *                      |  1 |   | 40.1959  |
    * wave #2: z2 = a2 *   |    | = |          |
-   *                      | s2 |   | 985.477  |
+   *                      | s2 |   | 800.0190 |
    * 
    * update #1 = 0 (because both s-values are positive)
    * 
-   *                        |    0    |
-   * update #2 = z1 + z2 =  |         |
-   *                        | 980.674 |
+   *                        | 40  |
+   * update #2 = z1 + z2 =  |     |
+   *                        | 800 |
    */
 
   tsunami_lab::solvers::F_wave::netUpdates( 10,
                                          10,
-                                         100,
-                                         100,
+                                         80,
+                                         120,
                                          l_netUpdatesL,
                                          l_netUpdatesR ); 
 
   REQUIRE( l_netUpdatesL[0] ==  Approx(0) );
   REQUIRE( l_netUpdatesL[1] ==  Approx(0) );
 
-  REQUIRE( l_netUpdatesR[0] ==  Approx(0) );
-  REQUIRE( l_netUpdatesR[1] ==  Approx(980.674) );
+  REQUIRE( l_netUpdatesR[0] ==  Approx(40) );
+  REQUIRE( l_netUpdatesR[1] ==  Approx(800) );
 
   /*
    * Test case (trivial steady state):
