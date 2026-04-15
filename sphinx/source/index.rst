@@ -6,12 +6,11 @@
 Tsunami Lab documentation
 =========================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (207559) and Dominik Münch (208100).
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
+
+   f_wave_solver
 

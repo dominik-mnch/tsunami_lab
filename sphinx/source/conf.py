@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Tsunami Lab'
-copyright = '2026, DM'
+copyright = 'DM'
 author = 'DM'
 
 # -- General configuration ---------------------------------------------------
