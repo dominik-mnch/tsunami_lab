@@ -29,9 +29,9 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Sphinx
+      - name: Install Sphinx + theme
         run: |
-          pip install sphinx
+          pip install sphinx sphinx-rtd-theme
 
       # -------------------------
       # Build Doxygen
