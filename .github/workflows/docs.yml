@@ -37,8 +37,8 @@ jobs:
       # Build Doxygen
       # -------------------------
       - name: Run Doxygen
-        run: |
-          doxygen docs/Doxyfile
+        working-directory: docs
+        run: doxygen Doxyfile
 
       # -------------------------
       # Build Sphinx
