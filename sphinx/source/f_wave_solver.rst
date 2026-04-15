@@ -55,8 +55,16 @@ This corresponds to the `waveStrengths` method in the `F_wave.cpp` source file.
 The method computes wave strengths by solving the linearized system:
 
 1. Compute the inverse of the right eigenvector matrix :math:`R`
-2. Compute the flux jump: :math:`\Delta F = [hu_R - hu_L, \text{momentum flux difference}]`
-3. Solve :math:`\alpha = R^{-1} \Delta F` to get wave strengths
+2. Compute the flux jump:
+.. math::
+
+   \Delta f = f(q_R) - f(q_L), \quad
+   q = \begin{bmatrix} h \\ hu \end{bmatrix}, \quad
+   f(q) = \begin{bmatrix} hu \\ hu^2 + \frac{1}{2} g h^2 \end{bmatrix}
+
+This is one of the differences between the F-wave and the Roe solver. The Roe uses the jump in quantities directly :math:`q_R - q_L` whereas the F-wave solver uses the jump in flux.
+
+3. Solve :math:`\alpha = R^{-1} \Delta f` to get wave strengths
 
 Net Updates
 ~~~~~~~~~~~
@@ -74,6 +82,7 @@ The method follows these steps:
    - Positive waves contribute to the right cell
    - Negative waves contribute to the left cell
    
+This is another difference to the Roe solver. Here we add up the components of multiple different waves (if needed, see supersonic problem). This does not happen in the Roe solver.
 5. Return updates scaled by wave speeds and strengths
 
 
