@@ -1,4 +1,5 @@
 /build/
-/docs/
+/docs/html
+/docs/latex
 /sphinx/build/
 .sconsign.dblite
