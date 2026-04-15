@@ -58,6 +58,28 @@ jobs:
           cp -r html/* _site/doxygen/ || true
           cp -r sphinx/build/* _site/sphinx/
 
+      # --------------------------
+      # Create landing page
+      # --------------------------
+      - name: Create landing page
+        run: |
+          cat <<EOF > _site/index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <title>Documentation</title>
+          </head>
+          <body>
+              <h1>Documentation</h1>
+              <ul>
+                  <li><a href="sphinx/">Sphinx Docs</a></li>
+                  <li><a href="doxygen/">Doxygen Docs</a></li>
+              </ul>
+          </body>
+          </html>
+          EOF
+
       # -------------------------
       # Upload artifact
       # -------------------------
