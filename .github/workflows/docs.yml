@@ -55,7 +55,7 @@ jobs:
           mkdir -p _site/doxygen
           mkdir -p _site/sphinx
 
-          cp -r html/* _site/doxygen/ || true
+          cp -r docs/html/* _site/doxygen/ || true
           cp -r sphinx/build/* _site/sphinx/
 
       # --------------------------
