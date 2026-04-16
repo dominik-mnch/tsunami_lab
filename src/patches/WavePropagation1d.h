@@ -17,6 +17,9 @@ namespace tsunami_lab {
 
 class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
   private:
+    //! boolean that determines which solver to use
+    bool m_useFWaveSolver;
+
     //! current step which indicates the active values in the arrays below
     unsigned short m_step = 0;
 
@@ -34,8 +37,9 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      * Constructs the 1d wave propagation solver.
      *
      * @param i_nCells number of cells.
+     * @param i_useFWaveSolver if true, the class uses the f wave solver, otherwise it uses the Roe solver
      **/
-    WavePropagation1d( t_idx i_nCells );
+    WavePropagation1d( t_idx i_nCells, bool i_useFWaveSolver );
 
     /**
      * Destructor which frees all allocated memory.

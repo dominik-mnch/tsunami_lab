@@ -53,8 +53,9 @@ int main( int   i_argc,
                                                  5,
                                                  5 );
   // construct solver
+  bool l_useFWaveSolver = true;
   tsunami_lab::patches::WavePropagation *l_waveProp;
-  l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx );
+  l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx , l_useFWaveSolver);
 
   // maximum observed height in the setup
   tsunami_lab::t_real l_hMax = std::numeric_limits< tsunami_lab::t_real >::lowest();
