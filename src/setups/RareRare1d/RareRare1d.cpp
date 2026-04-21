@@ -15,7 +15,7 @@ tsunami_lab::setups::RareRare1d::RareRare1d( t_real i_height,
   m_locationDiscontinuity = i_locationDiscontinuity;
 }
 
-tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getHeight( t_real i_x,
+tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getHeight( t_real,
                                                                 t_real      ) const {
   //height is constant in this setup
   return m_height;
