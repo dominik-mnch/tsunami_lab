@@ -8,7 +8,7 @@
 #ifndef TSUNAMI_LAB_SETUPS_RARE_RARE_1D_H
 #define TSUNAMI_LAB_SETUPS_RARE_RARE_1D_H
 
-#include "Setup.h"
+#include "../Setup.h"
 
 namespace tsunami_lab {
   namespace setups {
