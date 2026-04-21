@@ -45,13 +45,14 @@ jobs:
       # -------------------------
       - name: Build Sphinx docs
         run: |
-          sphinx-build -b html sphinx/source sphinx/build
+          sphinx-build -E -b html sphinx/source sphinx/build
 
       # -------------------------
       # Prepare Pages content
       # -------------------------
       - name: Prepare combined site
         run: |
+          rm -rf _site
           mkdir -p _site/doxygen
           mkdir -p _site/sphinx
 
