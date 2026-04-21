@@ -40,7 +40,7 @@ int main( int   i_argc,
       std::cerr << "invalid number of cells" << std::endl;
       return EXIT_FAILURE;
     }
-    l_dxy = 10.0 / l_nx;
+    l_dxy = 50000.0 / l_nx;
   }
   std::cout << "runtime configuration" << std::endl;
   std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
@@ -49,9 +49,9 @@ int main( int   i_argc,
 
   // construct setup
   tsunami_lab::setups::Setup *l_setup;
-  l_setup = new tsunami_lab::setups::DamBreak1d( 10,
-                                                 5,
-                                                 5 );
+  l_setup = new tsunami_lab::setups::DamBreak1d( 14,
+                                                 3.5,
+                                                 25000 );
   // construct solver
   bool l_useFWaveSolver = true;
   tsunami_lab::patches::WavePropagation *l_waveProp;
@@ -105,8 +105,9 @@ int main( int   i_argc,
   // set up time and print control
   tsunami_lab::t_idx  l_timeStep = 0;
   tsunami_lab::t_idx  l_nOut = 0;
-  tsunami_lab::t_real l_endTime = 1.25;
+  tsunami_lab::t_real l_endTime = 5000.0;
   tsunami_lab::t_real l_simTime = 0;
+
 
   std::cout << "entering time loop" << std::endl;
 
@@ -116,7 +117,7 @@ int main( int   i_argc,
       std::cout << "  simulation time / #time steps: "
                 << l_simTime << " / " << l_timeStep << std::endl;
 
-      std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
+      std::string l_path = "./solutions/solution_" + std::to_string(l_nOut) + ".csv";
       std::cout << "  writing wave field to " << l_path << std::endl;
 
       std::ofstream l_file;
