@@ -88,21 +88,6 @@ This is another difference to the Roe solver. Here we add up the components of m
 5. Return updates scaled by wave speeds and strengths
 
 
-How to build and test the code
-------------------------------
-
-The project is built using SCons:
-
-.. code-block:: console
-    
-    scons
-
-After building, you can run the tests using:
-
-.. code-block:: console
-
-   ./build/tests
-
 Testing
 -------
 
