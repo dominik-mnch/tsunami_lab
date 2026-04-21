@@ -24,7 +24,9 @@ tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getHeight( t_real i_x,
   }
 }
 
-tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getMomentumX( t_real,
+
+
+tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getMomentumX( t_real i_x,
                                                                    t_real ) const {
   return 0;
 }
