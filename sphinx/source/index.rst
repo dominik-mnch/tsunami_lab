@@ -14,12 +14,12 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
 
    f_wave_solver
 
-You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://.https://dominik-mnch.github.io/tsunami_lab/doxygen>`_.
+You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://.https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.
 
 Build Process
 =============
 
-The project uses `SCons <https://scons.org/>`_ as its build tool and `Nix Shell<https://nixos.org/>`_ to provide a reproducible development environment.
+The project uses `SCons <https://scons.org/>`_ as its build tool and `Nix Shell <https://nixos.org/>`_ to provide a reproducible development environment.
 
 To set this up yourself you can follow this quick tutorial.
 
