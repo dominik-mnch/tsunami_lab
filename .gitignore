@@ -2,4 +2,6 @@
 /docs/html
 /docs/latex
 /sphinx/build/
+/solutions/
 .sconsign.dblite
+.vscode
