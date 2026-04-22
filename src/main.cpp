@@ -6,6 +6,8 @@
  **/
 #include "patches/WavePropagation1d.h"
 #include "setups/DamBreak1d/DamBreak1d.h"
+#include "setups/RareRare1d/RareRare1d.h"
+#include "setups/ShockShock1d/ShockShock1d.h"
 #include "io/Csv.h"
 #include <cstdlib>
 #include <iostream>
@@ -14,14 +16,15 @@
 #include <limits>
 #include <filesystem>
 
-int main( int   i_argc,
-          char *i_argv[] ) {
+int main( int i_argc, char *i_argv[] ) {
   // number of cells in x- and y-direction
   tsunami_lab::t_idx l_nx = 0;
   tsunami_lab::t_idx l_ny = 1;
 
-  // set cell size
+  // set cell size and domain
   tsunami_lab::t_real l_dxy = 1;
+  tsunami_lab::t_real l_domainSize = 50000.0;
+  bool l_useFWaveSolver = true;
 
   std::cout << "####################################" << std::endl;
   std::cout << "### Tsunami Lab                  ###" << std::endl;
@@ -29,24 +32,36 @@ int main( int   i_argc,
   std::cout << "### https://scalable.uni-jena.de ###" << std::endl;
   std::cout << "####################################" << std::endl;
 
-  if( i_argc != 2 ) {
+  // Expecting 4 arguments
+  if( i_argc != 4 ) {
     std::cerr << "invalid number of arguments, usage:" << std::endl;
-    std::cerr << "  ./build/tsunami_lab N_CELLS_X" << std::endl;
-    std::cerr << "where N_CELLS_X is the number of cells in x-direction." << std::endl;
+    std::cerr << "  ./build/tsunami_lab N_CELLS_X DOMAIN_SIZE SOLVER_MODE" << std::endl;
+    std::cerr << "where:" << std::endl;
+    std::cerr << "  N_CELLS_X   is the number of cells in x-direction." << std::endl;
+    std::cerr << "  DOMAIN_SIZE is the total length of the domain." << std::endl;
+    std::cerr << "  SOLVER_MODE is 1 for FWaveSolver or 0 for RoeSolver." << std::endl;
     return EXIT_FAILURE;
   }
   else {
     l_nx = atoi( i_argv[1] );
-    if( l_nx < 1 ) {
-      std::cerr << "invalid number of cells" << std::endl;
+    l_domainSize = atof( i_argv[2] );
+    l_useFWaveSolver = (atoi( i_argv[3] ) == 1);
+
+    if( l_nx < 1 || l_domainSize <= 0 ) {
+      std::cerr << "invalid configuration: check cell count or domain size" << std::endl;
       return EXIT_FAILURE;
     }
-    l_dxy = 100.0 / l_nx;
+    
+    // Calculate cell size using the domain argument
+    l_dxy = l_domainSize / l_nx;
   }
+
   std::cout << "runtime configuration" << std::endl;
   std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
   std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
+  std::cout << "  domain size:                    " << l_domainSize << std::endl;
   std::cout << "  cell size:                      " << l_dxy << std::endl;
+  std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
 
   // clean up solutions directory
   std::cout << "cleaning solutions directory" << std::endl;
@@ -61,13 +76,17 @@ int main( int   i_argc,
 
   // construct setup
   tsunami_lab::setups::Setup *l_setup;
-  l_setup = new tsunami_lab::setups::DamBreak1d( 15,
+  l_setup = new tsunami_lab::setups::DamBreak1d( 14,
                                                   0,
-                                                  5,
-                                                  10,
-                                                  50 );
-  // construct solver
-  bool l_useFWaveSolver = true;
+                                                  3.5,
+                                                  0.7,
+                                                  25000 );
+
+  /*l_setup = new tsunami_lab::setups::ShockShock1d( 10,
+                                                  2,
+                                                  50 );*/
+
+
   tsunami_lab::patches::WavePropagation *l_waveProp;
   l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx , l_useFWaveSolver);
 
@@ -119,7 +138,7 @@ int main( int   i_argc,
   // set up time and print control
   tsunami_lab::t_idx  l_timeStep = 0;
   tsunami_lab::t_idx  l_nOut = 0;
-  tsunami_lab::t_real l_endTime = 3;
+  tsunami_lab::t_real l_endTime = 2300.0;
   tsunami_lab::t_real l_simTime = 0;
 
 
