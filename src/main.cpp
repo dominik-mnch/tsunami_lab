@@ -50,7 +50,9 @@ int main( int   i_argc,
   // construct setup
   tsunami_lab::setups::Setup *l_setup;
   l_setup = new tsunami_lab::setups::DamBreak1d( 14,
+                                                  0,
                                                  3.5,
+                                                  0,
                                                  25000 );
   // construct solver
   bool l_useFWaveSolver = true;
