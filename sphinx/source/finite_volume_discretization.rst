@@ -8,7 +8,7 @@ Overview
 To simulate the Wave Propagation we can discretize the finite domain into cells each with a constant height and momentum.
 
 ``WavePropagation.cpp`` solves the Riemann problems for each edge in the one-dimensional domain and then applies the net updates to the neighbouring cells.
-It was also changed to include a ``m_useFWaveSolver```variable that determines whether to use the FWave Solver or the Roe Solver to solve the Riemann problem.
+It was also changed to include a ``m_useFWaveSolver`` variable that determines whether to use the FWave Solver or the Roe Solver to solve the Riemann problem.
 
 ``DamBreak1d.cpp`` implements the dam break setup and is expanded to also include the possibility to include momenta for the right or left side.
 That way both the classical case with no momentum and a case like the village evacuation case (where the river has an initial momentum) is covered.
@@ -28,7 +28,7 @@ This means that the left side has the positive momentum and the right side has t
 Unit tests
 ----------
 ``WavePropagation1d.test.cpp`` implements test cases for the ``WavePropagation1d.cpp`` class. There is a test case for the Roe solver and one for the FWave solver.
-The FWave solver test case uses the ``middle_states.csv`` file (the first 1000 lines of it) to verify correct calculation by running 100 time steps and then checking whether the height of one of the middle cells matches the height specified in the csv file within a window of :math:`10^(-3)`.
+The FWave solver test case uses the ``middle_states.csv`` file (the first 1000 lines of it) to verify correct calculation by running 100 time steps and then checking whether the height of one of the middle cells matches the height specified in the csv file within a window of :math:`10^{-3}`.
 
 ``DamBreak1d.test.cpp`` implements a unit test for the Dam Break setup verifying whether height and momenta were assigned correctly on both sides.
 
@@ -44,52 +44,51 @@ Since this also triggers all unit tests it is sufficient for task 1.3.
 Shock and Rarefaction Waves
 ---------------------------
 
-
 Dam-Break
 ---------
 
 Impact of the height difference
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The larger the difference between ``h_l`` and ``h_r``, the faster the shock wave travels and the higher the surge.
+The larger the difference between :math:`h_L` and :math:`h_R`, the faster the shock wave travels and the higher the surge.
 You can observe this in the following simulations:
 
-- DamBreak with parameters (h_L=10, m_L=0, h_R=5, m_R=0):
+- DamBreak with parameters :math:`(h_L = 10, m_L = 0, h_R = 5, m_R = 0)`:
 
 .. image:: ../../scripts/tsunami_animation_10_5.gif
    :align: center
 
-- DamBreak with parameters (h_L=16, m_L=0, h_R=3, m_R=0):
+- DamBreak with parameters :math:`(h_L = 16, m_L = 0, h_R = 3, m_R = 0)`:
 
 .. image:: ../../scripts/tsunami_animation_16_3.gif
    :align: center
 
 The second wave gets much further than the first one.
 
-Impact of ``u_r``
-~~~~~~~~~~~~~~~~~
-- If ``u_r`` is negative, it slows the wave down and the wave becomes taller.
-- If ``u_r`` is positive, the wave travels faster and becomes less tall.
+Impact of :math:`u_r`
+~~~~~~~~~~~~~~~~~~~~~
+- If :math:`u_r` is negative, it slows the wave down and the wave becomes taller.
+- If :math:`u_r` is positive, the wave travels faster and becomes less tall.
 
 This behavior can be observed when calling ``DamBreak1d`` with the following parameters:
 
-- DamBreak with parameters (h_L=15, m_L=0, h_R=5, m_R=0), this is a no momentum case as a baseline:
+- DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = 0)`, this is a no momentum case as a baseline:
 
 .. image:: ../../scripts/tsunami_animation_15_0_5_0.gif
    :align: center
 
-- DamBreak with parameters (h_L=15, m_L=0, h_R=5, m_R=-10), ``u_r`` is negative (wave is slower and taller):
+- DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -10)`, :math:`u_r` is negative (wave is slower and taller):
 
 .. image:: ../../scripts/tsunami_animation_15_0_5_-10.gif
    :align: center
 
-- DamBreak with parameters (h_L=15, m_L=0, h_R=5, m_R=10), ``u_r`` is positve (wave is faster and less tall):
+- DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = 10)`, :math:`u_r` is positive (wave is faster and less tall):
 
 .. image:: ../../scripts/tsunami_animation_15_0_5_10.gif
    :align: center
 
-However, ``u_r``'s impact is relatively small compared to the height values. We can observe this using the following simulation:
+However, :math:`u_r`'s impact is relatively small compared to the height values. We can observe this using the following simulation:
 
-- DamBreak with parameters (h_L=15, m_L=0, h_R=5, m_R=-3), much lower value for ``u_r``:
+- DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -3)`, much lower value for :math:`u_r`:
 
 .. image:: ../../scripts/tsunami_animation_15_0_5_-3.gif
    :align: center
@@ -104,13 +103,13 @@ We can simulate this scenario by running the following configuration:
 - ``l_nx`` set to ``1000``
 - End time set to ``2300``
 
-- DamBreak with parameters (h_L=15, m_L=0, h_R=5, m_R=-3), much lower value for ``u_r``:
+- DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -3)`:
 
 .. image:: ../../scripts/tsunami_animation_evacuation.gif
    :align: center
 
-- The height of the river flowing through the village remains at its normal level (``3.5 m``) at ``t = 2186.61 s`` (time step 41).
-- It increases to ``3.8 m`` at ``t = 2239.94 s`` (time step 42).
+- The height of the river flowing through the village remains at its normal level (:math:`3.5 \, \text{m}`) at :math:`t = 2186.61 \, \text{s}` (time step 41).
+- It increases to :math:`3.8 \, \text{m}` at :math:`t = 2239.94 \, \text{s}` (time step 42).
 
 **Conclusion:** The village must be evacuated within approximately **37 minutes** after the dam breaks.
 
@@ -122,5 +121,3 @@ Note: The reason that all the commits in our GitHub repository come from Dominik
 * We also built the python script to create the visualisations together
 * Dominik Münch focused on the ShockShock and RareRare setups along with the necessary CLI changes to the main class
 * Magdalena Schwarzkopf focused the DamBreak setup and the village evacuation problem
-
-
