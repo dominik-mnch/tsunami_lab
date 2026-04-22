@@ -41,8 +41,8 @@ Continuous Integration
 Every commit to the ``main`` branch triggers the ``main.yml`` pipeline which runs a static code analysis using cppcheck, unit tests, sanitizer builds and Valgrind memory checks along with release builds.
 Since this also triggers all unit tests it is sufficient for task 1.3.
 
-Shock Shock Setup and Rare Rare Setup
--------------------------------------
+Shock Shock Setup and Rare Rare Setup observations
+--------------------------------------------------
 
 When playing around with different values for height and momentum there are a few important observations.
 
@@ -51,12 +51,12 @@ When playing around with different values for height and momentum there are a fe
 
 We can see this in action in the following simulations:
 
-- Shock Shock with parameters :math:`(h = 4, m = 2)´´`:
+- Shock Shock with parameters :math:`(h = 4, m = 2)`:
 
 .. image:: ../../scripts/tsunami_animation_shock_4_2.gif
    :align: center
 
-- Shock Shock with parameters :math:`(h = 4, m = 10)´´`:
+- Shock Shock with parameters :math:`(h = 4, m = 10)`:
 
 .. image:: ../../scripts/tsunami_animation_shock_4_10.gif
    :align: center
@@ -65,12 +65,12 @@ As you can see, this only changes how high the wave is in the middle but not how
 
 Since the Rare Rare setup is a symmetrical copy of this scenario the same observation applies:
 
-- Rare Rare with parameters :math:`(h = 4, m = 2)´´`:
+- Rare Rare with parameters :math:`(h = 4, m = 2)`:
 
 .. image:: ../../scripts/tsunami_animation_rare_4_2.gif
    :align: center
 
-- Rare Rare with parameters :math:`(h = 4, m = 10)´´`:
+- Rare Rare with parameters :math:`(h = 4, m = 10)`:
 
 .. image:: ../../scripts/tsunami_animation_rare_4_10.gif
    :align: center
@@ -79,20 +79,20 @@ Since the Rare Rare setup is a symmetrical copy of this scenario the same observ
 
 We can see this in the following simulations:
 
-- Shock Shock with parameters :math:`(h = 10, m = 10)´´`:
+- Shock Shock with parameters :math:`(h = 10, m = 10)`:
 
 .. image:: ../../scripts/tsunami_animation_shock_10_10.gif
    :align: center
 
-- Rare Rare with parameters :math:`(h = 10, m = 10)´´`:
+- Rare Rare with parameters :math:`(h = 10, m = 10)`:
 
 .. image:: ../../scripts/tsunami_animation_rare_10_10.gif
    :align: center
 
 As you can see the wave now travels much further outward than before.
 
-Dam-Break
----------
+Dam-Break observations
+----------------------
 
 Impact of the height difference
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
