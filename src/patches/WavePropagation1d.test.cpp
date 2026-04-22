@@ -6,6 +6,10 @@
  **/
 #include <catch2/catch.hpp>
 #include "WavePropagation1d.h"
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
 
 TEST_CASE( "Test the 1d wave propagation with Roe solver.", "[WavePropRoe1d]" ) {
   /*
@@ -71,59 +75,81 @@ TEST_CASE( "Test the 1d wave propagation with Roe solver.", "[WavePropRoe1d]" ) 
   }
 }
 
-TEST_CASE( "Test the 1d wave propagation with F-Wave solver.", "[WaveProp1d]" ) {
+//Helper for CSV reading
+struct TestCaseData {
+  double hLeft, hRight;
+  double huLeft, huRight;
+  double hStar;
+};
+
+std::vector<TestCaseData> readCsv(const std::string& path) {
+  std::vector<TestCaseData> data;
+  std::ifstream file(path);
+
+  if (!file.is_open()) {
+    throw std::runtime_error("Could not open CSV file: " + path);
+  }
+
+  std::string line;
+
+  // skip header
+  std::getline(file, line);
+
+  while (std::getline(file, line)) {
+    std::stringstream ss(line);
+    std::string value;
+    TestCaseData row;
+
+    std::getline(ss, value, ','); row.hLeft = std::stod(value);
+    std::getline(ss, value, ','); row.hRight = std::stod(value);
+    std::getline(ss, value, ','); row.huLeft = std::stod(value);
+    std::getline(ss, value, ','); row.huRight = std::stod(value);
+    std::getline(ss, value, ','); row.hStar = std::stod(value);
+
+    data.push_back(row);
+  }
+
+  return data;
+}
+
+TEST_CASE("WavePropagation1d CSV validation", "[WavePropFWave1d]") {
   /*
-   *
-   *
-   * 
-   * Test case (1st test case from csv file):
-   *  h:   8899.326826472694  | 8899.326826472694
-   *  hu:   122.0337839252433 | -122.0337839252433
-   *
-   *   Elsewhere steady state.
-   *
-   * The net-updates at the respective edge are given as
-   * (see derivation in Roe solver):
-   *    left          | right
-   *    -45.6276      | -6.97236
-   *    298.14807     | -71.20777
+   * Test case:
+   * Reads the csv file and then runs 100 time steps of the simulation.
+   * Checks if the height of the middle cell is with 10e-3 window of the value provided in middle_states.csv 
    */
 
-  // construct solver and setup a dambreak problem
-  tsunami_lab::patches::WavePropagation1d m_waveProp( 100 , true );
+  auto testData = readCsv("middle_states.csv");
 
-  for( std::size_t l_ce = 0; l_ce < 50; l_ce++ ) {
-    m_waveProp.setHeight( l_ce,
-                          0,
-                          8899.326826472694 );
-    m_waveProp.setMomentumX( l_ce,
-                             0,
-                             122.0337839252433 );
+  REQUIRE_FALSE(testData.empty());
+
+  for (const auto& tc : testData) {
+
+    tsunami_lab::patches::WavePropagation1d waveProp(100, true);
+
+    // left half
+    for (std::size_t i = 0; i < 50; i++) {
+      waveProp.setHeight(i, 0, tc.hLeft);
+      waveProp.setMomentumX(i, 0, tc.huLeft);
+    }
+
+    // right half
+    for (std::size_t i = 50; i < 100; i++) {
+      waveProp.setHeight(i, 0, tc.hRight);
+      waveProp.setMomentumX(i, 0, tc.huRight);
+    }
+
+    // compute timestep scaling
+    tsunami_lab::t_real speedMax = std::sqrt(9.81 * std::max(tc.hLeft, tc.hRight));
+    tsunami_lab::t_real scaling = 0.5 / speedMax;
+
+    // run simulation
+    for (int step = 0; step < 100; step++) {
+      waveProp.setGhostOutflow();
+      waveProp.timeStep(scaling);
+    }
+
+    // check result at interface cell
+    REQUIRE(waveProp.getHeight()[49] == Approx(tc.hStar).epsilon(1e-3));
   }
-  for( std::size_t l_ce = 50; l_ce < 100; l_ce++ ) {
-    m_waveProp.setHeight( l_ce,
-                          0,
-                          8899.326826472694 );
-    m_waveProp.setMomentumX( l_ce,
-                             0,
-                             -122.0337839252433 );
-  }
-
-  // derive maximum wave speed in setup; the momentum is ignored
-  tsunami_lab::t_real m_speedMax = std::sqrt( 9.81 * 8899.326826472694 );
-
-  // derive constant time step; changes at simulation time are ignored
-  tsunami_lab::t_real m_scaling = 0.5 / m_speedMax; 
-
-
-  for (int i = 0; i < 100; i++){
-      // set outflow boundary condition
-    m_waveProp.setGhostOutflow();
-
-    // perform a time step
-    m_waveProp.timeStep( m_scaling );
-  }
-
-
-  REQUIRE( m_waveProp.getHeight()[49]   == Approx(8899.739847378269) );
 }
