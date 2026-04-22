@@ -12,6 +12,7 @@
 #include <cmath>
 #include <fstream>
 #include <limits>
+#include <filesystem>
 
 int main( int   i_argc,
           char *i_argv[] ) {
@@ -46,6 +47,17 @@ int main( int   i_argc,
   std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
   std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
   std::cout << "  cell size:                      " << l_dxy << std::endl;
+
+  // clean up solutions directory
+  std::cout << "cleaning solutions directory" << std::endl;
+  std::string l_solutionsDir = "./solutions";
+  if( std::filesystem::exists( l_solutionsDir ) ) {
+    for( const auto& l_entry : std::filesystem::directory_iterator( l_solutionsDir ) ) {
+      if( l_entry.is_regular_file() && l_entry.path().extension() == ".csv" ) {
+        std::filesystem::remove( l_entry.path() );
+      }
+    }
+  }
 
   // construct setup
   tsunami_lab::setups::Setup *l_setup;
