@@ -42,6 +42,11 @@ env.Append( CXXFLAGS = [ '-std=c++17',
                          '-Wextra',
                          '-Wpedantic' ] )
 
+# add middle_states.csv location environment variable
+env.Append(CPPDEFINES=[
+    ('MIDDLE_STATES_CSV', '\\"' + Dir('#').abspath + '/middle_states.csv\\"')
+])
+
 # set optimization mode
 if 'debug' in env['mode']:
   env.Append( CXXFLAGS = [ '-g',

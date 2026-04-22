@@ -11,6 +11,10 @@
 #include <vector>
 #include <string>
 
+#ifndef MIDDLE_STATES_CSV
+#define MIDDLE_STATES_CSV "middle_states.csv"
+#endif
+
 TEST_CASE( "Test the 1d wave propagation with Roe solver.", "[WavePropRoe1d]" ) {
   /*
    * Test case:
@@ -119,7 +123,7 @@ TEST_CASE("WavePropagation1d CSV validation", "[WavePropFWave1d]") {
    * Checks if the height of the middle cell is with 10e-3 window of the value provided in middle_states.csv 
    */
 
-  auto testData = readCsv("middle_states.csv");
+  auto testData = readCsv(MIDDLE_STATES_CSV);
 
   REQUIRE_FALSE(testData.empty());
 
