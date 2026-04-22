@@ -37,7 +37,7 @@ jobs:
         run: |
           scons mode=debug+san
           ./build/tests
-          ./build/tsunami_lab 25
+          ./build/tsunami_lab 100 100 1 3
           scons mode=release+san
           ./build/tests
           ./build/tsunami_lab 100 100 1 3
