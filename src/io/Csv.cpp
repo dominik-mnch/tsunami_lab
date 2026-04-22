@@ -10,12 +10,13 @@ void tsunami_lab::io::Csv::write( t_real               i_dxy,
                                   t_idx                i_nx,
                                   t_idx                i_ny,
                                   t_idx                i_stride,
+                                  t_real               i_time,
                                   t_real       const * i_h,
                                   t_real       const * i_hu,
                                   t_real       const * i_hv,
                                   std::ostream       & io_stream ) {
   // write the CSV header
-  io_stream << "x,y";
+  io_stream << "time,x,y";
   if( i_h  != nullptr ) io_stream << ",height";
   if( i_hu != nullptr ) io_stream << ",momentum_x";
   if( i_hv != nullptr ) io_stream << ",momentum_y";
@@ -31,7 +32,7 @@ void tsunami_lab::io::Csv::write( t_real               i_dxy,
       t_idx l_id = l_iy * i_stride + l_ix;
 
       // write data
-      io_stream << l_posX << "," << l_posY;
+      io_stream << i_time << "," << l_posX << "," << l_posY;
       if( i_h  != nullptr ) io_stream << "," << i_h[l_id];
       if( i_hu != nullptr ) io_stream << "," << i_hu[l_id];
       if( i_hv != nullptr ) io_stream << "," << i_hv[l_id];
