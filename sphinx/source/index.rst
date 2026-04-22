@@ -12,6 +12,7 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    :maxdepth: 1
    :caption: Contents:
 
+   self
    f_wave_solver
    finite_volume_discretization
 

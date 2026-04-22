@@ -41,8 +41,55 @@ Continuous Integration
 Every commit to the ``main`` branch triggers the ``main.yml`` pipeline which runs a static code analysis using cppcheck, unit tests, sanitizer builds and Valgrind memory checks along with release builds.
 Since this also triggers all unit tests it is sufficient for task 1.3.
 
-Shock and Rarefaction Waves
----------------------------
+Shock Shock Setup and Rare Rare Setup
+-------------------------------------
+
+When playing around with different values for height and momentum there are a few important observations.
+
+1. Changing the momentum doesn't change the speed of the wave. This makes sense since the momenta on both sides cancel each other out during the wave speeds calculation.
+2. Changing the momentum does change how far the wave goes up/down.
+
+We can see this in action in the following simulations:
+
+- Shock Shock with parameters :math:`(h = 4, m = 2)´´`:
+
+.. image:: ../../scripts/tsunami_animation_shock_4_2.gif
+   :align: center
+
+- Shock Shock with parameters :math:`(h = 4, m = 10)´´`:
+
+.. image:: ../../scripts/tsunami_animation_shock_4_10.gif
+   :align: center
+
+As you can see, this only changes how high the wave is in the middle but not how fast it travels outward.
+
+Since the Rare Rare setup is a symmetrical copy of this scenario the same observation applies:
+
+- Rare Rare with parameters :math:`(h = 4, m = 2)´´`:
+
+.. image:: ../../scripts/tsunami_animation_rare_4_2.gif
+   :align: center
+
+- Rare Rare with parameters :math:`(h = 4, m = 10)´´`:
+
+.. image:: ../../scripts/tsunami_animation_rare_4_10.gif
+   :align: center
+
+3. Changing the height does change the speed of the wave. This also makes sense because the gravitational term is directly influenced by the height.
+
+We can see this in the following simulations:
+
+- Shock Shock with parameters :math:`(h = 10, m = 10)´´`:
+
+.. image:: ../../scripts/tsunami_animation_shock_10_10.gif
+   :align: center
+
+- Rare Rare with parameters :math:`(h = 10, m = 10)´´`:
+
+.. image:: ../../scripts/tsunami_animation_rare_10_10.gif
+   :align: center
+
+As you can see the wave now travels much further outward than before.
 
 Dam-Break
 ---------
@@ -99,9 +146,9 @@ The evacuation problem
 ~~~~~~~~~~~~~~~~~~~~~~
 We can simulate this scenario by running the following configuration:
 
-- Domain size changed to ``50000``
-- ``l_nx`` set to ``1000``
-- End time set to ``2300``
+- Domain size changed to :math:`50000`
+- ``l_nx`` set to :math:`1000`
+- End time set to :math:`2300`
 
 - DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -3)`:
 
