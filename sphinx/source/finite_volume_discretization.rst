@@ -150,7 +150,7 @@ We can simulate this scenario by running the following configuration:
 - ``l_nx`` set to :math:`1000`
 - End time set to :math:`2300`
 
-- DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -3)`:
+- DamBreak with parameters :math:`(h_L = 14, m_L = 0, h_R = 3.5, m_R = 0.7)`:
 
 .. image:: ../../scripts/tsunami_animation_evacuation.gif
    :align: center
