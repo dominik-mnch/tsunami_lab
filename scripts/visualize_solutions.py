@@ -42,14 +42,22 @@ def get_solution_files(solutions_dir=None):
 
 def read_solution_file(filepath):
     """
-    Read a solution CSV file and return x and height data.
+    Read a solution CSV file and return x, height data, and simulation time.
     """
+    # Read CSV data normally
     df = pd.read_csv(filepath)
+
     # Sort by x coordinate to ensure proper plotting
     df = df.sort_values('x')
-    return df['x'].values, df['height'].values
 
-def create_plot_image(x_data, height_data, time_step, output_path):
+    # Extract simulation time (same for all rows)
+    sim_time = None
+    if 'time' in df.columns:
+        sim_time = df['time'].iloc[0]
+
+    return df['x'].values, df['height'].values, sim_time
+
+def create_plot_image(x_data, height_data, time_step, sim_time, output_path):
     """
     Create a plot of height vs x and save as a PNG image.
     """
@@ -60,7 +68,10 @@ def create_plot_image(x_data, height_data, time_step, output_path):
     
     ax.set_xlabel('X Coordinate (m)', fontsize=12)
     ax.set_ylabel('Height (m)', fontsize=12)
-    ax.set_title(f'Water Height at Time Step {time_step}', fontsize=14)
+    if sim_time is not None:
+        ax.set_title(f'Water Height at t = {sim_time:.2f} s', fontsize=14)
+    else:
+        ax.set_title(f'Water Height at Time Step {time_step}', fontsize=14)
     ax.grid(True, alpha=0.3)
     
     # Set consistent y-axis limits for all frames
@@ -95,9 +106,9 @@ def create_gif(solutions_dir=None, output_gif="tsunami_animation.gif", temp_dir=
     for idx, filepath in enumerate(solution_files):
         print(f"Processing {os.path.basename(filepath)} ({idx + 1}/{len(solution_files)})")
         
-        x_data, height_data = read_solution_file(filepath)
+        x_data, height_data, sim_time = read_solution_file(filepath)
         temp_image_path = os.path.join(temp_dir, f"frame_{idx:03d}.png")
-        create_plot_image(x_data, height_data, idx, temp_image_path)
+        create_plot_image(x_data, height_data, idx, sim_time, temp_image_path)
         image_files.append(temp_image_path)
     
     # Create animated GIF
