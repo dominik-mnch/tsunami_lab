@@ -21,9 +21,10 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::t_idx l_nx = 0;
   tsunami_lab::t_idx l_ny = 1;
 
-  // set cell size and domain
+  // set cell size, domain, and end time
   tsunami_lab::t_real l_dxy = 1;
   tsunami_lab::t_real l_domainSize = 50000.0;
+  tsunami_lab::t_real l_endTime = 1.25;
   bool l_useFWaveSolver = true;
 
   std::cout << "####################################" << std::endl;
@@ -32,23 +33,25 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "### https://scalable.uni-jena.de ###" << std::endl;
   std::cout << "####################################" << std::endl;
 
-  // Expecting 4 arguments
-  if( i_argc != 4 ) {
+  // Expecting 5 arguments
+  if( i_argc != 5 ) {
     std::cerr << "invalid number of arguments, usage:" << std::endl;
-    std::cerr << "  ./build/tsunami_lab N_CELLS_X DOMAIN_SIZE SOLVER_MODE" << std::endl;
+    std::cerr << "  ./build/tsunami_lab N_CELLS_X DOMAIN_SIZE SOLVER_MODE END_TIME" << std::endl;
     std::cerr << "where:" << std::endl;
     std::cerr << "  N_CELLS_X   is the number of cells in x-direction." << std::endl;
     std::cerr << "  DOMAIN_SIZE is the total length of the domain." << std::endl;
     std::cerr << "  SOLVER_MODE is 1 for FWaveSolver or 0 for RoeSolver." << std::endl;
+    std::cerr << "  END_TIME    is the simulation time in seconds." << std::endl;
     return EXIT_FAILURE;
   }
   else {
     l_nx = atoi( i_argv[1] );
     l_domainSize = atof( i_argv[2] );
     l_useFWaveSolver = (atoi( i_argv[3] ) == 1);
+    l_endTime = atof( i_argv[4] );
 
-    if( l_nx < 1 || l_domainSize <= 0 ) {
-      std::cerr << "invalid configuration: check cell count or domain size" << std::endl;
+    if( l_nx < 1 || l_domainSize <= 0 || l_endTime <= 0 ) {
+      std::cerr << "invalid configuration: check cell count, domain size, or end time" << std::endl;
       return EXIT_FAILURE;
     }
     
@@ -62,6 +65,7 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  domain size:                    " << l_domainSize << std::endl;
   std::cout << "  cell size:                      " << l_dxy << std::endl;
   std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
+  std::cout << "  end time:                       " << l_endTime << std::endl;
 
   // clean up solutions directory
   std::cout << "cleaning solutions directory" << std::endl;
@@ -135,10 +139,9 @@ int main( int i_argc, char *i_argv[] ) {
   // derive scaling for a time step
   tsunami_lab::t_real l_scaling = l_dt / l_dxy;
 
-  // set up time and print control
+  // set up time and print control (endTime is set at the top)
   tsunami_lab::t_idx  l_timeStep = 0;
   tsunami_lab::t_idx  l_nOut = 0;
-  tsunami_lab::t_real l_endTime = 2300.0;
   tsunami_lab::t_real l_simTime = 0;
 
 
