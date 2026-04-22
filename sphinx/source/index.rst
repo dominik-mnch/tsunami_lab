@@ -13,6 +13,7 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    :caption: Contents:
 
    f_wave_solver
+   finite_volume_discretization
 
 You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.
 
@@ -35,11 +36,11 @@ After doing so, you have to restart your terminal.
 
 **Local build process:**
 
-Run the nix-shell with the necessary packages needed:
+Run the nix-shell (the necessary packages are automatically included using the ``shell.nix`` file:
 
 .. code-block:: bash
 
-   nix-shell -p python3Packages.sphinx python3Packages.sphinx-rtd-theme doxygen scons
+   nix-shell
 
 You can now use SCons to compile the code:
 
@@ -52,7 +53,7 @@ To execute tests or the program itself you can use:
 .. code-block:: bash
 
    ./build/tests
-   ./build/tsunami_lab [number_of_cells]
+   ./build/tsunami_lab [number_of_cells] [domain_size] [solver_mode] [end_time]
 
 Continuous Integration:
 =======================
