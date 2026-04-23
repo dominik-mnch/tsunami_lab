@@ -5,3 +5,4 @@
 /solutions/
 .sconsign.dblite
 .vscode
+.cache
