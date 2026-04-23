@@ -167,4 +167,4 @@ Note: The reason that all the commits in our GitHub repository come from Dominik
 * We integrated the f-wave solver into the WavePropagation1d class together along with the test cases
 * We also built the python script to create the visualisations together
 * Dominik Münch focused on the ShockShock and RareRare setups along with the necessary CLI changes to the main class
-* Magdalena Schwarzkopf focused the DamBreak setup and the village evacuation problem
+* Magdalena Schwarzkopf focused on the DamBreak setup and the village evacuation problem
