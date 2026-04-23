@@ -140,7 +140,7 @@ However, :math:`u_r`'s impact is relatively small compared to the height values.
 .. image:: ../../scripts/tsunami_animation_15_0_5_-3.gif
    :align: center
 
-Even though the momentum is much lower compared to the simulations above, we can see that the slowdown is similar to the one with the higher momentum.
+Even though the absolute value of the momentum is much lower compared to the simulations above, we can see that the slowdown is similar to the one with the higher momentum.
 
 The evacuation problem
 ~~~~~~~~~~~~~~~~~~~~~~
