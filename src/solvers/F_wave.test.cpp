@@ -214,3 +214,115 @@ TEST_CASE( "Test the derivation of the F wave net-updates.", "[FWaveUpdates]" ) 
   REQUIRE( l_netUpdatesR[0] == Approx(0) );
   REQUIRE( l_netUpdatesR[1] == Approx(0) );
 }
+
+TEST_CASE( "Test the derivation of the F-wave strengths with bathymetry.", "[FWaveStrengthsBathymetry]" ) {
+  /*
+   * Test case (bathymetry effect on wave strengths):
+   *
+   *     left | right
+   *   h:  10 | 10
+   *  hu:   0 |  0
+   *   b:  -2 | -4
+   *
+   * Roe height:   (10 + 10) / 2 = 10
+   * Roe velocity: 0 (both velocities are zero)
+   * Roe speeds:
+   *   s1 = 0 - sqrt(9.80665 * 10) = -sqrt(98.0665) ≈ -9.902853
+   *   s2 = 0 + sqrt(9.80665 * 10) =  sqrt(98.0665) ≈  9.902853
+   *
+   *   wolframalpha.com query: sqrt(9.80665 * 10)
+   *
+   * Jump in flux (without bathymetry):
+   *   deltaF[0] = 0 - 0 = 0
+   *   deltaF[1] = (0/10 + 0.5 * 9.80665 * 10^2) - (0/10 + 0.5 * 9.80665 * 10^2) = 0
+   *
+   * Bathymetry source term:
+   *   psi = -9.80665 * (bR - bL) * (hL + hR) / 2
+   *       = -9.80665 * (-4 - (-2)) * 10
+   *       = -9.80665 * (-2) * 10
+   *       = 196.133
+   *
+   *   adjusted deltaF[1] = 0 - 196.133 = -196.133
+   *
+   * Inversion of eigenvector matrix:
+   *
+   *   wolframalpha.com query: invert {{1, 1}, {-9.902853, 9.902853}}
+   *
+   *          |  0.5    -0.050490 |
+   *   R_inv =|                   |    where 0.050490 = 1 / (2 * 9.902853)
+   *          |  0.5     0.050490 |
+   *
+   * Wave strengths (multiplication with adjusted jump in flux):
+   *
+   *   wolframalpha.com query: {{0.5, -0.050490}, {0.5, 0.050490}} * {0, -196.133}
+   *
+   *          |  0.5 * 0 + (-0.050490) * (-196.133) |   |  9.902853 |
+   *   alpha = |                                      | = |           |
+   *          |  0.5 * 0 + ( 0.050490) * (-196.133) |   | -9.902853 |
+   */
+  float l_strengthL = 0;
+  float l_strengthR = 0;
+
+  tsunami_lab::solvers::F_wave::waveStrengths( 10,
+                                               10,
+                                               0,
+                                               0,
+                                               -2,
+                                               -4,
+                                               -9.902853,
+                                               9.902853,
+                                               l_strengthL,
+                                               l_strengthR );
+
+  REQUIRE( l_strengthL == Approx(  9.902853 ) );
+  REQUIRE( l_strengthR == Approx( -9.902853 ) );
+}
+
+TEST_CASE( "Test the derivation of the F-wave net-updates with bathymetry.", "[FWaveUpdatesBathymetry]" ) {
+  /*
+   * Test case (bathymetry effect on net-updates):
+   *
+   *     left | right
+   *   h:  10 | 10
+   *  hu:   0 |  0
+   *   b:  -2 | -4
+   *
+   * The derivation of the Roe speeds and wave strengths is given above
+   * (see [FWaveStrengthsBathymetry]):
+   *   s1 ≈ -9.902853,  s2 ≈ 9.902853
+   *   alpha1 ≈ 9.902853, alpha2 ≈ -9.902853
+   *
+   * Net-updates from scaled eigenvectors:
+   *
+   *                        |  1 |   |  9.902853                    |   |  9.902853 |
+   *   wave #1:  z1 = a1 *  |    | = |                              | = |           |
+   *                        | s1 |   |  9.902853 * (-9.902853)      |   | -98.0665  |
+   *
+   *                        |  1 |   | -9.902853                    |   | -9.902853 |
+   *   wave #2:  z2 = a2 *  |    | = |                              | = |           |
+   *                        | s2 |   | -9.902853 * 9.902853         |   | -98.0665  |
+   *
+   *   s1 < 0 → wave #1 goes left:  netUpdateL = z1
+   *   s2 > 0 → wave #2 goes right: netUpdateR = z2
+   *
+   *   wolframalpha.com query: 9.902853 * 9.902853
+   *   result: ≈ 98.0665 (= 9.80665 * 10)
+   */
+  float l_netUpdatesL[2] = {0};
+  float l_netUpdatesR[2] = {0};
+
+  tsunami_lab::solvers::F_wave::netUpdates( 10,
+                                            10,
+                                            0,
+                                            0,
+                                            -2,
+                                            -4,
+                                            l_netUpdatesL,
+                                            l_netUpdatesR );
+
+  REQUIRE( l_netUpdatesL[0] == Approx(  9.902853 ) );
+  REQUIRE( l_netUpdatesL[1] == Approx( -98.0665  ) );
+
+  REQUIRE( l_netUpdatesR[0] == Approx( -9.902853 ) );
+  REQUIRE( l_netUpdatesR[1] == Approx( -98.0665  ) );
+}

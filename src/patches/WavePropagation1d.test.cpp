@@ -79,6 +79,75 @@ TEST_CASE( "Test the 1d wave propagation with Roe solver.", "[WavePropRoe1d]" ) 
   }
 }
 
+TEST_CASE( "Test the 1d wave propagation with F-wave solver and bathymetry step.", "[WavePropFWaveBathymetry1d]" ) {
+  /*
+   * Test case:
+   *
+   *   Single dam break problem with bathymetry between cell 49 and 50.
+   *     left | right
+   *   h:  10 | 10
+   *  hu:   0 |  0
+   *   b:  -2 | -4
+   *
+   *   Elsewhere steady state.
+   *
+   * At the interface, the F-wave solver yields:
+   *   netUpdateL = (  9.902853, -98.0665 )
+   *   netUpdateR = ( -9.902853, -98.0665 )
+   *
+   * With dt/dx = 0.1:
+   *   h49  = 10 - 0.1 *  9.902853 =  9.0097147
+   *   hu49 =  0 - 0.1 * -98.0665  =  9.80665
+   *   h50  = 10 - 0.1 * -9.902853 = 10.9902853
+   *   hu50 =  0 - 0.1 * -98.0665  =  9.80665
+   */
+
+  tsunami_lab::patches::WavePropagation1d l_waveProp( 100, true );
+
+  for( std::size_t l_ce = 0; l_ce < 50; l_ce++ ) {
+    l_waveProp.setHeight( l_ce,
+                          0,
+                          10 );
+    l_waveProp.setMomentumX( l_ce,
+                             0,
+                             0 );
+    l_waveProp.setBathymetry( l_ce,
+                              0,
+                              -2 );
+  }
+
+  for( std::size_t l_ce = 50; l_ce < 100; l_ce++ ) {
+    l_waveProp.setHeight( l_ce,
+                          0,
+                          10 );
+    l_waveProp.setMomentumX( l_ce,
+                             0,
+                             0 );
+    l_waveProp.setBathymetry( l_ce,
+                              0,
+                              -4 );
+  }
+
+  l_waveProp.setGhostOutflow();
+  l_waveProp.timeStep( 0.1 );
+
+  for( std::size_t l_ce = 0; l_ce < 49; l_ce++ ) {
+    REQUIRE( l_waveProp.getHeight()[l_ce] == Approx(10) );
+    REQUIRE( l_waveProp.getMomentumX()[l_ce] == Approx(0) );
+  }
+
+  REQUIRE( l_waveProp.getHeight()[49] == Approx( 9.0097147 ) );
+  REQUIRE( l_waveProp.getMomentumX()[49] == Approx( 9.80665 ) );
+
+  REQUIRE( l_waveProp.getHeight()[50] == Approx( 10.9902853 ) );
+  REQUIRE( l_waveProp.getMomentumX()[50] == Approx( 9.80665 ) );
+
+  for( std::size_t l_ce = 51; l_ce < 100; l_ce++ ) {
+    REQUIRE( l_waveProp.getHeight()[l_ce] == Approx(10) );
+    REQUIRE( l_waveProp.getMomentumX()[l_ce] == Approx(0) );
+  }
+}
+
 //Helper for CSV reading
 struct TestCaseData {
   double hLeft, hRight;
