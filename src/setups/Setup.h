@@ -36,6 +36,16 @@ class tsunami_lab::setups::Setup {
                               t_real i_y ) const = 0;
 
     /**
+     * Gets the bathymetry at a given point.
+     *
+     * @param i_ix index x of the cell
+     * @param i_iy index y of the cell
+     * @return bathymetry at the given point.
+     **/
+    virtual t_real getBathymetry( t_idx i_ix,
+                                  t_idx i_iy ) const = 0;
+
+    /**
      * Gets the momentum in x-direction.
      *
      * @param i_x x-coordinate of the queried point.

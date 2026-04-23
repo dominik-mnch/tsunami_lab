@@ -33,6 +33,8 @@ void tsunami_lab::solvers::F_wave::waveStrengths( t_real   i_hL,
                                                t_real   i_hR,
                                                t_real   i_huL,
                                                t_real   i_huR,
+                                               t_real   i_bL,
+                                               t_real   i_bR,
                                                t_real   i_waveSpeedL,
                                                t_real   i_waveSpeedR,
                                                t_real & o_strengthL,
@@ -40,7 +42,7 @@ void tsunami_lab::solvers::F_wave::waveStrengths( t_real   i_hL,
   // compute inverse of right eigenvector-matrix
   t_real l_detInv = 1 / (i_waveSpeedR - i_waveSpeedL);
 
-  t_real l_rInv[2][2] = {0};
+  t_real l_rInv[2][2] = {{0}};
   l_rInv[0][0] =  l_detInv * i_waveSpeedR;
   l_rInv[0][1] = -l_detInv;
   l_rInv[1][0] = -l_detInv * i_waveSpeedL;
@@ -51,6 +53,10 @@ void tsunami_lab::solvers::F_wave::waveStrengths( t_real   i_hL,
   l_deltaF[0] = i_huR - i_huL;
   l_deltaF[1] = (std::pow(i_huR,2) / i_hR  + 0.5 * std::pow(m_gSqrt,2) * std::pow(i_hR,2))
                 - (std::pow(i_huL,2) / i_hL  + 0.5 * std::pow(m_gSqrt,2) * std::pow(i_hL,2));
+
+  //respect bathymetry
+  t_real bathymetryTerm = -std::pow(m_gSqrt, 2)*(i_bR - i_bL) * ((i_hL + i_hR) / 2);
+  l_deltaF[1] = l_deltaF[1] - bathymetryTerm;
 
   // compute wave strengths
   o_strengthL  = l_rInv[0][0] * l_deltaF[0];
@@ -64,6 +70,8 @@ void tsunami_lab::solvers::F_wave::netUpdates( t_real i_hL,
                                 t_real i_hR,
                                 t_real i_huL,
                                 t_real i_huR,
+                                t_real i_bL,
+                                t_real i_bR,
                                 t_real o_netUpdateL[2],
                                 t_real o_netUpdateR[2] ) {
 
@@ -90,6 +98,8 @@ void tsunami_lab::solvers::F_wave::netUpdates( t_real i_hL,
                  i_hR,
                  i_huL,
                  i_huR,
+                 i_bL,
+                 i_bR,
                  l_sL,
                  l_sR,
                  l_aL,

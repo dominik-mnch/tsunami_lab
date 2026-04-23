@@ -9,6 +9,7 @@
 #include "setups/RareRare1d/RareRare1d.h"
 #include "setups/ShockShock1d/ShockShock1d.h"
 #include "io/Csv.h"
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <cmath>
@@ -84,7 +85,8 @@ int main( int i_argc, char *i_argv[] ) {
                                                   0,
                                                   3.5,
                                                   0.7,
-                                                  25000 );
+                                                  25000, 
+                                                  nullptr);
 
   /*l_setup = new tsunami_lab::setups::ShockShock1d( 10,
                                                   2,

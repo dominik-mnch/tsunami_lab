@@ -9,11 +9,15 @@
 #include "DamBreak1d.h"
 
 TEST_CASE( "Test the one-dimensional dam break setup.", "[DamBreak1dNoVelocity]" ) {
+
+  tsunami_lab::t_real i_b[6] = {-5, -5, -5, -5, -5, -5};
+
   tsunami_lab::setups::DamBreak1d l_damBreak( 25,
                                               0,
                                               55,
                                               0,
-                                              3 );
+                                              3,
+                                              i_b);
 
   // left side
   REQUIRE( l_damBreak.getHeight( 2, 0 ) == 25 );
@@ -22,11 +26,15 @@ TEST_CASE( "Test the one-dimensional dam break setup.", "[DamBreak1dNoVelocity]"
 
   REQUIRE( l_damBreak.getMomentumY( 2, 0 ) == 0 );
 
+  REQUIRE( l_damBreak.getBathymetry ( 2, 0 ) == -5 );
+
   REQUIRE( l_damBreak.getHeight( 2, 5 ) == 25 );
 
   REQUIRE( l_damBreak.getMomentumX( 2, 5 ) == 0 );
 
-  REQUIRE( l_damBreak.getMomentumY( 2, 2 ) == 0 );
+  REQUIRE( l_damBreak.getMomentumY( 2, 5 ) == 0 );
+
+  REQUIRE( l_damBreak.getBathymetry (2, 5 ) == -5 );
 
   // right side
   REQUIRE( l_damBreak.getHeight( 4, 0 ) == 55 );
@@ -35,19 +43,25 @@ TEST_CASE( "Test the one-dimensional dam break setup.", "[DamBreak1dNoVelocity]"
 
   REQUIRE( l_damBreak.getMomentumY( 4, 0 ) == 0 );
 
+  REQUIRE( l_damBreak.getBathymetry (4, 0 ) == -5 );
+
   REQUIRE( l_damBreak.getHeight( 4, 5 ) == 55 );
 
   REQUIRE( l_damBreak.getMomentumX( 4, 5 ) == 0 );
 
-  REQUIRE( l_damBreak.getMomentumY( 4, 2 ) == 0 );  
+  REQUIRE( l_damBreak.getMomentumY( 4, 5 ) == 0 );  
+
+  REQUIRE( l_damBreak.getBathymetry ( 4, 5 ) == -5 );
 }
 
 TEST_CASE( "Test the one-dimensional dam break setup with velocity.", "[DamBreak1dWithVelocity]" ) {
+  tsunami_lab::t_real i_b2[6] = {-5, -5, -5, -5, -5, -5};
   tsunami_lab::setups::DamBreak1d l_damBreak( 25,
                                               100,
                                               55,
                                               110,
-                                              3 );
+                                              3,
+                                              i_b2 );
 
   // left side
   REQUIRE( l_damBreak.getHeight( 2, 0 ) == 25 );
@@ -56,11 +70,15 @@ TEST_CASE( "Test the one-dimensional dam break setup with velocity.", "[DamBreak
 
   REQUIRE( l_damBreak.getMomentumY( 2, 0 ) == 0 );
 
+  REQUIRE( l_damBreak.getBathymetry (2, 0 ) == -5 );
+
   REQUIRE( l_damBreak.getHeight( 2, 5 ) == 25 );
 
   REQUIRE( l_damBreak.getMomentumX( 2, 5 ) == 100 );
 
-  REQUIRE( l_damBreak.getMomentumY( 2, 2 ) == 0 );
+  REQUIRE( l_damBreak.getMomentumY( 2, 5 ) == 0 );
+
+  REQUIRE( l_damBreak.getBathymetry ( 2, 5 ) == -5 );
 
   // right side
   REQUIRE( l_damBreak.getHeight( 4, 0 ) == 55 );
@@ -69,9 +87,13 @@ TEST_CASE( "Test the one-dimensional dam break setup with velocity.", "[DamBreak
 
   REQUIRE( l_damBreak.getMomentumY( 4, 0 ) == 0 );
 
+  REQUIRE( l_damBreak.getBathymetry ( 4, 0 ) == -5 );
+
   REQUIRE( l_damBreak.getHeight( 4, 5 ) == 55 );
 
   REQUIRE( l_damBreak.getMomentumX( 4, 5 ) == 110 );
 
-  REQUIRE( l_damBreak.getMomentumY( 4, 2 ) == 0 );  
+  REQUIRE( l_damBreak.getMomentumY( 4, 5 ) == 0 );  
+
+  REQUIRE( l_damBreak.getBathymetry ( 4, 5 ) == -5 );
 }

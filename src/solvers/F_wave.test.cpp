@@ -77,6 +77,8 @@ TEST_CASE( "Test the derivation of the Roe wave strengths.", "[RoeStrengths]" ) 
                                             10.3,
                                             32,
                                             -20.6,
+                                            0,
+                                            0,
                                             -6.5343798805,
                                             10.2128643705,
                                             l_strengthL,
@@ -118,6 +120,8 @@ TEST_CASE( "Test the derivation of the F wave net-updates.", "[FWaveUpdates]" ) 
                                          10.3,
                                          32,
                                          -20.6,
+                                         0,
+                                         0,
                                          l_netUpdatesL,
                                          l_netUpdatesR );
 
@@ -176,6 +180,8 @@ TEST_CASE( "Test the derivation of the F wave net-updates.", "[FWaveUpdates]" ) 
                                          10,
                                          80,
                                          120,
+                                         0,
+                                         0,
                                          l_netUpdatesL,
                                          l_netUpdatesR ); 
 
@@ -195,6 +201,8 @@ TEST_CASE( "Test the derivation of the F wave net-updates.", "[FWaveUpdates]" ) 
 
   tsunami_lab::solvers::F_wave::netUpdates( 10,
                                          10,
+                                         0,
+                                         0,
                                          0,
                                          0,
                                          l_netUpdatesL,

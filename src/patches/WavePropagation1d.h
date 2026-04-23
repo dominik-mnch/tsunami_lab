@@ -32,6 +32,9 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
     //! momenta for the current and next time step for all cells
     t_real * m_hu[2] = { nullptr, nullptr };
 
+    //! bathymetry for all cells
+    t_real * m_b = nullptr;
+
   public:
     /**
      * Constructs the 1d wave propagation solver.
@@ -77,6 +80,15 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
     }
 
     /**
+     * Gets cells' bathymetry.
+     *
+     * @return bathymetry.
+     */
+    t_real const * getBathymetry(){
+      return m_b;
+    }
+
+    /**
      * Gets the cells' momenta in x-direction.
      *
      * @return momenta in x-direction.
@@ -102,6 +114,18 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
                     t_idx,
                     t_real i_h ) {
       m_h[m_step][i_ix+1] = i_h;
+    }
+
+    /**
+     * Sets the bathymetry of the cell to the given value.
+     *
+     * @param i_ix id of the cell in x-direction.
+     * @param i_b bathymetry.
+     **/
+    void setBathymetry( t_idx  i_ix,
+                      t_idx,
+                      t_real i_b ) {
+      m_b[i_ix+1] = i_b;
     }
 
     /**
