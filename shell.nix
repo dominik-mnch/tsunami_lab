@@ -12,5 +12,6 @@ pkgs.mkShell {
     python3Packages.sphinx-rtd-theme
     doxygen
     scons
+    gmt
   ];
 }
