@@ -9,12 +9,10 @@
 
 tsunami_lab::setups::RareRare1d::RareRare1d( t_real i_height,
                                              t_real i_momentum,
-                                             t_real i_locationDiscontinuity, 
-                                             t_real * i_b) {
+                                             t_real i_locationDiscontinuity) {
   m_height = i_height;
   m_momentum = i_momentum;
   m_locationDiscontinuity = i_locationDiscontinuity;
-  m_b = i_b;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getHeight( t_real,
@@ -23,9 +21,9 @@ tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getHeight( t_real,
   return m_height;
 }
 
-tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getBathymetry( t_idx i_ix,
+tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getBathymetry( t_idx,
                                                                     t_idx ) const {
-  return m_b[i_ix];
+  return 0;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getMomentumX( t_real i_x,

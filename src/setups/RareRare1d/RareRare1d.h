@@ -30,10 +30,6 @@ class tsunami_lab::setups::RareRare1d: public Setup {
     //! location of the discontinuity
     t_real m_locationDiscontinuity = 0;
 
-    //! bathymetry of the cells
-    t_real * m_b = nullptr;
-
-
   public:
     /**
      * Constructor.
@@ -41,12 +37,10 @@ class tsunami_lab::setups::RareRare1d: public Setup {
      * @param i_height initial water height of the water streams.
      * @param i_momentum momentum of the water streams.
      * @param i_locationDiscontinuity location (x-coordinate) of the discontinuity.
-     * @param i_b bathymetry of the cells
      **/
-    RareRare1d( t_real i_heightLeft,
-                t_real i_heightRight,
-                t_real i_locationDiscontinuity,
-                t_real * i_b);
+    RareRare1d( t_real i_height,
+                t_real i_momentum,
+                t_real i_locationDiscontinuity);
 
     /**
      * Gets the water height at a given point.
@@ -60,11 +54,10 @@ class tsunami_lab::setups::RareRare1d: public Setup {
     /**
      * Gets the bathymetry at a given point.
      *
-     * @param i_ix index of the cell
      * @return bathymetry at the given point.
      **/
-    t_real getBathymetry( t_idx i_ix,
-                          t_idx      ) const;
+    t_real getBathymetry( t_idx,
+                          t_idx   ) const;
                           
     /**
      * Gets the momentum in x-direction.

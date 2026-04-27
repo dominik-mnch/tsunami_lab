@@ -35,9 +35,6 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
     //! location of the dam
     t_real m_locationDam = 0;
 
-    //! bathymetry of the cells
-    t_real * m_b = nullptr;
-
   public:
     /**
      * Constructor.
@@ -47,14 +44,12 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
      * @param i_heightRight water height on the right side of the dam.
      * @param i_momentumRight momentum on the right side of the dam.
      * @param i_locationDam location (x-coordinate) of the dam.
-     * @param i_b bathymetry of the cells
      **/
     DamBreak1d( t_real i_heightLeft,
                 t_real i_momentumLeft,
                 t_real i_heightRight,
                 t_real i_momentumRight,
-                t_real i_locationDam,
-                t_real * i_b);
+                t_real i_locationDam);
 
     /**
      * Gets the water height at a given point.
@@ -68,11 +63,10 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
     /**
      * Gets the bathymetry at a given point.
      *
-     * @param i_ix index of the cell
      * @return bathymetry at the given point.
      **/
-    t_real getBathymetry( t_idx i_ix,
-                          t_idx       ) const;
+    t_real getBathymetry( t_idx,
+                          t_idx   ) const;
 
     /**
      * Gets the momentum in x-direction.

@@ -11,14 +11,12 @@ tsunami_lab::setups::DamBreak1d::DamBreak1d( t_real i_heightLeft,
                                              t_real i_momentumLeft,
                                              t_real i_heightRight,
                                              t_real i_momentumRight,
-                                             t_real i_locationDam,
-                                             t_real * i_b ) {
+                                             t_real i_locationDam) {
   m_heightLeft = i_heightLeft;
   m_momentumLeft = i_momentumLeft;
   m_heightRight = i_heightRight;
   m_momentumRight = i_momentumRight;
   m_locationDam = i_locationDam;
-  m_b = i_b;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getHeight( t_real i_x,
@@ -31,9 +29,9 @@ tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getHeight( t_real i_x,
   }
 }
 
-tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getBathymetry( t_idx i_ix,
+tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getBathymetry( t_idx,
                                                                     t_idx ) const {
-  return m_b[i_ix];
+  return 0;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getMomentumX( t_real i_x,
