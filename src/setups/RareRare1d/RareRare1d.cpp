@@ -6,13 +6,22 @@
  * One-dimensional Rare Rare problem.
  **/
 #include "RareRare1d.h"
+#include <cmath>
 
 tsunami_lab::setups::RareRare1d::RareRare1d( t_real i_height,
                                              t_real i_momentum,
-                                             t_real i_locationDiscontinuity) {
+                                             t_real i_locationDiscontinuity,
+                                             bool i_useBathymetryParabola,
+                                             t_real i_bathymetryOffset,
+                                             t_real i_bathymetryCenter,
+                                             t_real i_bathymetryScale ) {
   m_height = i_height;
   m_momentum = i_momentum;
   m_locationDiscontinuity = i_locationDiscontinuity;
+  m_useBathymetryParabola = i_useBathymetryParabola;
+  m_bathymetryOffset = i_bathymetryOffset;
+  m_bathymetryCenter = i_bathymetryCenter;
+  m_bathymetryScale = i_bathymetryScale;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getHeight( t_real,
@@ -21,8 +30,24 @@ tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getHeight( t_real,
   return m_height;
 }
 
-tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getBathymetry( t_idx,
-                                                                    t_idx ) const {
+tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getBathymetry( t_real i_x,
+                                                                    t_real ) const {
+  if( m_useBathymetryParabola ) {
+    if( m_bathymetryScale != 0 ) {
+      t_real l_rootSq = -m_bathymetryOffset / m_bathymetryScale;
+
+      if( l_rootSq > 0 ) {
+        t_real l_halfWidth = std::sqrt( l_rootSq );
+
+        if( std::abs( i_x - m_bathymetryCenter ) <= l_halfWidth ) {
+          return m_bathymetryOffset + m_bathymetryScale * std::pow( i_x - m_bathymetryCenter, 2 );
+        }
+      }
+    }
+
+    return 0;
+  }
+
   return 0;
 }
 

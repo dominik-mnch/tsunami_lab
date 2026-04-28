@@ -30,6 +30,18 @@ class tsunami_lab::setups::RareRare1d: public Setup {
     //! location of the discontinuity
     t_real m_locationDiscontinuity = 0;
 
+    //! true if a parabolic bathymetry should be used
+    bool m_useBathymetryParabola = false;
+
+    //! constant term of the parabola
+    t_real m_bathymetryOffset = 0;
+
+    //! x-position of the parabola's vertex
+    t_real m_bathymetryCenter = 0;
+
+    //! quadratic coefficient of the parabola
+    t_real m_bathymetryScale = 0;
+
   public:
     /**
      * Constructor.
@@ -37,10 +49,18 @@ class tsunami_lab::setups::RareRare1d: public Setup {
      * @param i_height initial water height of the water streams.
      * @param i_momentum momentum of the water streams.
      * @param i_locationDiscontinuity location (x-coordinate) of the discontinuity.
+     * @param i_useBathymetryParabola enable parabolic bathymetry.
+     * @param i_bathymetryOffset constant term of the bathymetry parabola.
+     * @param i_bathymetryCenter x-position of the parabola's vertex.
+     * @param i_bathymetryScale quadratic coefficient of the bathymetry parabola.
      **/
     RareRare1d( t_real i_height,
                 t_real i_momentum,
-                t_real i_locationDiscontinuity);
+                t_real i_locationDiscontinuity,
+                bool i_useBathymetryParabola = false,
+                t_real i_bathymetryOffset = 0,
+                t_real i_bathymetryCenter = 0,
+          t_real i_bathymetryScale = 0 );
 
     /**
      * Gets the water height at a given point.
@@ -56,8 +76,8 @@ class tsunami_lab::setups::RareRare1d: public Setup {
      *
      * @return bathymetry at the given point.
      **/
-    t_real getBathymetry( t_idx,
-                          t_idx   ) const;
+    t_real getBathymetry( t_real,
+                          t_real   ) const;
                           
     /**
      * Gets the momentum in x-direction.

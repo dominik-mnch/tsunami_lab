@@ -48,3 +48,20 @@ TEST_CASE( "Test the one-dimensional rare rare setup.", "[RareRare1d]" ) {
   
   REQUIRE( l_rareRare.getBathymetry( 4, 5 ) == 0 );
 }
+
+TEST_CASE( "Test parabolic bathymetry for one-dimensional rare rare setup.", "[RareRare1d]" ) {
+  // b(x) = 1 - 0.25 * (x - 4)^2 for |x - 4| <= sqrt(4) = 2, else b(x) = 0
+  tsunami_lab::setups::RareRare1d l_rareRare( 10,
+                                              20,
+                                              3,
+                                              true,
+                                              1,
+                                              4,
+                                              -0.25 );
+
+  REQUIRE( l_rareRare.getBathymetry( 4, 0 ) == Approx( 1 ) );
+  REQUIRE( l_rareRare.getBathymetry( 3.5, 0 ) == Approx( 0.9375 ) );
+  REQUIRE( l_rareRare.getBathymetry( 2, 0 ) == Approx( 0 ) );
+  REQUIRE( l_rareRare.getBathymetry( 6, 0 ) == Approx( 0 ) );
+  REQUIRE( l_rareRare.getBathymetry( 7, 0 ) == Approx( 0 ) );
+}

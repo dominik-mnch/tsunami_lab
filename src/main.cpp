@@ -83,15 +83,19 @@ int main( int i_argc, char *i_argv[] ) {
 
   // construct setup
   tsunami_lab::setups::Setup *l_setup;
-  l_setup = new tsunami_lab::setups::DamBreak1d( 5,
+  /*l_setup = new tsunami_lab::setups::DamBreak1d( 5,
                                                   0,
                                                   2,
                                                   0,
-                                                  50);
+                                                  50);*/
 
-  /*l_setup = new tsunami_lab::setups::ShockShock1d( 5,
-                                                  0,
-                                                  50 );*/
+  l_setup = new tsunami_lab::setups::ShockShock1d( 0.5,
+                                                  0.3,
+                                                  50,
+                                                  true,
+                                                  0.25,
+                                                  50.0,
+                                                  -0.08 );
 
   //  l_setup = new tsunami_lab::setups::Subcritical1d();
   //l_setup = new tsunami_lab::setups::Supercritical1d();
@@ -134,7 +138,7 @@ std::cout << "Position of max Froude number: x = " << maxX << std::endl;
 
 
   tsunami_lab::patches::WavePropagation *l_waveProp;
-  l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx , l_useFWaveSolver, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::BoundaryRight);
+  l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx , l_useFWaveSolver, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow);
 
   // maximum observed height in the setup
   tsunami_lab::t_real l_hMax = std::numeric_limits< tsunami_lab::t_real >::lowest();
