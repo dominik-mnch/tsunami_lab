@@ -6,6 +6,7 @@
  **/
 #include <catch2/catch.hpp>
 #include "WavePropagation1d.h"
+#include "../solvers/Roe.h"
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -146,6 +147,81 @@ TEST_CASE( "Test the 1d wave propagation with F-wave solver and bathymetry step.
     REQUIRE( l_waveProp.getHeight()[l_ce] == Approx(10) );
     REQUIRE( l_waveProp.getMomentumX()[l_ce] == Approx(0) );
   }
+}
+
+TEST_CASE( "Test non-ghost-outflow boundary condition changes boundary behavior.", "[WavePropBoundaryBehaviourChange1d]" ) {
+  // Same initial state, but different boundary conditions on the right side.
+  tsunami_lab::patches::WavePropagation1d l_outflow( 20,
+                                                     false,
+                                                     tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow );
+  tsunami_lab::patches::WavePropagation1d l_reflectRight( 20,
+                                                          false,
+                                                          tsunami_lab::patches::WavePropagation1d::BoundaryCondition::BoundaryRight );
+
+  for( std::size_t l_ce = 0; l_ce < 20; l_ce++ ) {
+    l_outflow.setHeight( l_ce,
+                         0,
+                         5 );
+    l_outflow.setMomentumX( l_ce,
+                            0,
+                            2 );
+
+    l_reflectRight.setHeight( l_ce,
+                              0,
+                              5 );
+    l_reflectRight.setMomentumX( l_ce,
+                                 0,
+                                 2 );
+  }
+
+  l_outflow.setGhostOutflow();
+  l_reflectRight.setGhostOutflow();
+
+  l_outflow.timeStep( 0.1 );
+  l_reflectRight.timeStep( 0.1 );
+
+  // Left boundary uses outflow in both configurations: first cell should match.
+  REQUIRE( l_reflectRight.getHeight()[0] == Approx( l_outflow.getHeight()[0] ) );
+  REQUIRE( l_reflectRight.getMomentumX()[0] == Approx( l_outflow.getMomentumX()[0] ) );
+
+  // Right boundary differs (outflow vs reflecting): last cell should differ.
+  REQUIRE( l_reflectRight.getHeight()[19] != Approx( l_outflow.getHeight()[19] ) );
+  REQUIRE( l_reflectRight.getMomentumX()[19] != Approx( l_outflow.getMomentumX()[19] ) );
+}
+
+TEST_CASE( "Test BoundaryRight computes correct right-edge update with Roe solver.", "[WavePropBoundaryCalculation1d]" ) {
+  tsunami_lab::patches::WavePropagation1d l_waveProp( 3,
+                                                      false,
+                                                      tsunami_lab::patches::WavePropagation1d::BoundaryCondition::BoundaryRight );
+
+  for( std::size_t l_ce = 0; l_ce < 3; l_ce++ ) {
+    l_waveProp.setHeight( l_ce,
+                          0,
+                          5 );
+    l_waveProp.setMomentumX( l_ce,
+                             0,
+                             2 );
+  }
+
+  l_waveProp.setGhostOutflow();
+
+  tsunami_lab::t_real const l_hLast = 5;
+  tsunami_lab::t_real const l_huLast = 2;
+  tsunami_lab::t_real const l_scaling = 0.1;
+
+  tsunami_lab::t_real l_netUpdates[2][2];
+  tsunami_lab::solvers::Roe::netUpdates( l_hLast,
+                                         l_hLast,
+                                         l_huLast,
+                                         -l_huLast,
+                                         l_netUpdates[0],
+                                         l_netUpdates[1] );
+
+  l_waveProp.timeStep( l_scaling );
+
+  // Interior edge 1|2 has identical states, so only the right boundary edge contributes.
+  REQUIRE( l_waveProp.getHeight()[2] == Approx( l_hLast - l_scaling * l_netUpdates[0][0] ) );
+  REQUIRE( l_waveProp.getMomentumX()[2] == Approx( l_huLast - l_scaling * l_netUpdates[0][1] ) );
 }
 
 //Helper for CSV reading
