@@ -8,9 +8,10 @@
 #include "../solvers/Roe.h"
 #include "../solvers/F_wave.h"
 
-tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells , bool i_useFWaveSolver) {
+tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells , bool i_useFWaveSolver, BoundaryCondition i_boundaryCondition) {
   m_nCells = i_nCells;
   m_useFWaveSolver = i_useFWaveSolver;
+  m_boundaryCondition = i_boundaryCondition;
 
   // allocate memory including a single ghost cell on each side
   for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
@@ -94,13 +95,45 @@ void tsunami_lab::patches::WavePropagation1d::setGhostOutflow() {
   t_real * l_h = m_h[m_step];
   t_real * l_hu = m_hu[m_step];
 
-  // set left boundary
-  l_h[0] = l_h[1];
-  l_hu[0] = l_hu[1];
-  m_b[0] = m_b[1];
+  if (m_boundaryCondition == BoundaryCondition::GhostOutflow) {
+    // set left boundary
+    l_h[0] = l_h[1];
+    l_hu[0] = l_hu[1];
+    m_b[0] = m_b[1];
 
-  // set right boundary
-  l_h[m_nCells+1] = l_h[m_nCells];
-  l_hu[m_nCells+1] = l_hu[m_nCells];
-  m_b[m_nCells+1] = m_b[m_nCells];
+    // set right boundary
+    l_h[m_nCells+1] = l_h[m_nCells];
+    l_hu[m_nCells+1] = l_hu[m_nCells];
+    m_b[m_nCells+1] = m_b[m_nCells];
+  } else if (m_boundaryCondition == BoundaryCondition::BoundaryRight) {
+    //set left boundary (ghost outflow)
+    l_h[0] = l_h[1];
+    l_hu[0] = l_hu[1];
+    m_b[0] = m_b[1];
+
+    // set right boundary (reflecting boundary)
+    l_h[m_nCells+1] = l_h[m_nCells];
+    l_hu[m_nCells+1] = - l_hu[m_nCells];
+    m_b[m_nCells+1] = m_b[m_nCells];
+  } else if (m_boundaryCondition == BoundaryCondition::BoundaryLeft) {
+    // set left boundary (reflecting boundary)
+    l_h[0] = l_h[1];
+    l_hu[0] = - l_hu[1];
+    m_b[0] = m_b[1];
+
+    // set right boundary (ghost outflow)
+    l_h[m_nCells+1] = l_h[m_nCells];
+    l_hu[m_nCells+1] = l_hu[m_nCells];
+    m_b[m_nCells+1] = m_b[m_nCells];
+  } else if (m_boundaryCondition == BoundaryCondition::BoundaryBoth) {
+    // set left boundary (reflecting boundary)
+    l_h[0] = l_h[1];
+    l_hu[0] = - l_hu[1];
+    m_b[0] = m_b[1];
+
+    // set right boundary (reflecting boundary)
+    l_h[m_nCells+1] = l_h[m_nCells];
+    l_hu[m_nCells+1] = - l_hu[m_nCells];
+    m_b[m_nCells+1] = m_b[m_nCells];
+  } 
 }

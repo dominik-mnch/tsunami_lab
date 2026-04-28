@@ -16,9 +16,21 @@ namespace tsunami_lab {
 }
 
 class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
+  public:
+    //! ghost outflow boundary mode
+    enum class BoundaryCondition {
+      GhostOutflow,
+      BoundaryRight,
+      BoundaryLeft,
+      BoundaryBoth
+    };
+
   private:
     //! boolean that determines which solver to use
     bool m_useFWaveSolver;
+
+    //! boundary condition for the ghost cells
+    BoundaryCondition m_boundaryCondition;
 
     //! current step which indicates the active values in the arrays below
     unsigned short m_step = 0;
@@ -41,8 +53,9 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      *
      * @param i_nCells number of cells.
      * @param i_useFWaveSolver if true, the class uses the f wave solver, otherwise it uses the Roe solver
-     **/
-    WavePropagation1d( t_idx i_nCells, bool i_useFWaveSolver );
+     * @param i_boundaryCondition boundary condition for the ghost cells.
+    **/
+    WavePropagation1d( t_idx i_nCells, bool i_useFWaveSolver, BoundaryCondition i_boundaryCondition);
 
     /**
      * Destructor which frees all allocated memory.

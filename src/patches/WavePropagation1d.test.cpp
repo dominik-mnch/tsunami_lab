@@ -34,7 +34,7 @@ TEST_CASE( "Test the 1d wave propagation with Roe solver.", "[WavePropRoe1d]" ) 
    */
 
   // construct solver and setup a dambreak problem
-  tsunami_lab::patches::WavePropagation1d m_waveProp( 100 , false );
+  tsunami_lab::patches::WavePropagation1d m_waveProp( 100 , false, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow );
 
   for( std::size_t l_ce = 0; l_ce < 50; l_ce++ ) {
     m_waveProp.setHeight( l_ce,
@@ -102,7 +102,7 @@ TEST_CASE( "Test the 1d wave propagation with F-wave solver and bathymetry step.
    *   hu50 =  0 - 0.1 * -98.0665  =  9.80665
    */
 
-  tsunami_lab::patches::WavePropagation1d l_waveProp( 100, true );
+  tsunami_lab::patches::WavePropagation1d l_waveProp( 100, true, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow );
 
   for( std::size_t l_ce = 0; l_ce < 50; l_ce++ ) {
     l_waveProp.setHeight( l_ce,
@@ -198,7 +198,7 @@ TEST_CASE("WavePropagation1d CSV validation", "[WavePropFWave1d]") {
 
   for (const auto& tc : testData) {
 
-    tsunami_lab::patches::WavePropagation1d waveProp(100, true);
+    tsunami_lab::patches::WavePropagation1d waveProp(100, true, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow);
 
     // left half
     for (std::size_t i = 0; i < 50; i++) {
