@@ -8,6 +8,7 @@
 #define TSUNAMI_LAB_SETUPS_SETUP_H
 
 #include "../constants.h"
+#include <cmath>
 
 namespace tsunami_lab {
   namespace setups {
@@ -48,12 +49,20 @@ class tsunami_lab::setups::Setup {
     /**
      * Gets the Froude number at a given point.
      *
-     * @param i_ix index x of the cell
-     * @param i_iy index y of the cell
+     * @param i_x x-coordinate of the queried point.
+     * @param i_y y-coordinate of the queried point.
      * @return Froude number at the given point.
      **/
-    virtual float getFroudeNumber( float i_ix,
-                                  float i_iy ) const;
+    virtual float getFroudeNumber( float i_x,
+                                   float i_y ) const {
+      float h  = getHeight( i_x, i_y );
+      float hu = getMomentumX( i_x, i_y );
+
+      if( h <= 0 ) return 0.0f;
+
+      float u = hu / h;
+      return std::abs( u ) / std::sqrt( 9.81f * h );
+    }
 
     /**
      * Gets the momentum in x-direction.

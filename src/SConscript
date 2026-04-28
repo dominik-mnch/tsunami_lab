@@ -10,7 +10,6 @@ Import('env')
 l_sources = [ 'solvers/Roe.cpp',
               'solvers/F_wave.cpp',
               'patches/WavePropagation1d.cpp',
-              'setups/Setup.cpp',
               'setups/DamBreak1d/DamBreak1d.cpp',
               'setups/RareRare1d/RareRare1d.cpp',
               'setups/ShockShock1d/ShockShock1d.cpp',
