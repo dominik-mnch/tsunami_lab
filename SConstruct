@@ -32,6 +32,7 @@ if vars.UnknownVariables():
 
 # create environment
 env = Environment( variables = vars )
+env.Append(CPPPATH=['src'])
 
 # generate help message
 Help( vars.GenerateHelpText( env ) )

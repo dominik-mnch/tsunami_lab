@@ -38,12 +38,22 @@ class tsunami_lab::setups::Setup {
     /**
      * Gets the bathymetry at a given point.
      *
-     * @param i_ix index x of the cell
-     * @param i_iy index y of the cell
+     * @param i_x x-coordinate of the queried point.
+     * @param i_y y-coordinate of the queried point.
      * @return bathymetry at the given point.
      **/
-    virtual t_real getBathymetry( t_idx i_ix,
-                                  t_idx i_iy ) const = 0;
+    virtual t_real getBathymetry( t_real i_x,
+                                  t_real i_y ) const = 0;
+
+    /**
+     * Gets the Froude number at a given point.
+     *
+     * @param i_ix index x of the cell
+     * @param i_iy index y of the cell
+     * @return Froude number at the given point.
+     **/
+    virtual float getFroudeNumber( float i_ix,
+                                  float i_iy ) const;
 
     /**
      * Gets the momentum in x-direction.
