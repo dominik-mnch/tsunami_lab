@@ -42,7 +42,7 @@ def get_solution_files(solutions_dir=None):
 
 def read_solution_file(filepath):
     """
-    Read a solution CSV file and return x, height data, and simulation time.
+    Read a solution CSV file and return x, height, bathymetry data, and simulation time.
     """
     # Read CSV data normally
     df = pd.read_csv(filepath)
@@ -55,27 +55,40 @@ def read_solution_file(filepath):
     if 'time' in df.columns:
         sim_time = df['time'].iloc[0]
 
-    return df['x'].values, df['height'].values, sim_time
+    if 'bathymetry' in df.columns:
+        bathymetry = df['bathymetry'].values
+    else:
+        # Backward compatibility for older solution files.
+        bathymetry = np.zeros_like(df['height'].values)
 
-def create_plot_image(x_data, height_data, time_step, sim_time, output_path):
+    return df['x'].values, df['height'].values, bathymetry, sim_time
+
+def create_plot_image(x_data, height_data, bathymetry_data, time_step, sim_time, output_path):
     """
-    Create a plot of height vs x and save as a PNG image.
+    Create a plot of water column, water surface, and seafloor vs x and save as a PNG image.
     """
     fig, ax = plt.subplots(figsize=(12, 6))
+    surface_data = height_data + bathymetry_data
     
-    ax.plot(x_data, height_data, 'b-', linewidth=2)
-    ax.fill_between(x_data, 0, height_data, alpha=0.3)
+    ax.plot(x_data, surface_data, color='tab:blue', linewidth=2, label='Water Surface')
+    ax.plot(x_data, bathymetry_data, color='saddlebrown', linewidth=2, label='Seafloor')
+    ax.fill_between(x_data, bathymetry_data, surface_data, color='tab:blue', alpha=0.3)
+    ax.fill_between(x_data, bathymetry_data, np.min(bathymetry_data) - 0.05 * max(1.0, np.max(height_data)), color='peru', alpha=0.2)
     
     ax.set_xlabel('X Coordinate (m)', fontsize=12)
     ax.set_ylabel('Height (m)', fontsize=12)
     if sim_time is not None:
-        ax.set_title(f'Water Height at t = {sim_time:.2f} s', fontsize=14)
+        ax.set_title(f'Water Surface and Seafloor at t = {sim_time:.2f} s', fontsize=14)
     else:
-        ax.set_title(f'Water Height at Time Step {time_step}', fontsize=14)
+        ax.set_title(f'Water Surface and Seafloor at Time Step {time_step}', fontsize=14)
     ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right')
     
-    # Set consistent y-axis limits for all frames
-    ax.set_ylim(bottom=0, top=max(height_data) * 1.1)
+    # Set y-axis to show both the seafloor and the water surface.
+    y_min = np.min(bathymetry_data)
+    y_max = np.max(surface_data)
+    y_pad = max(1e-6, 0.1 * (y_max - y_min if y_max > y_min else 1.0))
+    ax.set_ylim(bottom=y_min - y_pad, top=y_max + y_pad)
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=100, bbox_inches='tight')
@@ -106,9 +119,9 @@ def create_gif(solutions_dir=None, output_gif="tsunami_animation.gif", temp_dir=
     for idx, filepath in enumerate(solution_files):
         print(f"Processing {os.path.basename(filepath)} ({idx + 1}/{len(solution_files)})")
         
-        x_data, height_data, sim_time = read_solution_file(filepath)
+        x_data, height_data, bathymetry_data, sim_time = read_solution_file(filepath)
         temp_image_path = os.path.join(temp_dir, f"frame_{idx:03d}.png")
-        create_plot_image(x_data, height_data, idx, sim_time, temp_image_path)
+        create_plot_image(x_data, height_data, bathymetry_data, idx, sim_time, temp_image_path)
         image_files.append(temp_image_path)
     
     # Create animated GIF

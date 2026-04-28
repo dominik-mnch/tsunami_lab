@@ -28,6 +28,7 @@ class tsunami_lab::io::Csv {
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
      * @param i_time simulation time of the snapshot.
      * @param i_h water height of the cells; optional: use nullptr if not required.
+    * @param i_b bathymetry of the cells; optional: use nullptr if not required.
      * @param i_hu momentum in x-direction of the cells; optional: use nullptr if not required.
      * @param i_hv momentum in y-direction of the cells; optional: use nullptr if not required.
      * @param io_stream stream to which the CSV-data is written.
@@ -38,6 +39,7 @@ class tsunami_lab::io::Csv {
                        t_idx                i_stride,
                        t_real               i_time,
                        t_real       const * i_h,
+                       t_real       const * i_b,
                        t_real       const * i_hu,
                        t_real       const * i_hv,
                        std::ostream       & io_stream );

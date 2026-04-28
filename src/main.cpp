@@ -8,6 +8,8 @@
 #include "setups/DamBreak1d/DamBreak1d.h"
 #include "setups/RareRare1d/RareRare1d.h"
 #include "setups/ShockShock1d/ShockShock1d.h"
+#include "setups/Subcritical1d/Subcritical1d.h"
+#include "setups/Supercritical1d/Supercritical1d.h"
 #include "io/Csv.h"
 #include <cstddef>
 #include <cstdlib>
@@ -81,20 +83,58 @@ int main( int i_argc, char *i_argv[] ) {
 
   // construct setup
   tsunami_lab::setups::Setup *l_setup;
-  l_setup = new tsunami_lab::setups::DamBreak1d( 14,
+  l_setup = new tsunami_lab::setups::DamBreak1d( 5,
                                                   0,
-                                                  3.5,
-                                                  0.7,
-                                                  25000, 
-                                                  nullptr);
-
-  /*l_setup = new tsunami_lab::setups::ShockShock1d( 10,
                                                   2,
+                                                  0,
+                                                  50);
+
+  /*l_setup = new tsunami_lab::setups::ShockShock1d( 5,
+                                                  0,
                                                   50 );*/
+
+  //  l_setup = new tsunami_lab::setups::Subcritical1d();
+  //l_setup = new tsunami_lab::setups::Supercritical1d();
+
+  // variable for maximum Froude number
+  tsunami_lab::t_real maxF = -1.0;
+  // variable for position x where maximum Froude number occurs
+  tsunami_lab::t_real maxX = 0.0;
+
+  //number of sample points for Froude number evaluation
+  const int N = 1000; 
+  // define interval for x values
+  const tsunami_lab::t_real x0 = 0.0;
+  const tsunami_lab::t_real x1 = 25.0;
+
+  // loop over sample points
+  for (int i = 0; i < N; i++) {
+      // calculate x value for current sample point
+      tsunami_lab::t_real x = x0 + i * (x1 - x0) / (N - 1);
+      
+      // evaluate Froude number at current x value
+
+      tsunami_lab::t_real F = l_setup->getFroudeNumber(x, 0.0);
+
+ 
+      
+      // update maximum Froude number and corresponding x value if necessary
+      if (F > maxF) {
+          maxF = F;
+          maxX = x;
+      }
+  }
+
+std::cout << "\n=== Froude analysis at t = 0 ===" << std::endl;
+std::cout << "Max Froude number: " << maxF << std::endl;
+std::cout << "Position of max Froude number: x = " << maxX << std::endl;
+
+
+
 
 
   tsunami_lab::patches::WavePropagation *l_waveProp;
-  l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx , l_useFWaveSolver);
+  l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx , l_useFWaveSolver, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::BoundaryRight);
 
   // maximum observed height in the setup
   tsunami_lab::t_real l_hMax = std::numeric_limits< tsunami_lab::t_real >::lowest();
@@ -115,6 +155,8 @@ int main( int i_argc, char *i_argv[] ) {
                                                         l_y );
       tsunami_lab::t_real l_hv = l_setup->getMomentumY( l_x,
                                                         l_y );
+      tsunami_lab::t_real l_b = l_setup->getBathymetry( l_x,
+                                                        l_y );
 
       // set initial values in wave propagation solver
       l_waveProp->setHeight( l_cx,
@@ -128,6 +170,10 @@ int main( int i_argc, char *i_argv[] ) {
       l_waveProp->setMomentumY( l_cx,
                                 l_cy,
                                 l_hv );
+
+      l_waveProp->setBathymetry( l_cx,
+                                 l_cy,
+                                 l_b );
 
     }
   }
@@ -161,12 +207,33 @@ int main( int i_argc, char *i_argv[] ) {
       std::ofstream l_file;
       l_file.open( l_path  );
 
+      tsunami_lab::t_real F_left = 0.0; // Initialize Froude number for the left cell
+
+      for (tsunami_lab::t_idx i = 0; i < l_nx; i++) {
+   
+
+        tsunami_lab::t_real x = i * l_dxy;
+        tsunami_lab::t_real h = l_waveProp->getHeight()[i];
+        tsunami_lab::t_real hu = l_waveProp->getMomentumX()[i];
+        tsunami_lab::t_real u = hu / h;
+        tsunami_lab::t_real F_right = std::abs(u) / std::sqrt(9.81 * h);
+
+        if(i > 0) {
+          if (F_left > 1.0 && F_right < 1.0) {
+            std::cout << "Jump detected at x = " << x << " at time t = " << l_simTime << std::endl;
+          }
+        }
+
+        F_left = F_right; // Update Froude number for the next iteration
+      }
+
       tsunami_lab::io::Csv::write( l_dxy,
                                    l_nx,
                                    1,
                                    1,
                                    l_simTime,
                                    l_waveProp->getHeight(),
+                                   l_waveProp->getBathymetry()+1,
                                    l_waveProp->getMomentumX(),
                                    nullptr,
                                    l_file );
