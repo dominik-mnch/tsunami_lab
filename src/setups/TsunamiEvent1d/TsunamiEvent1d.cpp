@@ -16,23 +16,23 @@
 
 tsunami_lab::setups::TsunamiEvent1d::TsunamiEvent1d() {
 
-    bool result = tsunami_lab::io::Csv::readBathymetry( BATHYMETRY_CSV, m_x, m_b );  
+  bool result = tsunami_lab::io::Csv::readBathymetry( BATHYMETRY_CSV, m_x, m_b );  
 
-    if (!result ) {
-        std::cerr << "Error: Failed to read bathymetry data for TsunamiEvent1d setup." << std::endl;
-    }
+  if (!result ) {
+      std::cerr << "Error: Failed to read bathymetry data for TsunamiEvent1d setup." << std::endl;
+  }
 }
 
 
 
 tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getDisplacement( t_real i_x,
                                                       t_real ) const {
-    if(175000 < i_x && i_x < 250000) {
-      return 10 * std::sin((i_x - 175000) / 37500.0 * M_PI + M_PI);
-    }
-    else {
-      return 0;
-    }
+  if(175000 < i_x && i_x < 250000) {
+    return 10 * std::sin((i_x - 175000) / 37500.0 * M_PI + M_PI);
+  }
+  else {
+    return 0;
+  }
 }
 
 
@@ -64,7 +64,7 @@ tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getBathymetry( t_real i
 
 tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getMomentumX( t_real,
                                                                  t_real ) const {
-    return 0;
+  return 0;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getMomentumY( t_real,

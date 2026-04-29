@@ -30,16 +30,17 @@ class tsunami_lab::setups::TsunamiEvent1d: public Setup {
 
   public:
 
-        /**
-        * Constructor for TsunamiEvent1d setup.
-        **/
-    TsunamiEvent1d( );
     /**
-     * Get's constant d(x).
+     * Constructor for TsunamiEvent1d setup.
+    **/
+    TsunamiEvent1d();
+    
+    /**
+     * Gets water displacement at a given point.
      *
      * @param i_x x-coordinate.
      * @param i_y y-coordinate.
-     * @return d(x).
+     * @return water displacement at the given point.
      **/
     t_real getDisplacement( t_real i_x,
                       t_real i_y ) const;

@@ -37,11 +37,6 @@ class tsunami_lab::setups::Subcritical1d: public Setup {
   public:
     /**
      * Constructor.
-     *
-     * @param i_height initial water height of the water streams.
-     * @param i_momentum momentum of the water streams.
-     * @param i_locationDiscontinuity location (x-coordinate) of the discontinuity.
-     * @param i_b bathymetry of the cells
      **/
     Subcritical1d();
 

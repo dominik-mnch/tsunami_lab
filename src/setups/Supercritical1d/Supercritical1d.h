@@ -41,14 +41,8 @@ class tsunami_lab::setups::Supercritical1d: public Setup {
   public:
     /**
      * Constructor.
-     *
-     * @param i_heightLeft water height on the left side of the dam.
-     * @param i_momentumLeft momentum on the left side of the dam.
-     * @param i_heightRight water height on the right side of the dam.
-     * @param i_momentumRight momentum on the right side of the dam.
-     * @param i_locationDam location (x-coordinate) of the dam.
-     * @param i_b bathymetry of the cells
      **/
+    Supercritical1d();
    
 
     /**
