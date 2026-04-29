@@ -7,6 +7,8 @@
 #include <catch2/catch.hpp>
 #include "../constants.h"
 #include <sstream>
+#include <fstream>
+#include <cstdio>
 #define private public
 #include "Csv.h"
 #undef public
@@ -81,4 +83,71 @@ TEST_CASE( "Test the CSV-writer for 2D settings.", "[CsvWrite2d]" ) {
 
   REQUIRE( l_stream1.str().size() == l_ref1.size() );
   REQUIRE( l_stream1.str() == l_ref1 );
+}
+
+TEST_CASE( "Test the CSV-reader for bathymetry data.", "[CsvReadBathymetry]" ) {
+  // create a temporary CSV file with bathymetry data
+  std::string l_testFile = "test_bathymetry.csv";
+  std::ofstream l_outFile( l_testFile );
+  
+  l_outFile << "lat,long,x,height\n";
+  l_outFile << "141.024949,37.316569,0,14.7254650696\n";
+  l_outFile << "141.02756337,37.3166237288,0.231656660144,-6.93627624916\n";
+  l_outFile << "141.030177745,37.3166784,0.463313319336,-7.48690520552\n";
+  
+  l_outFile.close();
+  
+  std::vector<tsunami_lab::t_real> l_x;
+  std::vector<tsunami_lab::t_real> l_b;
+  
+  bool l_success = tsunami_lab::io::Csv::readBathymetry( l_testFile, l_x, l_b );
+  
+  REQUIRE( l_success == true );
+  REQUIRE( l_x.size() == 3 );
+  REQUIRE( l_b.size() == 3 );
+  
+  // check the values are read correctly
+  REQUIRE( l_x[0] == Approx( 0.0 ) );
+  REQUIRE( l_x[1] == Approx( 0.231656660144 ) );
+  REQUIRE( l_x[2] == Approx( 0.463313319336 ) );
+  
+  REQUIRE( l_b[0] == Approx( 14.7254650696 ) );
+  REQUIRE( l_b[1] == Approx( -6.93627624916 ) );
+  REQUIRE( l_b[2] == Approx( -7.48690520552 ) );
+  
+  // clean up
+  std::remove( l_testFile.c_str() );
+}
+
+TEST_CASE( "Test the CSV-reader for non-existent file.", "[CsvReadBathymetryNonExistent]" ) {
+  std::vector<tsunami_lab::t_real> l_x;
+  std::vector<tsunami_lab::t_real> l_b;
+  
+  bool l_success = tsunami_lab::io::Csv::readBathymetry( "nonexistent_file.csv", l_x, l_b );
+  
+  REQUIRE( l_success == false );
+  REQUIRE( l_x.size() == 0 );
+  REQUIRE( l_b.size() == 0 );
+}
+
+TEST_CASE( "Test the CSV-reader for invalid format.", "[CsvReadBathymetryInvalidFormat]" ) {
+  // create a temporary CSV file with invalid data
+  std::string l_testFile = "test_bathymetry_invalid.csv";
+  std::ofstream l_outFile( l_testFile );
+  
+  l_outFile << "lat,long,x,height\n";
+  l_outFile << "141.024949,37.316569,0,14.7254650696\n";
+  l_outFile << "invalid,37.3166237288,0.231656660144,-6.93627624916\n";
+  
+  l_outFile.close();
+  
+  std::vector<tsunami_lab::t_real> l_x;
+  std::vector<tsunami_lab::t_real> l_b;
+  
+  bool l_success = tsunami_lab::io::Csv::readBathymetry( l_testFile, l_x, l_b );
+  
+  REQUIRE( l_success == false );
+  
+  // clean up
+  std::remove( l_testFile.c_str() );
 }

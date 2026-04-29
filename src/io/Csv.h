@@ -10,6 +10,9 @@
 #include "../constants.h"
 #include <cstring>
 #include <iostream>
+#include <vector>
+#include <fstream>
+#include <sstream>
 
 namespace tsunami_lab {
   namespace io {
@@ -28,7 +31,7 @@ class tsunami_lab::io::Csv {
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
      * @param i_time simulation time of the snapshot.
      * @param i_h water height of the cells; optional: use nullptr if not required.
-    * @param i_b bathymetry of the cells; optional: use nullptr if not required.
+     * @param i_b bathymetry of the cells; optional: use nullptr if not required.
      * @param i_hu momentum in x-direction of the cells; optional: use nullptr if not required.
      * @param i_hv momentum in y-direction of the cells; optional: use nullptr if not required.
      * @param io_stream stream to which the CSV-data is written.
@@ -43,6 +46,19 @@ class tsunami_lab::io::Csv {
                        t_real       const * i_hu,
                        t_real       const * i_hv,
                        std::ostream       & io_stream );
+
+    /**
+     * Reads bathymetry data from a CSV file.
+     * Expected CSV format: lat,long,x,height
+     *
+     * @param i_filePath path to the bathymetry CSV file.
+     * @param o_x vector to store x-coordinate values.
+     * @param o_b vector to store bathymetry values.
+     * @return true if reading was successful, false otherwise.
+     **/
+    static bool readBathymetry( std::string const &          i_filePath,
+                                std::vector<t_real>        & o_x,
+                                std::vector<t_real>        & o_b );
 };
 
 #endif
