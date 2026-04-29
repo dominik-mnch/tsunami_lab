@@ -212,14 +212,15 @@ Hydraulic Jumps
 
 To be able to simulate scenarios with hydraulic jumps, we implemented the ``Subcritical1d.cpp`` and ``Supercritical1d.cpp`` setups, which have a subcritical and supercritical flow respectively.
 
-- ``Subcritical1d.cpp``:
+Subcritical Setup
+~~~~~~~~~~~~~~~~~
 
 .. image:: ../../scripts/animation_subcritical.gif
    :align: center
 
 As we can see, there is a small "water valley" where the hump in the bathymetry is.
 
-** Maximum Froude Number: **
+**Maximum Froude Number:**
 
 Since the Froude number is defined as:
 
@@ -235,12 +236,13 @@ and the velocity is constant, the Froude number is maximal for the smallest heig
 
 This result makes sense since the flow is subcritical, so the Froude number should be less than 1.
 
-- ``Supercritical1d.cpp``:
+Supercritical Setup
+~~~~~~~~~~~~~~~~~~~
 
 .. image:: ../../scripts/animation_supercritical.gif
    :align: center
 
-** Maximum Froude Number: **
+**Maximum Froude Number:**
 
 With the same argument as before, we can deduce that the Froude number is maximal at the center of the bathymetry hump at :math:`x = 10`.
 
@@ -251,9 +253,42 @@ With the same argument as before, we can deduce that the Froude number is maxima
 This result also makes sense since the flow is supercritical, so the Froude number should be greater than 1.
 
 
-- Failure to converge to a constant momentum:
+Failure to converge to a constant momentum
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 When observing the results of the supercritical setup, we can see that the momentum is approximately :math:`0.12475` everywhere except for
 one cell right of the hump. This represents the point where the flow transitions from supercritical to subcritical, which is the hydraulic jump. 
 At this point (approximately :math:`x = 11.475`) the momentum is approximately :math:`0.15337`, which is a lot higher than everywhere else.
 After the hydraulic jump, the momentum returns back to approximately :math:`0.12475`.
+
+
+Tsunami Event
+-------------
+
+We extracted the bathymetry data from the GEBCO 2026 Grid by using the following commands:
+
+.. code-block:: bash
+
+    # download the data
+    wget https://dap.ceda.ac.uk/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf/GEBCO_2026.zip
+     
+    # unzip the file
+    unzip GEBCO_2026.zip
+
+    # cut down to the relevant region
+    region_cut=138/147/35/39
+    gmt grdcut -R${region_cut} GEBCO_2026.nc -GGEBCO_2026_cut.nc
+
+    # convert to csv
+    gmt grdtrack -GGEBCO_2026_cut.nc -E141.024949/37.316569/146.0/37.316569.6+250e+d -Ar >> bathymetry.csv
+
+The relevant data is now located in the ``res/bathymetry.csv`` file which has been modified to include a header and comma seperators.
+
+The ``Csv.cpp`` file has been modified to also include a static ``readBathymetry`` method which can read the contents of this csv file.
+
+.. code-block:: cpp
+
+    static bool readBathymetry( std::string const &          i_filePath,
+                                    std::vector<t_real>        & o_x,
+                                    std::vector<t_real>        & o_b );
 
