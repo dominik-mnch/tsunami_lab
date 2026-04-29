@@ -224,6 +224,59 @@ TEST_CASE( "Test BoundaryRight computes correct right-edge update with Roe solve
   REQUIRE( l_waveProp.getMomentumX()[2] == Approx( l_huLast - l_scaling * l_netUpdates[0][1] ) );
 }
 
+TEST_CASE( "Test wet-dry shoreline reflection updates only wet cell.", "[WavePropWetDryReflect1d]" ) {
+  tsunami_lab::patches::WavePropagation1d l_waveProp( 3,
+                                                      false,
+                                                      tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow );
+
+  // Cell 1 is dry, cells 0 and 2 are wet to avoid dry-dry interfaces.
+  l_waveProp.setHeight( 0, 0, 5 );
+  l_waveProp.setMomentumX( 0, 0, 2 );
+  l_waveProp.setBathymetry( 0, 0, -1 );
+
+  l_waveProp.setHeight( 1, 0, 0 );
+  l_waveProp.setMomentumX( 1, 0, 0 );
+  l_waveProp.setBathymetry( 1, 0, 1 );
+
+  l_waveProp.setHeight( 2, 0, 7 );
+  l_waveProp.setMomentumX( 2, 0, -1 );
+  l_waveProp.setBathymetry( 2, 0, -2 );
+
+  l_waveProp.setGhostOutflow();
+
+  tsunami_lab::t_real const l_scaling = 0.1;
+  tsunami_lab::t_real l_expectedNetUpdatesL[2][2];
+  tsunami_lab::t_real l_expectedNetUpdatesR[2][2];
+
+  // Left wet/dry interface: mirrored state of cell 0 against dry cell 1.
+  tsunami_lab::solvers::Roe::netUpdates( 5,
+                                         5,
+                                         2,
+                                         -2,
+                                         l_expectedNetUpdatesL[0],
+                                         l_expectedNetUpdatesL[1] );
+
+  // Right wet/dry interface: mirrored state of cell 2 against dry cell 1.
+  tsunami_lab::solvers::Roe::netUpdates( 7,
+                                         7,
+                                         1,
+                                         -1,
+                                         l_expectedNetUpdatesR[0],
+                                         l_expectedNetUpdatesR[1] );
+
+  l_waveProp.timeStep( l_scaling );
+
+  REQUIRE( l_waveProp.getHeight()[0] == Approx( 5 - l_scaling * l_expectedNetUpdatesL[0][0] ) );
+  REQUIRE( l_waveProp.getMomentumX()[0] == Approx( 2 - l_scaling * l_expectedNetUpdatesL[0][1] ) );
+
+  // Dry cell stays unchanged because dry-side net updates are suppressed.
+  REQUIRE( l_waveProp.getHeight()[1] == Approx( 0 ) );
+  REQUIRE( l_waveProp.getMomentumX()[1] == Approx( 0 ) );
+
+  REQUIRE( l_waveProp.getHeight()[2] == Approx( 7 - l_scaling * l_expectedNetUpdatesR[1][0] ) );
+  REQUIRE( l_waveProp.getMomentumX()[2] == Approx( -1 - l_scaling * l_expectedNetUpdatesR[1][1] ) );
+}
+
 //Helper for CSV reading
 struct TestCaseData {
   double hLeft, hRight;

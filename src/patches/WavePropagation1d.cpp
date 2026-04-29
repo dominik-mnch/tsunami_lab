@@ -64,22 +64,61 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling ) {
     // compute net-updates
     t_real l_netUpdates[2][2];
 
-    if (m_useFWaveSolver) {
-      solvers::F_wave::netUpdates( l_hOld[l_ceL],
-                                l_hOld[l_ceR],
-                                l_huOld[l_ceL],
-                                l_huOld[l_ceR],
-                                m_b[l_ceL],
-                                m_b[l_ceR],
+    bool l_leftDry = (m_b[l_ceL] > 0);
+    bool l_rightDry = (m_b[l_ceR] > 0);
+    bool l_reflectAtShore = (l_leftDry != l_rightDry);
+
+    // Default interface states (non-reflective case).
+    t_real l_hL = l_hOld[l_ceL];
+    t_real l_hR = l_hOld[l_ceR];
+    t_real l_huL = l_huOld[l_ceL];
+    t_real l_huR = l_huOld[l_ceR];
+    t_real l_bL = m_b[l_ceL];
+    t_real l_bR = m_b[l_ceR];
+
+    if( l_reflectAtShore ) {
+      // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
+      if( l_leftDry ) {
+        l_hL = l_hR;
+        l_huL = -l_huR;
+        l_bL = l_bR;
+      }
+      else {
+        l_hR = l_hL;
+        l_huR = -l_huL;
+        l_bR = l_bL;
+      }
+    }
+
+    if( m_useFWaveSolver ) {
+      solvers::F_wave::netUpdates( l_hL,
+                                   l_hR,
+                                   l_huL,
+                                   l_huR,
+                                   l_bL,
+                                   l_bR,
+                                   l_netUpdates[0],
+                                   l_netUpdates[1] );
+    }
+    else {
+      solvers::Roe::netUpdates( l_hL,
+                                l_hR,
+                                l_huL,
+                                l_huR,
                                 l_netUpdates[0],
                                 l_netUpdates[1] );
-    } else {
-      solvers::Roe::netUpdates( l_hOld[l_ceL],
-                                l_hOld[l_ceR],
-                                l_huOld[l_ceL],
-                                l_huOld[l_ceR],
-                                l_netUpdates[0],
-                                l_netUpdates[1] );
+    }
+
+    if( l_reflectAtShore ) {
+      // Only update the wet cell; keep the dry cell unchanged.
+      if( l_leftDry ) {
+        l_netUpdates[0][0] = 0;
+        l_netUpdates[0][1] = 0;
+      }
+      else {
+        l_netUpdates[1][0] = 0;
+        l_netUpdates[1][1] = 0;
+      }
     }
 
     // update the cells' quantities
