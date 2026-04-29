@@ -43,7 +43,6 @@ class tsunami_lab::setups::Supercritical1d: public Setup {
      * Constructor.
      **/
     Supercritical1d();
-   
 
     /**
      * Gets the water height at a given point.

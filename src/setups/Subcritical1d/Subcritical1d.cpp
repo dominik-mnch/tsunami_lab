@@ -9,7 +9,6 @@
 #include <cmath>
 
 tsunami_lab::setups::Subcritical1d::Subcritical1d() {
-  // Default values - can be modified as needed
 }
 
 tsunami_lab::t_real tsunami_lab::setups::Subcritical1d::getHeight( t_real i_x,
