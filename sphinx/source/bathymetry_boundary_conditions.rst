@@ -204,6 +204,55 @@ We can see the effect of the reflecting boundary conditions in the following Dam
 When the shock wave comes in contact with the right wall, it is reflected back and starts traveling to the left.
 This is equivalent to the left side of a shock shock setup.
 
+Apart from the boundary at the very edge, we have also implemented a reflecting boundary condition when a wet cell comes in contact with a dry cell, so the dry cell stays dry for the entire simulation.
+This is done as follows in the code in ``WavePropagation1d.cpp``:
+
+.. code-block:: cpp
+
+    // compute net-updates
+    t_real l_netUpdates[2][2];
+
+    bool l_leftDry = (m_b[l_ceL] > 0);
+    bool l_rightDry = (m_b[l_ceR] > 0);
+    bool l_reflectAtShore = (l_leftDry != l_rightDry);
+
+    // Default interface states (non-reflective case).
+    t_real l_hL = l_hOld[l_ceL];
+    t_real l_hR = l_hOld[l_ceR];
+    t_real l_huL = l_huOld[l_ceL];
+    t_real l_huR = l_huOld[l_ceR];
+    t_real l_bL = m_b[l_ceL];
+    t_real l_bR = m_b[l_ceR];
+
+    if( l_reflectAtShore ) {
+      // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
+      if( l_leftDry ) {
+        l_hL = l_hR;
+        l_huL = -l_huR;
+        l_bL = l_bR;
+      }
+      else {
+        l_hR = l_hL;
+        l_huR = -l_huL;
+        l_bR = l_bL;
+      }
+    }
+
+    // ... compute net updates
+
+    if( l_reflectAtShore ) {
+      // Only update the wet cell; keep the dry cell unchanged.
+      if( l_leftDry ) {
+        l_netUpdates[0][0] = 0;
+        l_netUpdates[0][1] = 0;
+      }
+      else {
+        l_netUpdates[1][0] = 0;
+        l_netUpdates[1][1] = 0;
+      }
+    }
+
+
 All new features have at least one respective unit test.
 
 
@@ -291,4 +340,27 @@ The ``Csv.cpp`` file has been modified to also include a static ``readBathymetry
     static bool readBathymetry( std::string const &          i_filePath,
                                     std::vector<t_real>        & o_x,
                                     std::vector<t_real>        & o_b );
+
+The ``TsunamiEvent1d.cpp`` class implements the scenario as a setup by reading the bathymetry data and implementing the artificial displacement defined by:
+
+.. math::
+
+    \begin{split}d(x) = \begin{cases}
+            10\cdot\sin(\frac{x-175000}{37500} \pi + \pi), & \text{ if } 175000 < x < 250000 \\
+            0, &\text{else}.
+        \end{cases}\end{split}
+
+We can now execute our setup by calling ``./build/tsunami_lab 2000 440000 1 2000`` which executes the simulation with 2000 cells, a domain length of 440000, the F-Wave solver and 2000 time steps:
+
+.. image:: ../../scripts/tsunami_event.gif
+   :align: center
+
+Unfortunately, we can barely see the wave at all. This is expected since the wave is only a few meters high whereas the depth of the ocean goes down to 5000 meters, making the wave pretty much invisible.
+
+To be able to see the wave, we can modify the artifical displacement to be 100 times higher than the original one:
+
+.. image:: ../../scripts/tsunami_event_factor_100.gif
+   :align: center
+
+Now we can clearly see the wave. On the right side it flows out normally, while on the left side it is reflected by the shore line and than travels back into the ocean.
 
