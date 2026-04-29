@@ -10,6 +10,7 @@
 #include "setups/ShockShock1d/ShockShock1d.h"
 #include "setups/Subcritical1d/Subcritical1d.h"
 #include "setups/Supercritical1d/Supercritical1d.h"
+#include "setups/TsunamiEvent1d/TsunamiEvent1d.h"
 #include "io/Csv.h"
 #include <cstddef>
 #include <cstdlib>
@@ -89,19 +90,20 @@ int main( int i_argc, char *i_argv[] ) {
                                                   0,
                                                   10);*/
 
-  l_setup = new tsunami_lab::setups::ShockShock1d( 0.5,
+  /*l_setup = new tsunami_lab::setups::ShockShock1d( 0.5,
                                                   0.3,
                                                   50,
                                                   true,
                                                   0.25,
                                                   50.0,
-                                                  -0.08 );
+                                                  -0.08 );*/
 
   //l_setup = new tsunami_lab::setups::Subcritical1d();
   //l_setup = new tsunami_lab::setups::Supercritical1d();
+  l_setup = new tsunami_lab::setups::TsunamiEvent1d();
 
   tsunami_lab::patches::WavePropagation *l_waveProp;
-  l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx , l_useFWaveSolver, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow);
+  l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx , l_useFWaveSolver, tsunami_lab::patches::WavePropagation1d::BoundaryCondition::BoundaryLeft);
 
   // maximum observed height in the setup
   tsunami_lab::t_real l_hMax = std::numeric_limits< tsunami_lab::t_real >::lowest();

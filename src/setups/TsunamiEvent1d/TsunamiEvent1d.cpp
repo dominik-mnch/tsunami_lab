@@ -27,10 +27,8 @@ tsunami_lab::setups::TsunamiEvent1d::TsunamiEvent1d() {
 
 tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getDisplacement( t_real i_x,
                                                       t_real ) const {
-                                                        
-    t_idx cell_index = (i_x / 440000) * m_b.size();
-    if(175000 < m_x[cell_index] && m_x[cell_index] < 225000) {
-      return 10 * std::sin((m_x[cell_index] - 175000) / 37500.0 * M_PI + M_PI);
+    if(175000 < i_x && i_x < 250000) {
+      return 1000 * std::sin((i_x - 175000) / 37500.0 * M_PI + M_PI);
     }
     else {
       return 0;
