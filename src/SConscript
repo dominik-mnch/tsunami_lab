@@ -15,6 +15,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/ShockShock1d/ShockShock1d.cpp',
               'setups/Subcritical1d/Subcritical1d.cpp',
               'setups/Supercritical1d/Supercritical1d.cpp',
+              'setups/TsunamiEvent1d/TsunamiEvent1d.cpp',
               'io/Csv.cpp'
                ]
 
@@ -33,7 +34,9 @@ l_tests = [ 'tests.cpp',
             'setups/RareRare1d/RareRare1d.test.cpp',
             'setups/ShockShock1d/ShockShock1d.test.cpp',
             'setups/Subcritical1d/Subcritical1d.test.cpp',
-            'setups/Supercritical1d/Supercritical1d.test.cpp']
+            'setups/Supercritical1d/Supercritical1d.test.cpp',
+            'setups/TsunamiEvent1d/TsunamiEvent1d.test.cpp'
+            ]
 
 for l_te in l_tests:
   env.tests.append( env.Object( l_te ) )
