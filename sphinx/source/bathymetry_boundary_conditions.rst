@@ -80,7 +80,7 @@ where the half-width :math:`w` is determined by the constraint that the parabola
 The three controlling parameters are:
 
 - :math:`b_{\text{offset}}`: vertical offset of the parabola (must be non-positive for the parabola to have real roots)
-- :math:`b_{\text{scale}}`: quadratic coefficient controlling the curvature (must be positive for a valley-shaped parabola)
+- :math:`b_{\text{scale}}`: quadratic coefficient controlling the curvature (must be positive for a valley-shaped parabola and negative for a hill-shaped parabola)
 - :math:`x_c`: x-coordinate of the parabola's center (axis of symmetry)
 
 This implementation ensures that the bathymetry smoothly transitions from the parabolic profile to zero bathymetry outside the parabola's extent.
@@ -113,13 +113,15 @@ It also provides the additional option to set the bathymetry to a parabola which
 
 To illustrate the effect of the bathymetry, we can look at the following simulation of the Shock Shock setup with a parabolic bathymetry:
 
-- Shock Shock with parameters :math:`(h = 0.5, m = 0.3, location_discontinuity = 50, b_{\text{offset}} = 0.25, b_{\text{center}} = 50.0, b_{\text{scale}} = -0.08)`:
+- Shock Shock with parameters :math:`(h = 0.5, m = 0.3, l_{\text{discontinuity}} = 50, b_{\text{offset}} = 0.25, b_{\text{center}} = 50.0, b_{\text{scale}} = -0.08)`:
 
 .. image:: ../../scripts/bathymetry_effect.gif
    :align: center
 
 We can clearly see that instead of the wave in the middle having equal height everywhere, there are two peaks on either side.
 This would not have happened without the bathymetry.
+
+All new features have at least one respective unit test.
 
 Adding boundary conditions
 --------------------------
@@ -194,7 +196,7 @@ are set accordingly in the ``setGhostCells`` method of the ``WavePropagation1d.c
 
 We can see the effect of the reflecting boundary conditions in the following Dam Break simulation with a reflecting boundary on the right edge.
 
-- Dam Break with parameters :math:`(h_L = 5, m_L = 0, h_R = 2, location_Dam = 50)`:
+- Dam Break with parameters :math:`(h_L = 5, m_L = 0, h_R = 2, l_{\text{Dam}} = 50)`:
 
 .. image:: ../../scripts/reflecting_boundary_conditions.gif
    :align: center
@@ -202,21 +204,56 @@ We can see the effect of the reflecting boundary conditions in the following Dam
 When the shock wave comes in contact with the right wall, it is reflected back and starts traveling to the left.
 This is equivalent to the left side of a shock shock setup.
 
+All new features have at least one respective unit test.
 
-3.3.1
-- changes: main(after dambreak()), setup header, setup cpp, supercritical and subcritical get header and cpp setups, bathymetry now works with t_real
-- location 3.3.1: 10.01
-- Froude number 3.3.1: 0.584356
-- location 3.3.2: 10.01
-- Froude number 3.3.2: 1.22602
-./build/tsunami_lab 1000 25 1 20
 
-3.3 
-[nix-shell:~/Project/tsunami_lab]$ ./build/tsunami_lab 1000 25 1 200
-Hydraulic jump is where flow switches from Fr > 1 to Fr < 1, so where Froude number crosses 1
-Question: should I be looking for the strongest jump? Or at each jump at every timestep?
-Jump detected at x = 11.475 at time t = 3.82103
-19.9735,11.4625,0.0125,0.0600494,-0.235125,0.124749
-19.9735,11.4875,0.0125,0.146527,-0.238781,0.153369
-19.9735,11.5125,0.0125,0.208031,-0.2425,0.124748
-Die anderen Werte unterscheiden sich nur in der sechsten Nachkommastelle, diese findet sich in solutions 115
+Hydraulic Jumps
+---------------
+
+To be able to simulate scenarios with hydraulic jumps, we implemented the ``Subcritical1d.cpp`` and ``Supercritical1d.cpp`` setups, which have a subcritical and supercritical flow respectively.
+
+- ``Subcritical1d.cpp``:
+
+.. image:: ../../scripts/animation_subcritical.gif
+   :align: center
+
+As we can see, there is a small "water valley" where the hump in the bathymetry is.
+
+** Maximum Froude Number: **
+
+Since the Froude number is defined as:
+
+.. math::
+
+    F = \frac{u}{\sqrt{gh}}
+
+and the velocity is constant, the Froude number is maximal for the smallest height which happens at the center of the bathymetry hump which is located at :math:`x = 10`.
+
+.. math::
+
+    F_{\text{max}} = \frac{\frac{hu}{h}}{\sqrt{gh}} = \frac{\frac{4.42}{1.8}}{\sqrt{9.81 \cdot 1.8}} \approx 0.584
+
+This result makes sense since the flow is subcritical, so the Froude number should be less than 1.
+
+- ``Supercritical1d.cpp``:
+
+.. image:: ../../scripts/animation_supercritical.gif
+   :align: center
+
+** Maximum Froude Number: **
+
+With the same argument as before, we can deduce that the Froude number is maximal at the center of the bathymetry hump at :math:`x = 10`.
+
+.. math::
+
+    F_{\text{max}} = \frac{\frac{hu}{h}}{\sqrt{gh}} = \frac{\frac{0.18}{0.13}}{\sqrt{9.81 \cdot 0.13}} \approx 1.226
+
+This result also makes sense since the flow is supercritical, so the Froude number should be greater than 1.
+
+
+- Failure to converge to a constant momentum:
+When observing the results of the supercritical setup, we can see that the momentum is approximately :math:`0.12475` everywhere except for
+one cell right of the hump. This represents the point where the flow transitions from supercritical to subcritical, which is the hydraulic jump. 
+At this point (approximately :math:`x = 11.475`) the momentum is approximately :math:`0.15337`, which is a lot higher than everywhere else.
+After the hydraulic jump, the momentum returns back to approximately :math:`0.12475`.
+
