@@ -121,13 +121,15 @@ To illustrate the effect of the bathymetry, we can look at the following simulat
 We can clearly see that instead of the wave in the middle having equal height everywhere, there are two peaks on either side.
 This would not have happened without the bathymetry.
 
+As is visible in the simulation above, our visualisation has also been updated to show the bathymetry as the seafloor.
+
 All new features have at least one respective unit test.
 
 Adding boundary conditions
 --------------------------
 
 Until now, at the edges of the domain we have been using ghost cells that simply copy the values of the adjacent inner cells, which corresponds to an outflow boundary condition.
-We now also want to be able to implement a reflective boundary condition, which corresponds to a wall at the edge of the domain where the fluid cannot flow through.
+We now also want to be able to implement a reflective boundary condition, which corresponds to a wall at the edge of the domain where the water cannot flow through.
 This means that the momentum at the ghost cell should be the negative of the adjacent inner cell, while the height should be the same as the adjacent inner cell.
 
 To do this we implemented an enum in the ``WavePropagation1d.h`` header file to specify the type of boundary condition we want to use:
@@ -331,7 +333,7 @@ We extracted the bathymetry data from the GEBCO 2026 Grid by using the following
     # convert to csv
     gmt grdtrack -GGEBCO_2026_cut.nc -E141.024949/37.316569/146.0/37.316569.6+250e+d -Ar >> bathymetry.csv
 
-The relevant data is now located in the ``res/bathymetry.csv`` file which has been modified to include a header and comma seperators.
+The relevant data is now located in the ``/res/bathymetry.csv`` file which has been modified to include a header and comma separators.
 
 The ``Csv.cpp`` file has been modified to also include a static ``readBathymetry`` method which can read the contents of this csv file.
 
@@ -355,12 +357,20 @@ We can now execute our setup by calling ``./build/tsunami_lab 2000 440000 1 2000
 .. image:: ../../scripts/tsunami_event.gif
    :align: center
 
-Unfortunately, we can barely see the wave at all. This is expected since the wave is only a few meters high whereas the depth of the ocean goes down to 5000 meters, making the wave pretty much invisible.
+Unfortunately, we can barely see the wave at all. This is expected since the wave is only a few meters high whereas the depth of the ocean goes down to almost 8000 meters, making the wave pretty much invisible.
 
-To be able to see the wave, we can modify the artifical displacement to be 100 times higher than the original one:
+To be able to see the wave, we can modify the artifical displacement to be 100 times higher than it originally was.
 
 .. image:: ../../scripts/tsunami_event_factor_100.gif
    :align: center
 
 Now we can clearly see the wave. On the right side it flows out normally, while on the left side it is reflected by the shore line and than travels back into the ocean.
 
+
+Individual Contributions
+------------------------
+Note: The reason that all the commits in our GitHub repository come from Dominik Münch's account is that we have set up an SSH key for the tl11 user to that account so all the commits come from there but that doesn't imply that all the work was done by Dominik.
+
+* Dominik Münch: implemented reflecting boundary conditions (both at edges and between wet and dry cells) and the parabolic bathymetry in the Shock Shock and Rare Rare setups including unit tests and also wrote the project report
+* Magdalena Schwarzkopf: implementation of all new setups (Subcritical, Supercritical, Tsunami Event) including unit tests, also analyzed the Froude Numbers in exercise 3 
+* Together: basic integration of bathymetry into the project and updating our visualisation to show the bathymetry
