@@ -15,6 +15,7 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    self
    f_wave_solver
    finite_volume_discretization
+   bathymetry_boundary_conditions
 
 You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.
 
