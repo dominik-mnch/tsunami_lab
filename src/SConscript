@@ -31,7 +31,8 @@ l_tests = [ 'tests.cpp',
             'io/Csv.test.cpp',
             'setups/DamBreak1d/DamBreak1d.test.cpp',
             'setups/RareRare1d/RareRare1d.test.cpp',
-            'setups/ShockShock1d/ShockShock1d.test.cpp' ]
+            'setups/ShockShock1d/ShockShock1d.test.cpp',
+            'setups/Subcritical1d/Subcritical1d.test.cpp']
 
 for l_te in l_tests:
   env.tests.append( env.Object( l_te ) )
