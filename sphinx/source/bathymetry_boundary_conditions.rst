@@ -13,7 +13,7 @@ To do this we modified the F-Wave Solver to include the bathymetry in the flux c
 More specifically, when calculating the jump in flux :math:`\Delta F`, we have to subtract the bathymetry term from the flux jump,
 which is given by the following formula:
 
-:math::
+.. math::
 
     \begin{split}\Delta x \Psi_{i-1/2} := \begin{bmatrix}
                                 0 \\
@@ -22,7 +22,7 @@ which is given by the following formula:
 
 This was implemented in the F-Wave solver like this:
 
-..code-block:: cpp
+.. code-block:: cpp
 
     // compute jump in flux
     t_real l_deltaF[2] = {0};
@@ -44,7 +44,7 @@ Additionally, when setting the ghostOutflow it also sets this for the bathymetry
 ``RareRare1d.cpp`` now also has an array for the bathymetry and sets it to 0 for the whole domain.
 There is an additional option to set the bathymetry to a parabola which is controlled through additional parameters passed into the constructor:
 
-..code-block:: cpp
+.. code-block:: cpp
 
     tsunami_lab::setups::RareRare1d::RareRare1d( t_real i_height,
                                                 t_real i_momentum,
@@ -85,7 +85,7 @@ The three controlling parameters are:
 
 This implementation ensures that the bathymetry smoothly transitions from the parabolic profile to zero bathymetry outside the parabola's extent.
 
-..code-block:: cpp
+.. code-block:: cpp
 
     tsunami_lab::t_real tsunami_lab::setups::RareRare1d::getBathymetry( t_real i_x,
                                                                     t_real ) const {
@@ -130,7 +130,7 @@ This means that the momentum at the ghost cell should be the negative of the adj
 
 To do this we implemented an enum in the ``WavePropagation1d.h`` header file to specify the type of boundary condition we want to use:
 
-..code-block:: cpp
+.. code-block:: cpp
 
     //! ghost outflow boundary mode
         enum class BoundaryCondition {
@@ -143,7 +143,7 @@ To do this we implemented an enum in the ``WavePropagation1d.h`` header file to 
 This defines the 4 possible ways to set the boundary conditions. According to the specified mode, the ghost cells on the left and right edge
 are set accordingly in the ``setGhostCells`` method of the ``WavePropagation1d.cpp`` file:
 
-.. code-block: cpp
+.. code-block:: cpp
 
     void tsunami_lab::patches::WavePropagation1d::setGhostOutflow() {
         t_real * l_h = m_h[m_step];
