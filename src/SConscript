@@ -16,6 +16,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/Subcritical1d/Subcritical1d.cpp',
               'setups/Supercritical1d/Supercritical1d.cpp',
               'setups/TsunamiEvent1d/TsunamiEvent1d.cpp',
+              'setups/CircularDamBreak2d/CircularDamBreak2d.cpp',
               'io/Csv.cpp'
                ]
 
@@ -35,7 +36,8 @@ l_tests = [ 'tests.cpp',
             'setups/ShockShock1d/ShockShock1d.test.cpp',
             'setups/Subcritical1d/Subcritical1d.test.cpp',
             'setups/Supercritical1d/Supercritical1d.test.cpp',
-            'setups/TsunamiEvent1d/TsunamiEvent1d.test.cpp'
+            'setups/TsunamiEvent1d/TsunamiEvent1d.test.cpp',
+            'setups/CircularDamBreak2d/CircularDamBreak2d.test.cpp'
             ]
 
 for l_te in l_tests:
