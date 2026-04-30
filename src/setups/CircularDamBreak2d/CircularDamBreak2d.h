@@ -40,7 +40,9 @@ class tsunami_lab::setups::CircularDamBreak2d: public Setup {
     t_real m_momentumOutsideY = 0;
 
     //! location of the dam (radius)
-    t_real m_locationDam = 0;
+    t_real m_middlePointDam_x = 0;
+    t_real m_middlePointDam_y = 0;
+    t_real m_radiusDam = 0;
 
   public:
     /**

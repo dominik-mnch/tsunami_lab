@@ -22,15 +22,15 @@ tsunami_lab::setups::CircularDamBreak2d::CircularDamBreak2d( t_real i_height_ins
   m_momentumInsideY = i_momentumInsideY;
   m_momentumOutsideX = i_momentumOutsideX;
   m_momentumOutsideY = i_momentumOutsideY;
-  m_locationDam = i_middlePointDam_x;
-  m_locationDam = i_middlePointDam_y;
-  m_locationDam = i_radiusDam;
+  m_middlePointDam_x = i_middlePointDam_x;
+  m_middlePointDam_y = i_middlePointDam_y;
+  m_radiusDam = i_radiusDam;
       
 }
 
 tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getHeight( t_real i_x,
                                                                         t_real i_y ) const {
-  if( sqrt( pow(i_x, 2) + pow(i_y, 2) ) < m_locationDam ) {
+  if( sqrt( pow(i_x, 2) + pow(i_y, 2) ) < 10 ) {
     return 10;
   }
   else {
@@ -38,9 +38,14 @@ tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getHeight( t_real i
   }
 }
 
-tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getBathymetry( t_real,
-                                                                            t_real ) const {
-  return 0;
+tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getBathymetry( t_real i_x,
+                                                                            t_real i_y ) const {
+  if( sqrt( pow(i_x + 20, 2) + pow(i_y, 2) ) < 7 ) {
+    return -1 * (pow((i_x/100), 2) + pow(i_y, 2));
+  }
+  else {
+    return 0;
+  }
 }
 
 tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getMomentumX( t_real,

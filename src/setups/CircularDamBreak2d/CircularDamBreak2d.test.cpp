@@ -37,5 +37,14 @@ TEST_CASE( "Test the two-dimensional circular dam break setup.", "[CircularDamBr
   REQUIRE( l_damBreak.getMomentumY( 10, 15 ) == 0 );
 
   REQUIRE( l_damBreak.getBathymetry ( 10, 15 ) == 0 );
+
+  // outside the dam, but in the part of the hill
+  REQUIRE( l_damBreak.getHeight( -22, 1 ) == 5 );
+
+  REQUIRE( l_damBreak.getMomentumX( -22, 1 ) == 0 );
+
+  REQUIRE( l_damBreak.getMomentumY( -22, 1 ) == 0 );
+
+  REQUIRE( l_damBreak.getBathymetry ( -22, 1 ) == Approx(-1.0484) );
 }
 
