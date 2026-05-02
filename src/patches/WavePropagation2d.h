@@ -24,8 +24,11 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
     //! current step which indicates the active values in the arrays below
     unsigned short m_step = 0;
 
-    //! number of cells discretizing the computational domain
-    t_idx m_nCells = 0;
+    //! number of cells in x-direction
+    t_idx m_nCellsX = 0;
+
+    //! number of cells in y-direction
+    t_idx m_nCellsY = 0;
 
     //! water heights for the current and next time step for all cells
     t_real * m_h[2] = {nullptr, nullptr};
@@ -45,9 +48,17 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      *
      * @param i_nCells number of cells.
      * @param i_useFWaveSolver if true, the class uses the f wave solver, otherwise it uses the Roe solver
-     * @param i_boundaryCondition boundary condition for the ghost cells.
     **/
     WavePropagation2d( t_idx i_nCells, bool i_useFWaveSolver);
+
+    /**
+     * Constructs the 2d wave propagation solver for rectangular domains.
+     *
+     * @param i_nCellsX number of cells in x-direction.
+     * @param i_nCellsY number of cells in y-direction.
+     * @param i_useFWaveSolver if true, the class uses the f wave solver, otherwise it uses the Roe solver
+    **/
+    WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, bool i_useFWaveSolver);
 
     /**
      * Destructor which frees all allocated memory.
@@ -72,7 +83,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @return stride in y-direction.
      **/
     t_idx getStride(){
-      return m_nCells+2;
+      return m_nCellsX+2;
     }
 
     /**
@@ -81,7 +92,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @return water heights.
      */
     t_real const * getHeight(){
-      return m_h[m_step]+1;
+      return m_h[m_step] + getStride() + 1;
     }
 
     /**
@@ -90,7 +101,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @return bathymetry.
      */
     t_real const * getBathymetry(){
-      return m_b;
+      return m_b + getStride() + 1;
     }
 
     /**
@@ -99,7 +110,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @return momenta in x-direction.
      **/
     t_real const * getMomentumX(){
-      return m_hu[m_step]+1;
+      return m_hu[m_step] + getStride() + 1;
     }
 
     /**
@@ -108,7 +119,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @return momenta in y-direction.
      **/
     t_real const * getMomentumY(){
-      return m_hv[m_step]+1;
+      return m_hv[m_step] + getStride() + 1;
     }
 
     /**
@@ -121,7 +132,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
     void setHeight( t_idx  i_ix,
                     t_idx  i_iy,
                     t_real i_h ) {
-      m_h[m_step][i_iy * getStride() + i_ix + 1] = i_h;
+      m_h[m_step][(i_iy + 1) * getStride() + i_ix + 1] = i_h;
     }
 
     /**
@@ -134,7 +145,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
     void setBathymetry( t_idx  i_ix,
                         t_idx i_iy,
                         t_real i_b ) {
-      m_b[i_iy * getStride() + i_ix + 1] = i_b;
+      m_b[(i_iy + 1) * getStride() + i_ix + 1] = i_b;
     }
 
     /**
@@ -147,7 +158,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
     void setMomentumX( t_idx  i_ix,
                        t_idx  i_iy,
                        t_real i_hu ) {
-      m_hu[m_step][i_iy * getStride() + i_ix + 1] = i_hu;
+      m_hu[m_step][(i_iy + 1) * getStride() + i_ix + 1] = i_hu;
     }
 
     /**
@@ -160,7 +171,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
     void setMomentumY( t_idx  i_ix,
                        t_idx  i_iy,
                        t_real i_hv ) {
-      m_hv[m_step][i_iy * getStride() + i_ix + 1] = i_hv;
+      m_hv[m_step][(i_iy + 1) * getStride() + i_ix + 1] = i_hv;
     }
 };
 
