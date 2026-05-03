@@ -53,12 +53,12 @@ We can see this in action in the following simulations:
 
 - Shock Shock with parameters :math:`(h = 4, m = 2)`:
 
-.. image:: ../../scripts/tsunami_animation_shock_4_2.gif
+.. image:: ../../res/tsunami_animation_shock_4_2.gif
    :align: center
 
 - Shock Shock with parameters :math:`(h = 4, m = 10)`:
 
-.. image:: ../../scripts/tsunami_animation_shock_4_10.gif
+.. image:: ../../res/tsunami_animation_shock_4_10.gif
    :align: center
 
 As you can see, this only changes how high the wave is in the middle but not how fast it travels outward.
@@ -67,12 +67,12 @@ Since the Rare Rare setup is a symmetrical copy of this scenario the same observ
 
 - Rare Rare with parameters :math:`(h = 4, m = 2)`:
 
-.. image:: ../../scripts/tsunami_animation_rare_4_2.gif
+.. image:: ../../res/tsunami_animation_rare_4_2.gif
    :align: center
 
 - Rare Rare with parameters :math:`(h = 4, m = 10)`:
 
-.. image:: ../../scripts/tsunami_animation_rare_4_10.gif
+.. image:: ../../res/tsunami_animation_rare_4_10.gif
    :align: center
 
 3. Changing the height does change the speed of the wave. This also makes sense because the gravitational term is directly influenced by the height.
@@ -81,12 +81,12 @@ We can see this in the following simulations:
 
 - Shock Shock with parameters :math:`(h = 10, m = 10)`:
 
-.. image:: ../../scripts/tsunami_animation_shock_10_10.gif
+.. image:: ../../res/tsunami_animation_shock_10_10.gif
    :align: center
 
 - Rare Rare with parameters :math:`(h = 10, m = 10)`:
 
-.. image:: ../../scripts/tsunami_animation_rare_10_10.gif
+.. image:: ../../res/tsunami_animation_rare_10_10.gif
    :align: center
 
 As you can see the wave now travels much further outward than before.
@@ -101,12 +101,12 @@ You can observe this in the following simulations:
 
 - DamBreak with parameters :math:`(h_L = 10, m_L = 0, h_R = 5, m_R = 0)`:
 
-.. image:: ../../scripts/tsunami_animation_10_5.gif
+.. image:: ../../res/tsunami_animation_10_5.gif
    :align: center
 
 - DamBreak with parameters :math:`(h_L = 16, m_L = 0, h_R = 3, m_R = 0)`:
 
-.. image:: ../../scripts/tsunami_animation_16_3.gif
+.. image:: ../../res/tsunami_animation_16_3.gif
    :align: center
 
 The second wave gets much further than the first one.
@@ -120,24 +120,24 @@ This behavior can be observed when calling ``DamBreak1d`` with the following par
 
 - DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = 0)`, this is a no momentum case as a baseline:
 
-.. image:: ../../scripts/tsunami_animation_15_0_5_0.gif
+.. image:: ../../res/tsunami_animation_15_0_5_0.gif
    :align: center
 
 - DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -10)`, :math:`u_r` is negative (wave is slower and taller):
 
-.. image:: ../../scripts/tsunami_animation_15_0_5_-10.gif
+.. image:: ../../res/tsunami_animation_15_0_5_-10.gif
    :align: center
 
 - DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = 10)`, :math:`u_r` is positive (wave is faster and less tall):
 
-.. image:: ../../scripts/tsunami_animation_15_0_5_10.gif
+.. image:: ../../res/tsunami_animation_15_0_5_10.gif
    :align: center
 
 However, :math:`u_r`'s impact is relatively small compared to the height values. We can observe this using the following simulation:
 
 - DamBreak with parameters :math:`(h_L = 15, m_L = 0, h_R = 5, m_R = -3)`, much lower value for :math:`u_r`:
 
-.. image:: ../../scripts/tsunami_animation_15_0_5_-3.gif
+.. image:: ../../res/tsunami_animation_15_0_5_-3.gif
    :align: center
 
 Even though the absolute value of the momentum is much lower compared to the simulations above, we can see that the slowdown is similar to the one with the higher momentum.
@@ -152,7 +152,7 @@ We can simulate this scenario by running the following configuration:
 
 - DamBreak with parameters :math:`(h_L = 14, m_L = 0, h_R = 3.5, m_R = 0.7)`:
 
-.. image:: ../../scripts/tsunami_animation_evacuation.gif
+.. image:: ../../res/tsunami_animation_evacuation.gif
    :align: center
 
 - The height of the river flowing through the village remains at its normal level (:math:`3.5 \, \text{m}`) at :math:`t = 2186.61 \, \text{s}` (time step 41).
