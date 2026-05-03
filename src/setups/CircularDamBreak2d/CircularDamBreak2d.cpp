@@ -38,15 +38,14 @@ tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getHeight( t_real i
   }
 }
 
-tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getBathymetry( t_real,
-                                                                            t_real ) const {
-  /*if( sqrt( pow(i_x + 20, 2) + pow(i_y, 2) ) < 7 ) {
-    return -1 * (pow((i_x/100), 2) + pow((i_y/100), 2));
+tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getBathymetry( t_real i_x,
+                                                                            t_real i_y ) const {
+  if( sqrt( pow(i_x + 20, 2) + pow(i_y, 2) ) < 7 ) {
+    return (pow((i_x/20), 2) + pow((i_y/20), 2));
   }
   else {
     return 0;
-  }*/
-  return 0;
+  }
 }
 
 tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getMomentumX( t_real,
