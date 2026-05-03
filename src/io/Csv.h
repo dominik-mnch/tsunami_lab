@@ -26,6 +26,8 @@ class tsunami_lab::io::Csv {
      * Writes the data as CSV to the given stream.
      *
      * @param i_dxy cell width in x- and y-direction.
+      * @param i_originX origin of the x-coordinate system.
+      * @param i_originY origin of the y-coordinate system.
      * @param i_nx number of cells in x-direction.
      * @param i_ny number of cells in y-direction.
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
@@ -37,6 +39,8 @@ class tsunami_lab::io::Csv {
      * @param io_stream stream to which the CSV-data is written.
      **/
     static void write( t_real               i_dxy,
+                       t_real               i_originX,
+                       t_real               i_originY,
                        t_idx                i_nx,
                        t_idx                i_ny,
                        t_idx                i_stride,
