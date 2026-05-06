@@ -263,6 +263,8 @@ Hydraulic Jumps
 
 To be able to simulate scenarios with hydraulic jumps, we implemented the ``Subcritical1d.cpp`` and ``Supercritical1d.cpp`` setups, which have a subcritical and supercritical flow respectively.
 
+.. _subcritical_setup:
+
 Subcritical Setup
 ~~~~~~~~~~~~~~~~~
 
