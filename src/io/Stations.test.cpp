@@ -17,14 +17,33 @@
 #endif
 
 TEST_CASE("Stations reads mock configuration and writes CSV output with frequency control.", "[Stations]") {
-  // Save original stations configuration file
   std::string stations_config = STATIONS_CSV;
   std::string stations_backup = stations_config + ".backup";
-  
+  std::string output_dir = STATIONS_OUTPUT_DIR;
+
+  struct TestCleanup {
+    std::string stations_config;
+    std::string stations_backup;
+    std::string output_dir;
+
+    ~TestCleanup() {
+      if (std::filesystem::exists(stations_backup)) {
+        std::filesystem::copy_file(stations_backup, stations_config, std::filesystem::copy_options::overwrite_existing);
+        std::filesystem::remove(stations_backup);
+      }
+      if (std::filesystem::exists(output_dir)) {
+        std::filesystem::remove_all(output_dir);
+      }
+    }
+  } cleanup{stations_config, stations_backup, output_dir};
+
   // Back up the original config if it exists
   if (std::filesystem::exists(stations_config)) {
     std::filesystem::copy_file(stations_config, stations_backup, std::filesystem::copy_options::overwrite_existing);
   }
+
+  // Ensure output directory exists (required in clean CI environments)
+  std::filesystem::create_directories(output_dir);
 
   // Create mock configuration file with test stations
   {
@@ -51,7 +70,6 @@ TEST_CASE("Stations reads mock configuration and writes CSV output with frequenc
   stations.writeToCSV(1.0, 1.0, 1.0, &wave_prop);
 
   // Verify that output directory exists
-  std::string output_dir = STATIONS_OUTPUT_DIR;
   REQUIRE(std::filesystem::exists(output_dir));
 
   // Verify that output files were created from mock configuration
@@ -148,11 +166,5 @@ TEST_CASE("Stations reads mock configuration and writes CSV output with frequenc
     }
     file.close();
     REQUIRE(line_count == 3); // header + 2 data lines
-  }
-
-  // Cleanup: Restore original stations configuration file
-  if (std::filesystem::exists(stations_backup)) {
-    std::filesystem::copy_file(stations_backup, stations_config, std::filesystem::copy_options::overwrite_existing);
-    std::filesystem::remove(stations_backup);
   }
 }
