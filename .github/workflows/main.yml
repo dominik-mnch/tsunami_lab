@@ -37,7 +37,7 @@ jobs:
         run: |
           scons mode=debug+san
           ./build/tests
-          ./build/tsunami_lab 100 100 0 100 1 10 1d dam_break_1d 5 0 2 0 50
+          ./build/tsunami_lab 100 100 0 100 1 10 1d outflow dam_break_1d 5 0 2 0 50
           scons mode=release+san
           ./build/tests
           ./build/tsunami_lab 100 100 0 100 1 10 2d dam_break_1d 5 0 2 0 50
@@ -46,7 +46,7 @@ jobs:
         run: |
           scons mode=debug
           valgrind ./build/tests
-          valgrind ./build/tsunami_lab 100 100 0 100 1 10 1d dam_break_1d 5 0 2 0 50
+          valgrind ./build/tsunami_lab 100 100 0 100 1 10 1d outflow dam_break_1d 5 0 2 0 50
 
       - name: Release
         run: |
