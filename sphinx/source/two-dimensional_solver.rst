@@ -8,7 +8,7 @@ Overview
 So far, we have only been able to simulate one-dimensional settings. This week, we have extended our code to also support two-dimensional simulations.
 
 The ``WavePropagation.h`` header file was always designed to support both one-dimensional and two-dimensional simulations.
-The implementation ``WavePropagation1d.cpp`` simply chose to not support two-dimensional simulations by ignoring the y-direction entirely and making functions like ``getMomentumY```return dummy values.
+The implementation ``WavePropagation1d.cpp`` simply chose to not support two-dimensional simulations by ignoring the y-direction entirely and making functions like ``getMomentumY`` return dummy values.
 
 This week we have also improved our command line interface (in ``main.cpp``) to accept parameters to control the wave propagation mode (1d or 2d), the boundary conditions for 1d simulations and the setup along with their respective parameters.
 A summary of the command line interface can be found in the ``README.rst`` file.
@@ -20,12 +20,12 @@ The new implementation ``WavePropagation2d.cpp`` now fully supports two-dimensio
 
 .. math::
 
-    \begin{align}
-        Q_{i,j}^{n+1} = Q_{i,j}^n 
-        &- \frac{\Delta t}{\Delta x} \left( A^+ \Delta Q_{i-1/2,j} + A^- \Delta Q_{i+1/2,j} \right) \\
-        &- \frac{\Delta t}{\Delta y} \left( B^+ \Delta Q_{i,j-1/2} + B^- \Delta Q_{i,j+1/2} \right) \\
-        &\quad \forall i \in \{ 1, .., n \}, \; j \in \{ 0, .., n \}.
-    \end{align}
+   \begin{aligned}
+   Q_{i,j}^{n+1} = Q_{i,j}^n 
+   &- \frac{\Delta t}{\Delta x} \left( A^+ \Delta Q_{i-1/2,j} + A^- \Delta Q_{i+1/2,j} \right) \\
+   &- \frac{\Delta t}{\Delta y} \left( B^+ \Delta Q_{i,j-1/2} + B^- \Delta Q_{i,j+1/2} \right) \\
+   &\quad \forall i \in \{ 1, \dots, n \}, \; j \in \{ 0, \dots, n \}.
+   \end{aligned}
 
 This means that a cell now has 4 different updates which each of its neighbours, two in the x-direction and two in the y-direction.
 We can calculate the net updates by applying our F-Wave solver (or Roe solver) to the edges between the cell and its neighbours and then applying the net updates to the cell itself.
@@ -34,6 +34,7 @@ We can see this in action in the following simulation of a dam break in a 2d dom
 
 .. video:: ../../res/Dam_Break_2d.mp4
    :align: center
+   :width: 100%
    :autoplay:
    :loop:
 
@@ -43,6 +44,7 @@ To illustrate the 2d simulation when the y-direction actually has an effect, we 
 
 .. video:: ../../res/Circular_Dam_Break_2d_no_bath.mp4
    :align: center
+   :width: 100%
    :autoplay:
    :loop:
 
@@ -61,6 +63,7 @@ That means that there is now a small hill in the water. To show the effects this
 
 .. video:: ../../res/Circular_Dam_Break_2d_bath.mp4
    :align: center
+   :width: 100%
    :autoplay:
    :loop:
 
