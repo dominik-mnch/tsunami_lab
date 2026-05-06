@@ -30,12 +30,15 @@ tsunami_lab::setups::CircularDamBreak2d::CircularDamBreak2d( t_real i_height_ins
 
 tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getHeight( t_real i_x,
                                                                         t_real i_y ) const {
-  if( sqrt( pow(i_x, 2) + pow(i_y, 2) ) < 10 ) {
-    return 10;
+  t_real l_xDistance = i_x - m_middlePointDam_x;
+  t_real l_yDistance = i_y - m_middlePointDam_y;
+  t_real l_distance = std::sqrt( l_xDistance * l_xDistance + l_yDistance * l_yDistance );
+
+  if( l_distance < m_radiusDam ) {
+    return m_height_inside;
   }
-  else {
-    return 5;
-  }
+
+  return m_height_outside;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getBathymetry( t_real i_x,
@@ -48,12 +51,28 @@ tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getBathymetry( t_re
   }
 }
 
-tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getMomentumX( t_real,
-                                                                           t_real ) const {
-  return 0;
+tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getMomentumX( t_real i_x,
+                                                                           t_real i_y ) const {
+  t_real l_xDistance = i_x - m_middlePointDam_x;
+  t_real l_yDistance = i_y - m_middlePointDam_y;
+  t_real l_distance = std::sqrt( l_xDistance * l_xDistance + l_yDistance * l_yDistance );
+
+  if( l_distance < m_radiusDam ) {
+    return m_momentumInsideX;
+  }
+
+  return m_momentumOutsideX;
 }
 
-tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getMomentumY( t_real,
-                                                                           t_real ) const {
-  return 0;
+tsunami_lab::t_real tsunami_lab::setups::CircularDamBreak2d::getMomentumY( t_real i_x,
+                                                                           t_real i_y ) const {
+  t_real l_xDistance = i_x - m_middlePointDam_x;
+  t_real l_yDistance = i_y - m_middlePointDam_y;
+  t_real l_distance = std::sqrt( l_xDistance * l_xDistance + l_yDistance * l_yDistance );
+
+  if( l_distance < m_radiusDam ) {
+    return m_momentumInsideY;
+  }
+
+  return m_momentumOutsideY;
 }
