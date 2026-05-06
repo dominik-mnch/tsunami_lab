@@ -45,6 +45,9 @@ tsunami_lab::io::Stations::Stations(t_real output_frequency) {
     std::istringstream iss(line);
     stations = std::vector<Station>();
 
+    // Skip header line
+    std::getline(file, line);
+
     while (std::getline(file, line)) {
         std::stringstream ss(line);
         std::string xStr, yStr, name;
