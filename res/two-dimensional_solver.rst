@@ -121,10 +121,3 @@ for the water height and momenta with the momenta in the x-direction having a di
 .. image:: ../../res/Station2_plot_2d.png
    :align: center
    :width: 100%
-
-Individual Contributions
-------------------------
-Note: The reason that all the commits in our GitHub repository come from Dominik Münch's account is that we have set up an SSH key for the tl11 user to that account so all the commits come from there but that doesn't imply that all the work was done by Dominik.
-
-* Dominik Münch: implementation of the 2D wave propagation in ``WavePropagation2d.cpp``, implementation of the new command line interface in ``main.cpp`` and also implemented the unit test for the 2D wave propagation, also wrote the sphinx documentation
-* Magdalena Schwarzkopf: implementation of the Circular Dam Break setup in ``CircularDamBreak2d.cpp``, implementation of the Stations class in ``Stations.cpp`` and ``Stations.h`` along with the respective unit test in ``Stations.test.cpp``
