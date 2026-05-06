@@ -20,9 +20,12 @@ The new implementation ``WavePropagation2d.cpp`` now fully supports two-dimensio
 
 .. math::
 
-    \begin{align}\begin{aligned}\begin{aligned}
-        Q_{i,j}^{n+1} = Q_{i,j}^n &- \frac{\Delta t}{\Delta x} \left( A^+ \Delta Q_{i-1/2,j} + A^- \Delta Q_{i+1/2,j} \right)\\ &- \frac{\Delta t}{\Delta y} \left( B^+ \Delta Q_{i,j-1/2} + B^- \Delta Q_{i,j+1/2} \right) \quad \forall i \in \{ 1, .., n \}, \; j \in \{ 0, .., n \}.
-    \end{aligned}\end{aligned}\end{align}
+    \begin{align}
+        Q_{i,j}^{n+1} = Q_{i,j}^n 
+        &- \frac{\Delta t}{\Delta x} \left( A^+ \Delta Q_{i-1/2,j} + A^- \Delta Q_{i+1/2,j} \right) \\
+        &- \frac{\Delta t}{\Delta y} \left( B^+ \Delta Q_{i,j-1/2} + B^- \Delta Q_{i,j+1/2} \right) \\
+        &\quad \forall i \in \{ 1, .., n \}, \; j \in \{ 0, .., n \}.
+    \end{align}
 
 This means that a cell now has 4 different updates which each of its neighbours, two in the x-direction and two in the y-direction.
 We can calculate the net updates by applying our F-Wave solver (or Roe solver) to the edges between the cell and its neighbours and then applying the net updates to the cell itself.
@@ -49,8 +52,8 @@ The above simulation also didn't have any bathymetry. To show the effects that b
 
 .. math::
 
-    b(i_x, i_y) = \begin{cases}
-        \frac{i_x^2}{400} + \frac{i_y^2}{400} & \text{if } \sqrt{(i_x + 20)^2 + i_y^2} < 7 \\
+    b(x, y) = \begin{cases}
+        \frac{x^2}{400} + \frac{y^2}{400} & \text{if } \sqrt{(x + 20)^2 + y^2} < 7 \\
         0 & \text{otherwise}
     \end{cases}
 
