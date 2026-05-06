@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Sphinx + theme
         run: |
-          pip install sphinx sphinx-rtd-theme
+          pip install sphinx sphinx-rtd-theme sphinxcontrib-video
 
       # -------------------------
       # Build Doxygen
