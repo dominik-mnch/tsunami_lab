@@ -14,6 +14,7 @@
 #include "setups/Supercritical1d/Supercritical1d.h"
 #include "setups/TsunamiEvent1d/TsunamiEvent1d.h"
 #include "io/Csv.h"
+#include "io/Stations.h"
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
@@ -33,7 +34,8 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::t_idx l_ny = 1;
 
   // set cell size, domain, and end time
-  tsunami_lab::t_real l_dxy = 1;
+  tsunami_lab::t_real l_dx = 1;
+  tsunami_lab::t_real l_dy = 1;
   tsunami_lab::t_real l_domainStart = 0.0;
   tsunami_lab::t_real l_domainEnd = 50000.0;
   tsunami_lab::t_real l_domainSize = l_domainEnd - l_domainStart;
@@ -294,8 +296,9 @@ int main( int i_argc, char *i_argv[] ) {
       throw std::invalid_argument( "unknown setup: " + l_setupName );
     }
 
-    // Calculate cell size using the domain argument
-    l_dxy = l_domainSize / l_nx;
+    // Calculate cell sizes using the domain argument
+    l_dx = l_domainSize / l_nx;
+    l_dy = l_domainSize / l_ny;
   }
   catch( std::exception const & i_ex ) {
     std::cerr << "invalid configuration: " << i_ex.what() << std::endl;
@@ -325,11 +328,14 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  domain lower bound x:          " << l_domainStart << std::endl;
   std::cout << "  domain upper bound x:          " << l_domainEnd << std::endl;
   std::cout << "  domain size:                    " << l_domainSize << std::endl;
-  std::cout << "  cell size:                      " << l_dxy << std::endl;
+  std::cout << "  cell size x:                    " << l_dx << std::endl;
+  std::cout << "  cell size y:                    " << l_dy << std::endl;
   std::cout << "  propagation:                    " << (l_useWavePropagation1d ? "1d" : "2d") << std::endl;
   std::cout << "  setup:                          " << l_setupName << std::endl;
   std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
   std::cout << "  end time:                       " << l_endTime << std::endl;
+
+  tsunami_lab::io::Stations stations(1.0); // output frequency
 
   // clean up solutions directory
   std::cout << "cleaning solutions directory" << std::endl;
@@ -347,10 +353,10 @@ int main( int i_argc, char *i_argv[] ) {
 
   // set up solver
   for( tsunami_lab::t_idx l_cy = 0; l_cy < l_ny; l_cy++ ) {
-    tsunami_lab::t_real l_y = l_domainStart + l_cy * l_dxy;
+    tsunami_lab::t_real l_y = l_domainStart + l_cy * l_dy;
 
     for( tsunami_lab::t_idx l_cx = 0; l_cx < l_nx; l_cx++ ) {
-      tsunami_lab::t_real l_x = l_domainStart + l_cx * l_dxy;
+      tsunami_lab::t_real l_x = l_domainStart + l_cx * l_dx;
 
       // get initial values of the setup
       tsunami_lab::t_real l_h = l_setup->getHeight( l_x,
@@ -394,10 +400,12 @@ int main( int i_argc, char *i_argv[] ) {
   }
 
   // derive constant time step; changes at simulation time are ignored
-  tsunami_lab::t_real l_dt = 0.5 * l_dxy / l_speedMax;
+  // use minimum cell size for CFL stability condition
+  tsunami_lab::t_real l_dMin = std::min( l_dx, l_dy );
+  tsunami_lab::t_real l_dt = 0.5 * l_dMin / l_speedMax;
 
   // derive scaling for a time step
-  tsunami_lab::t_real l_scaling = l_dt / l_dxy;
+  tsunami_lab::t_real l_scaling = l_dt / l_dMin;
 
   // set up time and print control (endTime is set at the top)
   tsunami_lab::t_idx  l_timeStep = 0;
@@ -422,7 +430,8 @@ int main( int i_argc, char *i_argv[] ) {
       tsunami_lab::t_real const * l_bath = l_waveProp->getBathymetry();
       if( l_useWavePropagation1d ) l_bath = l_bath + 1;
 
-      tsunami_lab::io::Csv::write( l_dxy,
+      tsunami_lab::io::Csv::write( l_dx,
+                                   l_dy,
                                    l_domainStart,
                                    l_domainStart,
                                    l_nx,
@@ -437,6 +446,12 @@ int main( int i_argc, char *i_argv[] ) {
       l_file.close();
       l_nOut++;
     }
+    stations.writeToCSV(  l_simTime,
+                          l_dx,
+                          l_dy,
+                          l_waveProp
+                        );
+
     l_waveProp->setGhostOutflow();
     l_waveProp->timeStep( l_scaling );
 

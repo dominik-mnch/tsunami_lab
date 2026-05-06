@@ -3,6 +3,7 @@
 /docs/latex
 /sphinx/build/
 /solutions/
+/stations/output
 .sconsign.dblite
 .vscode
 .cache

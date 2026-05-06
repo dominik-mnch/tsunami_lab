@@ -18,7 +18,8 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/Supercritical1d/Supercritical1d.cpp',
               'setups/TsunamiEvent1d/TsunamiEvent1d.cpp',
               'setups/CircularDamBreak2d/CircularDamBreak2d.cpp',
-              'io/Csv.cpp'
+              'io/Csv.cpp',
+              'io/Stations.cpp'
                ]
 
 for l_so in l_sources:
@@ -31,14 +32,16 @@ l_tests = [ 'tests.cpp',
             'solvers/Roe.test.cpp',
             'solvers/F_wave.test.cpp',
             'patches/WavePropagation1d.test.cpp',
-            'io/Csv.test.cpp',
+            'patches/WavePropagation2d.test.cpp',
             'setups/DamBreak1d/DamBreak1d.test.cpp',
             'setups/RareRare1d/RareRare1d.test.cpp',
             'setups/ShockShock1d/ShockShock1d.test.cpp',
             'setups/Subcritical1d/Subcritical1d.test.cpp',
             'setups/Supercritical1d/Supercritical1d.test.cpp',
             'setups/TsunamiEvent1d/TsunamiEvent1d.test.cpp',
-            'setups/CircularDamBreak2d/CircularDamBreak2d.test.cpp'
+            'setups/CircularDamBreak2d/CircularDamBreak2d.test.cpp',
+            'io/Stations.test.cpp',
+            'io/Csv.test.cpp'
             ]
 
 for l_te in l_tests:
