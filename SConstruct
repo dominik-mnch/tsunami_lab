@@ -45,8 +45,10 @@ env.Append( CXXFLAGS = [ '-std=c++17',
 
 # add middle_states.csv location environment variable
 env.Append(CPPDEFINES=[
-    ('MIDDLE_STATES_CSV', '\\"' + Dir('#').abspath + '/res/middle_states.csv\\"'),
-    ('BATHYMETRY_CSV', '\\"' + Dir('#').abspath + '/res/bathymetry.csv\\"')
+  ('MIDDLE_STATES_CSV', '\\"' + Dir('#').abspath + '/res/middle_states.csv\\"'),
+  ('BATHYMETRY_CSV', '\\"' + Dir('#').abspath + '/res/bathymetry.csv\\"'),
+  ('STATIONS_CSV', '\\"' + Dir('#').abspath + '/stations/Stations.csv\\"'),
+  ('STATIONS_OUTPUT_DIR', '\\"' + Dir('#').abspath + '/stations/output\\"')
 ])
 
 # set optimization mode

@@ -13,10 +13,18 @@
 #include <string>
 #include <filesystem>
 
+#ifndef STATIONS_CSV
+#define STATIONS_CSV "./stations/Stations.csv"
+#endif
+
+#ifndef STATIONS_OUTPUT_DIR
+#define STATIONS_OUTPUT_DIR "./stations/output"
+#endif
+
 
 tsunami_lab::io::Stations::Stations(t_real output_frequency) {
     
-    std::ifstream file("./stations/Stations.csv");
+    std::ifstream file(STATIONS_CSV);
     if (!file.is_open()) {
         std::cerr << "Could not open file\n";
         return;
@@ -24,7 +32,7 @@ tsunami_lab::io::Stations::Stations(t_real output_frequency) {
 
   // clean up output directory
   std::cout << "cleaning output directory" << std::endl;
-  std::string l_outputDir = "./stations/output";
+    std::string l_outputDir = STATIONS_OUTPUT_DIR;
   if( std::filesystem::exists( l_outputDir ) ) {
     for( const auto& l_entry : std::filesystem::directory_iterator( l_outputDir ) ) {
       if( l_entry.is_regular_file() && l_entry.path().extension() == ".csv" ) {
@@ -60,7 +68,7 @@ tsunami_lab::io::Stations::Stations(t_real output_frequency) {
             name,
             x,
             y,
-            std::ofstream("./stations/output/" + name + ".csv")
+            std::ofstream(l_outputDir + "/" + name + ".csv")
         });
     }
     file.close();
@@ -93,15 +101,16 @@ void tsunami_lab::io::Stations::writeToCSV( t_real time,
 
     for(const Station& s : stations) {
         std::string filename = s.name + ".csv";
+        std::string outPath = std::string(STATIONS_OUTPUT_DIR) + "/" + filename;
 
         // check if file exists / is empty
-        std::ifstream check("./stations/output/" + filename);
+        std::ifstream check(outPath);
         bool is_empty = !check.good() ||
                         check.peek() == std::ifstream::traits_type::eof();
         check.close();
 
         // open file
-        std::ofstream csv_file("./stations/output/" + filename, std::ios::app);
+        std::ofstream csv_file(outPath, std::ios::app);
 
         // write header if needed
         if (is_empty) {
