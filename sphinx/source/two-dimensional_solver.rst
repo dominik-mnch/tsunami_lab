@@ -35,7 +35,6 @@ We can see this in action in the following simulation of a dam break in a 2D dom
 .. video:: ../../res/Dam_Break_2d.mp4
    :align: center
    :width: 100%
-   :loop:
 
 This looks very similar to the 1D Dam Break simulation but it doesn't really add any new information since it's basically just a copy of the 1D simulation for each y-value.
 
@@ -44,7 +43,6 @@ To illustrate the 2D simulation when the y-direction actually has an effect, we 
 .. video:: ../../res/Circular_Dam_Break_2d_no_bath.mp4
    :align: center
    :width: 100%
-   :loop:
 
 We can now see the wave propagating in a circular manner in all directions. 
 
@@ -62,7 +60,6 @@ That means that there is now a small hill in the water. To show the effects this
 .. video:: ../../res/Circular_Dam_Break_2d_bath.mp4
    :align: center
    :width: 100%
-   :loop:
 
 As we can see there is now a small water valley right above the bathymetry. We can compare this to our simulation of the :ref:`subcritical setup <subcritical_setup>` where we can also see this exact phenomenon.
 A small water valley forming right above the hill in the bathymetry.
@@ -74,7 +71,7 @@ Stations
 We want to be able to compare our simulations to the real world. To do this we need to be able to measure data at specific points in our simulation.
 We can then compare this data to real world measurements at the same points.
 
-To support this behaviour this we have implemented the ``Stations.cpp`` class. It summarizes a collection of stations which are defined by a name, an x-coordinate and a y-coordinate.
+To support this behaviour we have implemented the ``Stations.cpp`` class. It summarizes a collection of stations which are defined by a name, an x-coordinate and a y-coordinate.
 These stations are defined by a runtime configuration which can be found at ``stations/Stations.csv``. This file is read at the start of the simulation and the stations are initialized accordingly.
 Stations "measure" data by writing the values of the water height and the momenta in the x- and y-direction at the station's coordinates to a file which is located at ``stations/output/{{station_name}}.csv``.
 It also supports an output frequency in seconds which controls how often the stations write data to their respective file.
@@ -96,7 +93,7 @@ We can now use this new functionality to compare some of our simulations (more s
     Station1,30.0,0.0
     Station2,70.0,0.0
 
-Notice how both of them have their y-coordinate set to 0.0 meaning that it will be relevant in the 1D case.
+Notice how both of them have their y-coordinate set to 0.0 meaning that they will be relevant in both the 1D and 2D cases.
 
 We now run a 1D Dam Break simulation with a domain size of :math:`100` and initial values of :math:`h_L = 10`, :math:`h_R = 5` and :math:`x_{Dam} = 50`.
 This of course means that Station1 will be located in the left half where the water is higher initially and then get lower over time whereas Station2 will
@@ -121,6 +118,8 @@ for the water height and momenta with the momenta in the x-direction having a di
 .. image:: ../../res/Station2_plot_2d.png
    :align: center
    :width: 100%
+
+The ``Stations.test.cpp`` file implements a unit test for the Stations class and its essential functionalities.
 
 Individual Contributions
 ------------------------
