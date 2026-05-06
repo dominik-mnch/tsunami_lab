@@ -42,12 +42,14 @@ TEST_CASE("Stations reads mock configuration and writes CSV output with frequenc
     std::filesystem::copy_file(stations_config, stations_backup, std::filesystem::copy_options::overwrite_existing);
   }
 
-  // Ensure output directory exists (required in clean CI environments)
+  // Ensure stations directory and output directory exist (required in clean CI environments)
   std::filesystem::create_directories(output_dir);
+  std::filesystem::create_directories(std::filesystem::path(stations_config).parent_path());
 
   // Create mock configuration file with test stations
   {
     std::ofstream config(stations_config);
+    config << "Name,X,Y\n";
     config << "TestStation1,30,0\n";
     config << "TestStation2,70,0\n";
     config.close();
