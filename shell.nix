@@ -13,5 +13,7 @@ pkgs.mkShell {
     doxygen
     scons
     gmt
+    netcdf
+    netcdfcxx4
   ];
 }

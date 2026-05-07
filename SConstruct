@@ -5,6 +5,7 @@
 # Entry-point for builds.
 ##
 import SCons
+import subprocess
 
 print( '####################################' )
 print( '### Tsunami Lab                  ###' )
@@ -74,6 +75,10 @@ else:
 
 # add Catch2
 env.Append( CXXFLAGS = [ '-isystem', 'submodules/Catch2/single_include' ] )
+
+# add netCDF
+env.Append( CXXFLAGS = [ '-isystem', 'submodules/netcdf-c/include' ] )
+env.Append( LINKFLAGS = ['-lnetcdf'])
 
 # get source files
 VariantDir( variant_dir = 'build/src',
