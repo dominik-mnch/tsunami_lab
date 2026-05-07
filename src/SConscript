@@ -19,7 +19,8 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/TsunamiEvent1d/TsunamiEvent1d.cpp',
               'setups/CircularDamBreak2d/CircularDamBreak2d.cpp',
               'io/Csv.cpp',
-              'io/Stations.cpp'
+              'io/Stations.cpp',
+              'io/NetCdf.cpp'
                ]
 
 for l_so in l_sources:
