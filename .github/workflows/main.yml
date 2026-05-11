@@ -23,20 +23,8 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y scons valgrind cppcheck cmake libhdf5-dev libcurl4-openssl-dev zlib1g-dev
-          git submodule init
-          git submodule update
-
-      - name: Build netCDF-C
-        run: |
-          cmake -B submodules/netcdf-c/build \
-                -S submodules/netcdf-c \
-                -DCMAKE_INSTALL_PREFIX=submodules/netcdf-c/install \
-                -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
-                -DBUILD_SHARED_LIBS=ON \
-                -DNETCDF_ENABLE_TESTS=OFF
-          cmake --build submodules/netcdf-c/build -j$(nproc)
-          cmake --install submodules/netcdf-c/build
+          sudo apt-get install -y scons valgrind cppcheck libnetcdf-dev libnetcdf-cxx4-dev
+          git submodule update --init submodules/Catch2
 
       - name: Static Code Analysis
         run:

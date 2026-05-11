@@ -19,5 +19,7 @@ pkgs.mkShell {
     curl
     zlib
     m4
+    netcdf
+    netcdfcxx4
   ];
 }
