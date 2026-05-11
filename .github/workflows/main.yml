@@ -23,7 +23,7 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y scons valgrind cppcheck libnetcdf-dev libnetcdf-cxx4-dev
+          sudo apt-get install -y scons valgrind cppcheck libnetcdf-dev
           git submodule update --init submodules/Catch2
 
       - name: Static Code Analysis
