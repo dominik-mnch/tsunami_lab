@@ -77,9 +77,8 @@ else:
 env.Append( CXXFLAGS = [ '-isystem', 'submodules/Catch2/single_include' ] )
 
 # add netCDF-C
-env.Append( CXXFLAGS = [ '-isystem', 'submodules/netcdf-c/include' ] )
-env.Append( LIBPATH=['submodules/netcdf-c/build'] )
-env.Append( LIBS=['netcdf'] )
+env.ParseConfig('submodules/netcdf-c/install/bin/nc-config --libs --cflags')
+env.Append( RPATH=[Dir('#').abspath + '/submodules/netcdf-c/install/lib64'] )
 
 # get source files
 VariantDir( variant_dir = 'build/src',
