@@ -8,14 +8,15 @@
 #include <catch2/catch.hpp>
 #include "ArtificialTsunami2d.h"
 
-TEST_CASE("ArtificialTsunami2d: constants are correct", "[setup]") {
+TEST_CASE("ArtificialTsunami2d: baseline fields are correct", "[setup]") {
     tsunami_lab::setups::ArtificialTsunami2d setup;
 
-    REQUIRE(setup.getHeight(0.0, 0.0) == Approx(100.0));
-    REQUIRE(setup.getHeight(123.0, -45.0) == Approx(100.0));
+    REQUIRE(setup.getHeight(0.0, 0.0) == Approx(20.0));
+    REQUIRE(setup.getHeight(123.0, -45.0) == Approx(20.0));
 
-    REQUIRE(setup.getBathymetry(0.0, 0.0) == Approx(-100.0));
-    REQUIRE(setup.getBathymetry(999.0, 999.0) == Approx(-100.0));
+    REQUIRE(setup.getBathymetry(0.0, 0.0) == Approx(20.0));
+    REQUIRE(setup.getBathymetry(999.0, 999.0) == Approx(20.0));
+    REQUIRE(setup.getBathymetry(250.0, 250.0) == Approx(16.25).margin(1e-12));
 
     REQUIRE(setup.getMomentumX(0.0, 0.0) == Approx(0.0));
     REQUIRE(setup.getMomentumY(0.0, 0.0) == Approx(0.0));

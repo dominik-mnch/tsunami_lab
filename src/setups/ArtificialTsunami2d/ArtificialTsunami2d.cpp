@@ -3,13 +3,10 @@
  * @author Dominik Münch
  *
  * @section DESCRIPTION
- * Two-dimensional Tsunami problem.
+ * Two-dimensional (artificial) Tsunami problem.
  **/
 #include "ArtificialTsunami2d.h"
 #include <cmath>
-#include <algorithm>
-#include "../../io/Csv.h"
-
 
 
 tsunami_lab::setups::ArtificialTsunami2d::ArtificialTsunami2d() {
@@ -32,13 +29,13 @@ tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getDisplacement( t
 
 tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getHeight( t_real ,
                                                                 t_real  ) const {  
- return 100;
+ return 20;
 
 }
 
-tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getBathymetry( t_real ,
-                                                                      t_real ) const {
- return -100;
+tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getBathymetry( t_real i_x,
+                                                                      t_real i_y ) const {
+ return 20 + getDisplacement(i_x, i_y);
 }
 
 
@@ -49,6 +46,5 @@ tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getMomentumX( t_re
 
 tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getMomentumY( t_real ,
                                                                    t_real  ) const {
-  //y-direction is not relevant in the 1d case
   return 0;
 }

@@ -3,10 +3,10 @@
  * @author Dominik Münch
  *
  * @section DESCRIPTION
- * Two-dimensional Tsunami problem.
+ * Two-dimensional (artificial) Tsunami problem.
  **/
-#ifndef TSUNAMI_LAB_SETUPS_TSUNAMI_EVENT_2D_H
-#define TSUNAMI_LAB_SETUPS_TSUNAMI_EVENT_2D_H
+#ifndef TSUNAMI_LAB_SETUPS_ARTIFICIAL_TSUNAMI_2D_H
+#define TSUNAMI_LAB_SETUPS_ARTIFICIAL_TSUNAMI_2D_H
 
 #include "../Setup.h"
 #include <vector>
@@ -18,18 +18,14 @@ namespace tsunami_lab {
 }
 
 /**
- * 2d Tsunami Event setup.
+ * 2d Artificial Tsunami setup.
  **/
 class tsunami_lab::setups::ArtificialTsunami2d: public Setup {
-
-  private:
-
-
 
   public:
 
     /**
-     * Constructor for TsunamiEvent2d setup.
+     * Constructor for ArtificialTsunami2d setup.
     **/
     ArtificialTsunami2d();
     
