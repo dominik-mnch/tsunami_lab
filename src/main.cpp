@@ -14,6 +14,7 @@
 #include "setups/Supercritical1d/Supercritical1d.h"
 #include "setups/TsunamiEvent1d/TsunamiEvent1d.h"
 #include "io/Csv.h"
+#include "io/NetCdf.h"
 #include "io/Stations.h"
 #include <cctype>
 #include <cstddef>
@@ -418,17 +419,6 @@ int main( int i_argc, char *i_argv[] ) {
 
   tsunami_lab::io::Stations stations(1.0); // output frequency
 
-  // clean up solutions directory
-  std::cout << "cleaning solutions directory" << std::endl;
-  std::string l_solutionsDir = "./solutions";
-  if( std::filesystem::exists( l_solutionsDir ) ) {
-    for( const auto& l_entry : std::filesystem::directory_iterator( l_solutionsDir ) ) {
-      if( l_entry.is_regular_file() && l_entry.path().extension() == ".csv" ) {
-        std::filesystem::remove( l_entry.path() );
-      }
-    }
-  }
-
   // maximum observed height in the setup
   tsunami_lab::t_real l_hMax = std::numeric_limits< tsunami_lab::t_real >::lowest();
 
@@ -496,37 +486,38 @@ int main( int i_argc, char *i_argv[] ) {
 
   std::cout << "entering time loop" << std::endl;
 
+  std::filesystem::create_directories( "solutions" );
+  std::filesystem::remove( "solutions/solution.nc" );
+
+  // create netCDF writer
+  tsunami_lab::io::NetCdf l_netCdf( l_dx,
+                                    l_dy,
+                                    l_domainStart,
+                                    l_domainStart,
+                                    l_nx,
+                                    l_ny,
+                                    l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
+                                    l_simTime,
+                                    l_waveProp->getHeight(),
+                                    l_waveProp->getBathymetry(),
+                                    l_waveProp->getMomentumX(),
+                                    l_useWavePropagation1d ? nullptr : l_waveProp->getMomentumY(),
+                                    "solutions/solution.nc" );
+
   // iterate over time
   while( l_simTime < l_endTime ){
     if( l_timeStep % 25 == 0 ) {
       std::cout << "  simulation time / #time steps: "
                 << l_simTime << " / " << l_timeStep << std::endl;
 
-      std::string l_path = "./solutions/solution_" + std::to_string(l_nOut) + ".csv";
-      std::cout << "  writing wave field to " << l_path << std::endl;
+      std::cout << "  appending wave field to ./solutions/solution.nc" << std::endl;
 
-      std::ofstream l_file;
-      l_file.open( l_path  );  
+      // write time step to netCDF file
+      l_netCdf.writeTimeStep( l_simTime );
 
-      tsunami_lab::t_real const * l_bath = l_waveProp->getBathymetry();
-      if( l_useWavePropagation1d ) l_bath = l_bath + 1;
-
-/**       tsunami_lab::io::Csv::write( l_dx,
-                                   l_dy,
-                                   l_domainStart,
-                                   l_domainStart,
-                                   l_nx,
-                                   l_ny,
-                                   l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
-                                   l_simTime,
-                                   l_waveProp->getHeight(),
-                                   l_bath,
-                                   l_waveProp->getMomentumX(),
-                                   l_useWavePropagation1d ? nullptr : l_waveProp->getMomentumY(),
-                                   l_file ); **/
-      l_file.close();
       l_nOut++;
     }
+    // write station data to CSV files
     stations.writeToCSV(  l_simTime,
                           l_dx,
                           l_dy,

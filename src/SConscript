@@ -19,6 +19,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/TsunamiEvent1d/TsunamiEvent1d.cpp',
               'setups/CircularDamBreak2d/CircularDamBreak2d.cpp',
               'io/Csv.cpp',
+              'io/NetCdf.cpp',
               'io/Stations.cpp',
               'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
                ]
@@ -43,6 +44,7 @@ l_tests = [ 'tests.cpp',
             'setups/CircularDamBreak2d/CircularDamBreak2d.test.cpp',
             'io/Stations.test.cpp',
             'io/Csv.test.cpp',
+            'io/NetCdf.test.cpp',
             'setups/ArtificialTsunami2d/ArtificialTsunami2d.test.cpp'
             ]
 
