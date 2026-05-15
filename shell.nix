@@ -13,13 +13,6 @@ pkgs.mkShell {
     doxygen
     scons
     gmt
-    pkg-config
-    cmake
-    hdf5
-    curl
-    zlib
-    m4
     netcdf
-    netcdfcxx4
   ];
 }
