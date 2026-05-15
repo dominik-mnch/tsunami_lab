@@ -95,6 +95,10 @@ The simulator is invoked with the following syntax::
    - ``xMid``, ``yMid``: Center coordinates of the circular dam.
    - ``radius``: Radius of the dam.
 
+8. ``artificial_tsunami_2d``
+
+   Two-dimensional artificial tsunami setup (predefined setup, no parameters).
+
 **Examples:**
 
 1. 1D dam break with F-Wave solver::
@@ -124,3 +128,7 @@ The simulator is invoked with the following syntax::
 7. 2D tsunami event (ny can differ from nx)::
 
    ./build/tsunami_lab 100 50 0 100000 1 5.0 2d circular_dam_break_2d 8 4 0 0 0 0 50000 25000 15000
+
+8. 2D artificial tsunami::
+
+   ./build/tsunami_lab 100 100 -1000 1000 1 5.0 2d artificial_tsunami_2d

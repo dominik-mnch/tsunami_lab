@@ -6,6 +6,7 @@
  **/
 #include "patches/WavePropagation1d.h"
 #include "patches/WavePropagation2d.h"
+#include "setups/ArtificialTsunami2d/ArtificialTsunami2d.h"
 #include "setups/CircularDamBreak2d/CircularDamBreak2d.h"
 #include "setups/DamBreak1d/DamBreak1d.h"
 #include "setups/RareRare1d/RareRare1d.h"
@@ -76,6 +77,7 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "  supercritical_1d" << std::endl;
     std::cerr << "  tsunami_event_1d" << std::endl;
     std::cerr << "  circular_dam_break_2d hIn hOut huIn hvIn huOut hvOut xMid yMid radius" << std::endl;
+    std::cerr << "  artificial_tsunami_2d" << std::endl;
   };
 
   auto l_parseReal = []( std::string const & i_value, std::string const & i_name ) {
@@ -163,7 +165,8 @@ int main( int i_argc, char *i_argv[] ) {
            i_name == "subcritical_1d" ||
            i_name == "supercritical_1d" ||
            i_name == "tsunami_event_1d" ||
-           i_name == "circular_dam_break_2d";
+          i_name == "circular_dam_break_2d" ||
+          i_name == "artificial_tsunami_2d";
   };
 
   if( i_argc < 9 ) {
@@ -276,9 +279,10 @@ int main( int i_argc, char *i_argv[] ) {
       l_setupArgs.emplace_back( i_argv[l_ar] );
     }
 
-    bool l_setupIs2d = (l_setupName == "circular_dam_break_2d");
+    bool l_setupIs2d = (l_setupName == "circular_dam_break_2d" ||
+                        l_setupName == "artificial_tsunami_2d");
     if( l_useWavePropagation1d && l_setupIs2d ) {
-      throw std::invalid_argument( "setup circular_dam_break_2d requires 2d propagation" );
+      throw std::invalid_argument( "2d setup requires 2d propagation" );
     }
 
     if( l_setupName == "dam_break_1d" ) {
@@ -373,6 +377,12 @@ int main( int i_argc, char *i_argv[] ) {
                                                               l_parseReal( l_setupArgs[6], "xMid" ),
                                                               l_parseReal( l_setupArgs[7], "yMid" ),
                                                               l_parseReal( l_setupArgs[8], "radius" ) );
+    }
+    else if( l_setupName == "artificial_tsunami_2d" ) {
+      if( !l_setupArgs.empty() ) {
+        throw std::invalid_argument( "artificial_tsunami_2d expects no parameters" );
+      }
+      l_setup = new tsunami_lab::setups::ArtificialTsunami2d();
     }
     else {
       throw std::invalid_argument( "unknown setup: " + l_setupName );
