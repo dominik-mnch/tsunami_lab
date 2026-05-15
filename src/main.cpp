@@ -64,7 +64,8 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "propagation modes:" << std::endl;
     std::cerr << "  1d <boundary_mode>" << std::endl;
     std::cerr << "    boundary_mode: outflow | right | left | both" << std::endl;
-    std::cerr << "  2d" << std::endl;
+    std::cerr << "  2d [boundary_mode]" << std::endl;
+    std::cerr << "    boundary_mode (optional): outflow | bothx | bothy | all | left,right,bottom,top (any comma-separated subset)" << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "setups:" << std::endl;
     std::cerr << "  dam_break_1d hL huL hR huR xDam" << std::endl;
@@ -101,6 +102,69 @@ int main( int i_argc, char *i_argv[] ) {
     throw std::invalid_argument( "invalid boolean for '" + i_name + "': " + i_value );
   };
 
+  auto l_parseBoundaryCondition2d = []( std::string i_value ) {
+    using BoundaryCondition2d = tsunami_lab::patches::WavePropagation2d::BoundaryCondition;
+
+    for( char & l_ch: i_value ) {
+      l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
+      if( l_ch == '+' || l_ch == '|' ) l_ch = ',';
+    }
+
+    if( i_value == "outflow" || i_value == "none" ) {
+      return BoundaryCondition2d::GhostOutflow;
+    }
+    if( i_value == "all" ) {
+      return BoundaryCondition2d::BoundaryAll;
+    }
+    if( i_value == "bothx" ) {
+      return BoundaryCondition2d::BoundaryBothX;
+    }
+    if( i_value == "bothy" || i_value == "vertical" ) {
+      return BoundaryCondition2d::BoundaryBothY;
+    }
+
+    unsigned short l_mask = 0;
+    std::size_t l_pos = 0;
+    while( l_pos <= i_value.size() ) {
+      std::size_t l_next = i_value.find( ',', l_pos );
+      std::string l_token = i_value.substr( l_pos, l_next == std::string::npos ? std::string::npos : l_next - l_pos );
+
+      if( !l_token.empty() ) {
+        if( l_token == "left" ) {
+          l_mask |= static_cast<unsigned short>( BoundaryCondition2d::BoundaryLeft );
+        }
+        else if( l_token == "right" ) {
+          l_mask |= static_cast<unsigned short>( BoundaryCondition2d::BoundaryRight );
+        }
+        else if( l_token == "bottom" ) {
+          l_mask |= static_cast<unsigned short>( BoundaryCondition2d::BoundaryBottom );
+        }
+        else if( l_token == "top" ) {
+          l_mask |= static_cast<unsigned short>( BoundaryCondition2d::BoundaryTop );
+        }
+        else {
+          throw std::invalid_argument( "unknown 2d boundary token: " + l_token );
+        }
+      }
+
+      if( l_next == std::string::npos ) break;
+      l_pos = l_next + 1;
+    }
+
+    return static_cast<BoundaryCondition2d>( l_mask );
+  };
+
+  auto l_isKnownSetupName = []( std::string i_name ) {
+    for( char & l_ch: i_name ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
+    return i_name == "dam_break_1d" ||
+           i_name == "shock_shock_1d" ||
+           i_name == "rare_rare_1d" ||
+           i_name == "subcritical_1d" ||
+           i_name == "supercritical_1d" ||
+           i_name == "tsunami_event_1d" ||
+           i_name == "circular_dam_break_2d";
+  };
+
   if( i_argc < 9 ) {
     std::cerr << "invalid number of arguments" << std::endl;
     l_printUsage();
@@ -135,6 +199,8 @@ int main( int i_argc, char *i_argv[] ) {
     int l_setupArgStart = 0;
     tsunami_lab::patches::WavePropagation1d::BoundaryCondition l_boundaryCondition =
       tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
+    tsunami_lab::patches::WavePropagation2d::BoundaryCondition l_boundaryCondition2d =
+      tsunami_lab::patches::WavePropagation2d::BoundaryCondition::GhostOutflow;
 
     if( l_propagationMode == "1d" ) {
       l_useWavePropagation1d = true;
@@ -173,10 +239,25 @@ int main( int i_argc, char *i_argv[] ) {
     }
     else if( l_propagationMode == "2d" ) {
       l_useWavePropagation1d = false;
-      l_setupArgStart = 8;
+
+      std::string l_nextArg = i_argv[8];
+      for( char & l_ch: l_nextArg ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
+
+      if( l_isKnownSetupName( l_nextArg ) ) {
+        l_setupArgStart = 8;
+      }
+      else {
+        if( i_argc < 10 ) {
+          throw std::invalid_argument( "propagation mode '2d' boundary mode requires a setup" );
+        }
+        l_boundaryCondition2d = l_parseBoundaryCondition2d( l_nextArg );
+        l_setupArgStart = 9;
+      }
+
       l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
                                                                  l_ny,
-                                                                 l_useFWaveSolver );
+                                                                 l_useFWaveSolver,
+                                                                 l_boundaryCondition2d );
     }
     else {
       throw std::invalid_argument( "unknown propagation mode: " + l_propagationMode );
@@ -430,7 +511,7 @@ int main( int i_argc, char *i_argv[] ) {
       tsunami_lab::t_real const * l_bath = l_waveProp->getBathymetry();
       if( l_useWavePropagation1d ) l_bath = l_bath + 1;
 
-      tsunami_lab::io::Csv::write( l_dx,
+/**       tsunami_lab::io::Csv::write( l_dx,
                                    l_dy,
                                    l_domainStart,
                                    l_domainStart,
@@ -442,7 +523,7 @@ int main( int i_argc, char *i_argv[] ) {
                                    l_bath,
                                    l_waveProp->getMomentumX(),
                                    l_useWavePropagation1d ? nullptr : l_waveProp->getMomentumY(),
-                                   l_file );
+                                   l_file ); **/
       l_file.close();
       l_nOut++;
     }

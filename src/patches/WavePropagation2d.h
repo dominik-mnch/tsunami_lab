@@ -17,9 +17,25 @@ namespace tsunami_lab {
 
 class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
 
+  public:
+    //! boundary condition mode for ghost cells on all four sides
+    enum class BoundaryCondition: unsigned short {
+      GhostOutflow = 0,
+      BoundaryRight = 1,
+      BoundaryLeft = 2,
+      BoundaryBottom = 4,
+      BoundaryTop = 8,
+      BoundaryBothX = 3,
+      BoundaryBothY = 12,
+      BoundaryAll = 15
+    };
+
   private:
     //! boolean that determines which solver to use
     bool m_useFWaveSolver;
+
+    //! boundary condition for the ghost cells
+    BoundaryCondition m_boundaryCondition;
 
     //! current step which indicates the active values in the arrays below
     unsigned short m_step = 0;
@@ -49,7 +65,9 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @param i_nCells number of cells.
      * @param i_useFWaveSolver if true, the class uses the f wave solver, otherwise it uses the Roe solver
     **/
-    WavePropagation2d( t_idx i_nCells, bool i_useFWaveSolver);
+    WavePropagation2d( t_idx i_nCells,
+               bool i_useFWaveSolver,
+               BoundaryCondition i_boundaryCondition = BoundaryCondition::GhostOutflow );
 
     /**
      * Constructs the 2d wave propagation solver for rectangular domains.
@@ -58,7 +76,10 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @param i_nCellsY number of cells in y-direction.
      * @param i_useFWaveSolver if true, the class uses the f wave solver, otherwise it uses the Roe solver
     **/
-    WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, bool i_useFWaveSolver);
+    WavePropagation2d( t_idx i_nCellsX,
+               t_idx i_nCellsY,
+               bool i_useFWaveSolver,
+               BoundaryCondition i_boundaryCondition = BoundaryCondition::GhostOutflow );
 
     /**
      * Destructor which frees all allocated memory.

@@ -40,7 +40,13 @@ The simulator is invoked with the following syntax::
   - ``left``: Reflecting boundary on the left, outflow on the right.
   - ``both``: Reflecting boundaries on both sides.
 
-- ``2d``: Two-dimensional wave propagation with rectangular grids (NX × NY).
+- ``2d [boundary_mode]``: Two-dimensional wave propagation with rectangular grids (NX × NY).
+
+   - ``outflow``: Outflow boundaries on all four sides (default).
+   - ``bothx``: Reflecting boundaries on left and right sides.
+   - ``bothy``: Reflecting boundaries on bottom and top sides.
+   - ``all``: Reflecting boundaries on all four sides.
+   - ``left,right,bottom,top``: Any comma-separated subset of sides can be reflective.
 
 **Setups:**
 
@@ -111,6 +117,10 @@ The simulator is invoked with the following syntax::
 
    ./build/tsunami_lab 50 40 0 5000 1 2.0 2d circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
 
-6. 2D tsunami event (ny can differ from nx)::
+6. 2D circular dam break with reflecting left/right boundaries::
+
+   ./build/tsunami_lab 50 40 0 5000 1 2.0 2d bothx circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
+
+7. 2D tsunami event (ny can differ from nx)::
 
    ./build/tsunami_lab 100 50 0 100000 1 5.0 2d circular_dam_break_2d 8 4 0 0 0 0 50000 25000 15000

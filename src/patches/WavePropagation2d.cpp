@@ -9,18 +9,23 @@
 #include "../solvers/Roe.h"
 #include "../solvers/F_wave.h"
 
-tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCells, bool i_useFWaveSolver ):
+tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCells,
+                                                            bool i_useFWaveSolver,
+                                                            BoundaryCondition i_boundaryCondition ):
   WavePropagation2d( i_nCells,
                      i_nCells,
-                     i_useFWaveSolver ) {
+                     i_useFWaveSolver,
+                     i_boundaryCondition ) {
 }
 
 tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX,
                                                             t_idx i_nCellsY,
-                                                            bool  i_useFWaveSolver ) {
+                                                            bool  i_useFWaveSolver,
+                                                            BoundaryCondition i_boundaryCondition ) {
   m_nCellsX = i_nCellsX;
   m_nCellsY = i_nCellsY;
   m_useFWaveSolver = i_useFWaveSolver;
+  m_boundaryCondition = i_boundaryCondition;
 
   t_idx l_nValues = (m_nCellsY + 2) * getStride();
 
@@ -87,12 +92,30 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
         t_idx l_ce = l_cy * l_stride + l_cx;
         t_idx l_ceR = l_ce + 1;
 
+        bool l_leftDry = (m_b[l_ce] > 0);
+        bool l_rightDry = (m_b[l_ceR] > 0);
+        bool l_reflectAtShore = (l_leftDry != l_rightDry);
+
         t_real l_hL = l_hOld[l_ce];
         t_real l_hR = l_hOld[l_ceR];
         t_real l_huL = l_huOld[l_ce];
         t_real l_huR = l_huOld[l_ceR];
         t_real l_bL = m_b[l_ce];
         t_real l_bR = m_b[l_ceR];
+
+        if( l_reflectAtShore ) {
+          // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
+          if( l_leftDry ) {
+            l_hL = l_hR;
+            l_huL = -l_huR;
+            l_bL = l_bR;
+          }
+          else {
+            l_hR = l_hL;
+            l_huR = -l_huL;
+            l_bR = l_bL;
+          }
+        }
 
         if( m_useFWaveSolver ) {
           solvers::F_wave::netUpdates( l_hL,
@@ -111,6 +134,18 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
                                     l_huR,
                                     l_netUpdates[0],
                                     l_netUpdates[1] );
+        }
+
+        if( l_reflectAtShore ) {
+          // Only update the wet cell; keep the dry cell unchanged.
+          if( l_leftDry ) {
+            l_netUpdates[0][0] = 0;
+            l_netUpdates[0][1] = 0;
+          }
+          else {
+            l_netUpdates[1][0] = 0;
+            l_netUpdates[1][1] = 0;
+          }
         }
 
         l_hNew[l_ce]  -= i_scaling * l_netUpdates[0][0];
@@ -125,12 +160,30 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
         t_idx l_ceB = l_cy * l_stride + l_cx;
         t_idx l_ceT = (l_cy + 1) * l_stride + l_cx;
 
+        bool l_bottomDry = (m_b[l_ceB] > 0);
+        bool l_topDry = (m_b[l_ceT] > 0);
+        bool l_reflectAtShore = (l_bottomDry != l_topDry);
+
         t_real l_hL = l_hOld[l_ceB];
         t_real l_hR = l_hOld[l_ceT];
         t_real l_huL = l_hvOld[l_ceB];
         t_real l_huR = l_hvOld[l_ceT];
         t_real l_bL = m_b[l_ceB];
         t_real l_bR = m_b[l_ceT];
+
+        if( l_reflectAtShore ) {
+          // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
+          if( l_bottomDry ) {
+            l_hL = l_hR;
+            l_huL = -l_huR;
+            l_bL = l_bR;
+          }
+          else {
+            l_hR = l_hL;
+            l_huR = -l_huL;
+            l_bR = l_bL;
+          }
+        }
 
         if( m_useFWaveSolver ) {
           solvers::F_wave::netUpdates( l_hL,
@@ -149,6 +202,18 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
                                     l_huR,
                                     l_netUpdates[0],
                                     l_netUpdates[1] );
+        }
+
+        if( l_reflectAtShore ) {
+          // Only update the wet cell; keep the dry cell unchanged.
+          if( l_bottomDry ) {
+            l_netUpdates[0][0] = 0;
+            l_netUpdates[0][1] = 0;
+          }
+          else {
+            l_netUpdates[1][0] = 0;
+            l_netUpdates[1][1] = 0;
+          }
         }
 
         l_hNew[l_ceB]  -= i_scaling * l_netUpdates[0][0];
@@ -168,17 +233,33 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   t_real * l_hu = m_hu[m_step];
   t_real * l_hv = m_hv[m_step];
 
+  // read boundary conditions from bitmask
+  auto l_hasBoundary = [this]( BoundaryCondition i_boundary ) {
+    return ( static_cast<unsigned short>( m_boundaryCondition ) &
+             static_cast<unsigned short>( i_boundary ) ) != 0;
+  };
+
   // left and right boundary for all rows
   for( t_idx l_cy = 0; l_cy < m_nCellsY + 2; l_cy++ ) {
     t_idx l_row = l_cy * l_stride;
 
     l_h[l_row] = l_h[l_row + 1];
-    l_hu[l_row] = l_hu[l_row + 1];
+    if( l_hasBoundary( BoundaryCondition::BoundaryLeft ) ) {
+      l_hu[l_row] = -l_hu[l_row + 1];
+    }
+    else {
+      l_hu[l_row] = l_hu[l_row + 1];
+    }
     l_hv[l_row] = l_hv[l_row + 1];
     m_b[l_row] = m_b[l_row + 1];
 
     l_h[l_row + m_nCellsX + 1] = l_h[l_row + m_nCellsX];
-    l_hu[l_row + m_nCellsX + 1] = l_hu[l_row + m_nCellsX];
+    if( l_hasBoundary( BoundaryCondition::BoundaryRight ) ) {
+      l_hu[l_row + m_nCellsX + 1] = -l_hu[l_row + m_nCellsX];
+    }
+    else {
+      l_hu[l_row + m_nCellsX + 1] = l_hu[l_row + m_nCellsX];
+    }
     l_hv[l_row + m_nCellsX + 1] = l_hv[l_row + m_nCellsX];
     m_b[l_row + m_nCellsX + 1] = m_b[l_row + m_nCellsX];
   }
@@ -187,14 +268,24 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   for( t_idx l_cx = 0; l_cx < m_nCellsX + 2; l_cx++ ) {
     l_h[l_cx] = l_h[l_stride + l_cx];
     l_hu[l_cx] = l_hu[l_stride + l_cx];
-    l_hv[l_cx] = l_hv[l_stride + l_cx];
+    if( l_hasBoundary( BoundaryCondition::BoundaryBottom ) ) {
+      l_hv[l_cx] = -l_hv[l_stride + l_cx];
+    }
+    else {
+      l_hv[l_cx] = l_hv[l_stride + l_cx];
+    }
     m_b[l_cx] = m_b[l_stride + l_cx];
 
     t_idx l_top = (m_nCellsY + 1) * l_stride + l_cx;
     t_idx l_topInner = m_nCellsY * l_stride + l_cx;
     l_h[l_top] = l_h[l_topInner];
     l_hu[l_top] = l_hu[l_topInner];
-    l_hv[l_top] = l_hv[l_topInner];
+    if( l_hasBoundary( BoundaryCondition::BoundaryTop ) ) {
+      l_hv[l_top] = -l_hv[l_topInner];
+    }
+    else {
+      l_hv[l_top] = l_hv[l_topInner];
+    }
     m_b[l_top] = m_b[l_topInner];
   }
 }
