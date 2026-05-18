@@ -206,6 +206,6 @@ against the artificial setup. Since both describe the same physical scenario
 
 Individual contributions
 ------------------------
-Dominik Münch implemented the netCDF reading and writing functionality, as well as the
+Dominik Münch installed netCDF and implemented it's reading and writing functionality, as well as the
 ``TsunamiEvent2d`` setup. Magdalena Schwarzkopf implemented the ``ArtificialTsunami2d`` setup and 
 performed the validation against the input-based setup. Both contributed to testing and documentation.
