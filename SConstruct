@@ -48,6 +48,8 @@ env.Append( CXXFLAGS = [ '-std=c++17',
 env.Append(CPPDEFINES=[
   ('MIDDLE_STATES_CSV', '\\"' + Dir('#').abspath + '/res/middle_states.csv\\"'),
   ('BATHYMETRY_CSV', '\\"' + Dir('#').abspath + '/res/bathymetry.csv\\"'),
+  ('ARTIFICIAL_TSUNAMI_BATHY_NC', '\\"' + Dir('#').abspath + '/res/artificialtsunami_bathymetry_1000.nc\\"'),
+  ('ARTIFICIAL_TSUNAMI_DISP_NC', '\\"' + Dir('#').abspath + '/res/artificialtsunami_displ_1000.nc\\"'),
   ('STATIONS_CSV', '\\"' + Dir('#').abspath + '/stations/Stations.csv\\"'),
   ('STATIONS_OUTPUT_DIR', '\\"' + Dir('#').abspath + '/stations/output\\"')
 ])
