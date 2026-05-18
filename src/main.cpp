@@ -444,31 +444,31 @@ int main( int i_argc, char *i_argv[] ) {
   if(l_setupName == "artificial_tsunami_2d" || l_setupName == "tsunami_event_2d") {
     l_testx = 0, l_testy = 0;
     std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
+    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_testx, l_testy ) << std::endl;
 
     l_testx = 100, l_testy = 50;
     std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-  
+    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_testx, l_testy ) << std::endl;
+
     l_testx = -300, l_testy = 200;
     std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_domainStart + l_testx * l_dx, l_domainStart + l_testy * l_dy ) << std::endl;
+    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_testx, l_testy ) << std::endl;
 
     l_testx = 600, l_testy = 0;
     std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_domainStart + l_testx * l_dx, l_domainStart +	l_testy *	l_dy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " <<	l_setup->getMomentumX(	l_domainStart +	l_testx *	l_dx,	l_domainStart +	l_testy *	l_dy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " <<	l_setup->getMomentumY(	l_domainStart +	l_testx *	l_dx,	l_domainStart +	l_testy *	l_dy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " <<	l_setup->getBathymetry(	l_domainStart +	l_testx *	l_dx,	l_domainStart +	l_testy *	l_dy ) << std::endl;
+    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
+    std::cout << "  initial momentum x at test coord: " <<	l_setup->getMomentumX(	l_testx,	l_testy ) << std::endl;
+    std::cout << "  initial momentum y at test coord: " <<	l_setup->getMomentumY(	l_testx,	l_testy ) << std::endl;
+    std::cout << "  initial bathymetry at test coord:     " <<	l_setup->getBathymetry(	l_testx,	l_testy) << std::endl;
   }
   
   tsunami_lab::io::Stations stations(1.0); // output frequency

@@ -1,4 +1,5 @@
 /**
+ * @author Magdalena Schwarzkopf
  * @author Dominik Münch
  *
  * @section DESCRIPTION
