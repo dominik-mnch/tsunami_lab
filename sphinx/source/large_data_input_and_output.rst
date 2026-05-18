@@ -1,5 +1,5 @@
-Two-Dimensional Solver
-======================
+Large Data Input and Output
+===========================
 
 **Authors:** Magdalena Schwarzkopf, Dominik Münch
 
