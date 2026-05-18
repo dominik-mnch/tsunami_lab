@@ -17,6 +17,7 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    finite_volume_discretization
    bathymetry_boundary_conditions
    two-dimensional_solver
+   large_data_input_and_output
 
 You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.
 
