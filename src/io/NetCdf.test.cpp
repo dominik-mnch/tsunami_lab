@@ -116,3 +116,118 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
 	std::remove( l_filePath.c_str() );
 }
+
+TEST_CASE( "NetCDF reader reads bathymetry and displacement data.", "[NetCdf]" ) {
+	std::string l_bathyFile = "test_reader_bathymetry.nc";
+	std::string l_dispFile = "test_reader_displacement.nc";
+
+	// Clean up any existing test files
+	std::remove( l_bathyFile.c_str() );
+	std::remove( l_dispFile.c_str() );
+
+	// Create test bathymetry file
+	int l_bathyNcId = -1;
+	REQUIRE( nc_create( l_bathyFile.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_bathyNcId ) == NC_NOERR );
+
+	int l_dimXId = -1;
+	int l_dimYId = -1;
+	REQUIRE( nc_def_dim( l_bathyNcId, "x", 3, &l_dimXId ) == NC_NOERR );
+	REQUIRE( nc_def_dim( l_bathyNcId, "y", 2, &l_dimYId ) == NC_NOERR );
+
+	int l_varXId = -1;
+	int l_varYId = -1;
+	int l_varZId = -1;
+	REQUIRE( nc_def_var( l_bathyNcId, "x", NC_FLOAT, 1, &l_dimXId, &l_varXId ) == NC_NOERR );
+	REQUIRE( nc_def_var( l_bathyNcId, "y", NC_FLOAT, 1, &l_dimYId, &l_varYId ) == NC_NOERR );
+
+	int l_dimsYX[2] = { l_dimYId, l_dimXId };
+	REQUIRE( nc_def_var( l_bathyNcId, "z", NC_FLOAT, 2, l_dimsYX, &l_varZId ) == NC_NOERR );
+
+	REQUIRE( nc_enddef( l_bathyNcId ) == NC_NOERR );
+
+	// Write coordinate data
+	std::vector<float> l_xCoords = { 0.0f, 100.0f, 200.0f };
+	std::vector<float> l_yCoords = { 0.0f, 100.0f };
+	REQUIRE( nc_put_var_float( l_bathyNcId, l_varXId, l_xCoords.data() ) == NC_NOERR );
+	REQUIRE( nc_put_var_float( l_bathyNcId, l_varYId, l_yCoords.data() ) == NC_NOERR );
+
+	// Write bathymetry data
+	std::vector<float> l_bathyData = { -100.0f, -100.0f, -100.0f, -100.0f, -100.0f, -100.0f };
+	REQUIRE( nc_put_var_float( l_bathyNcId, l_varZId, l_bathyData.data() ) == NC_NOERR );
+
+	REQUIRE( nc_close( l_bathyNcId ) == NC_NOERR );
+
+	// Create test displacement file
+	int l_dispNcId = -1;
+	REQUIRE( nc_create( l_dispFile.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_dispNcId ) == NC_NOERR );
+
+	REQUIRE( nc_def_dim( l_dispNcId, "x", 3, &l_dimXId ) == NC_NOERR );
+	REQUIRE( nc_def_dim( l_dispNcId, "y", 2, &l_dimYId ) == NC_NOERR );
+
+	REQUIRE( nc_def_var( l_dispNcId, "x", NC_FLOAT, 1, &l_dimXId, &l_varXId ) == NC_NOERR );
+	REQUIRE( nc_def_var( l_dispNcId, "y", NC_FLOAT, 1, &l_dimYId, &l_varYId ) == NC_NOERR );
+
+	REQUIRE( nc_def_var( l_dispNcId, "z", NC_FLOAT, 2, l_dimsYX, &l_varZId ) == NC_NOERR );
+
+	REQUIRE( nc_enddef( l_dispNcId ) == NC_NOERR );
+
+	REQUIRE( nc_put_var_float( l_dispNcId, l_varXId, l_xCoords.data() ) == NC_NOERR );
+	REQUIRE( nc_put_var_float( l_dispNcId, l_varYId, l_yCoords.data() ) == NC_NOERR );
+
+	// Write displacement data
+	std::vector<float> l_dispData = { 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f };
+	REQUIRE( nc_put_var_float( l_dispNcId, l_varZId, l_dispData.data() ) == NC_NOERR );
+
+	REQUIRE( nc_close( l_dispNcId ) == NC_NOERR );
+
+	SECTION( "Read bathymetry and displacement from netCDF files" ) {
+		auto l_data = tsunami_lab::io::NetCdf::read( l_bathyFile, l_dispFile );
+
+		REQUIRE( l_data.gridNx == 3 );
+		REQUIRE( l_data.gridNy == 2 );
+
+		REQUIRE( l_data.xCoords[0] == Approx( 0.0f ) );
+		REQUIRE( l_data.xCoords[1] == Approx( 100.0f ) );
+		REQUIRE( l_data.xCoords[2] == Approx( 200.0f ) );
+
+		REQUIRE( l_data.yCoords[0] == Approx( 0.0f ) );
+		REQUIRE( l_data.yCoords[1] == Approx( 100.0f ) );
+
+		// Test bathymetry values at grid points
+		REQUIRE( l_data.getBathymetry( 0.0f, 0.0f ) == Approx( -100.0f ) );
+		REQUIRE( l_data.getBathymetry( 100.0f, 100.0f ) == Approx( -100.0f ) );
+		REQUIRE( l_data.getBathymetry( 200.0f, 0.0f ) == Approx( -100.0f ) );
+	}
+
+	SECTION( "Test nearest-neighbor interpolation for bathymetry" ) {
+		auto l_data = tsunami_lab::io::NetCdf::read( l_bathyFile, l_dispFile );
+
+		// Test at off-grid points - should use nearest neighbor
+		// Point (50, 50) is closest to (0, 0) or (100, 100)
+		// Distance to (0, 0) = sqrt(50^2 + 50^2) = 70.7
+		// Distance to (100, 100) = sqrt(50^2 + 50^2) = 70.7
+		// Both equidistant, should get one of them
+		float l_bathy = l_data.getBathymetry( 50.0f, 50.0f );
+		REQUIRE( l_bathy == Approx( -100.0f ) );
+
+		// Point (25, 25) is closest to (0, 0)
+		l_bathy = l_data.getBathymetry( 25.0f, 25.0f );
+		REQUIRE( l_bathy == Approx( -100.0f ) );
+	}
+
+	SECTION( "Test displacement values at grid points" ) {
+		auto l_data = tsunami_lab::io::NetCdf::read( l_bathyFile, l_dispFile );
+
+		// Displacement data layout: [0, 1, 2] for y=0, [3, 4, 5] for y=100
+		REQUIRE( l_data.getDisplacement( 0.0f, 0.0f ) == Approx( 0.0f ) );
+		REQUIRE( l_data.getDisplacement( 100.0f, 0.0f ) == Approx( 1.0f ) );
+		REQUIRE( l_data.getDisplacement( 200.0f, 0.0f ) == Approx( 2.0f ) );
+		REQUIRE( l_data.getDisplacement( 0.0f, 100.0f ) == Approx( 3.0f ) );
+		REQUIRE( l_data.getDisplacement( 100.0f, 100.0f ) == Approx( 4.0f ) );
+		REQUIRE( l_data.getDisplacement( 200.0f, 100.0f ) == Approx( 5.0f ) );
+	}
+
+	// Clean up test files
+	std::remove( l_bathyFile.c_str() );
+	std::remove( l_dispFile.c_str() );
+}

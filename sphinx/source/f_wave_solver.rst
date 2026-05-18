@@ -1,12 +1,13 @@
 F-Wave Solver
 =============
 
+**Authors:** Magdalena Schwarzkopf, Dominik Münch
+
 Overview
 --------
 
 The F-Wave Solver is a numerical solver for the one-dimensional shallow water equations. It implements the F-Wave method, which is based on computing wave speeds (eigenvalues) and wave strengths to compute net updates for fluid height and momentum.
 
-**Authors:** Magdalena Schwarzkopf, Dominik Münch
 
 Mathematical Background
 -----------------------

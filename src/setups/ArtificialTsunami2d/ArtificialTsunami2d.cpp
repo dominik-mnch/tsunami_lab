@@ -6,6 +6,7 @@
  * Two-dimensional (artificial) Tsunami problem.
  **/
 #include "ArtificialTsunami2d.h"
+#define _USE_MATH_DEFINES
 #include <cmath>
 
 
@@ -19,8 +20,8 @@ tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getDisplacement( t
         return 0;
     }
     else {
-        t_real f_x = std::sin ( ((i_x/500) + 1) * M_PI);
-        t_real f_y = -1 * std::pow((i_y/500),2) + 1;
+        t_real f_x = std::sin ( ((i_x/500.0) + 1) * M_PI);
+        t_real f_y = -1 * std::pow((i_y/500.0),2) + 1;
         return 5 * f_x * f_y;
     }
 }

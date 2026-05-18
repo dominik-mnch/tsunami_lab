@@ -3,7 +3,7 @@
  * @author Dominik Münch
  *
  * @section DESCRIPTION
- * IO-routines for writing a snapshot as Comma Separated Values (CSV).
+ * IO-routines for reading and writing netCDF files.
  **/
 #ifndef TSUNAMI_LAB_IO_NETCDF
 #define TSUNAMI_LAB_IO_NETCDF
@@ -12,6 +12,7 @@
 #include "../patches/WavePropagation.h"
 #include <cstring>
 #include <string>
+#include <vector>
 #include <netcdf.h>
 
 namespace tsunami_lab {
@@ -60,8 +61,38 @@ class tsunami_lab::io::NetCdf {
     t_idx m_varMomentumXId;
     //! Variable identifier of the y-momentum variable.
     t_idx m_varMomentumYId;
+public:
 
-  public:
+    /**
+     * Holds grid data loaded from netCDF files and provides nearest-neighbor lookups.
+     **/
+    struct Data {
+      //! Grid coordinates in x-direction.
+      std::vector<t_real> xCoords;
+      //! Grid coordinates in y-direction.
+      std::vector<t_real> yCoords;
+      //! Bathymetry values on the grid (row-major, y * gridNx + x).
+      std::vector<t_real> bathymetryData;
+      //! Displacement values on the grid (row-major, y * gridNx + x).
+      std::vector<t_real> displacementData;
+      //! Number of grid points in x-direction.
+      t_idx gridNx = 0;
+      //! Number of grid points in y-direction.
+      t_idx gridNy = 0;
+
+      t_real getBathymetry( t_real i_x, t_real i_y ) const;
+      t_real getDisplacement( t_real i_x, t_real i_y ) const;
+    };
+
+    /**
+     * Reads bathymetry (and optionally displacement) from netCDF files.
+     *
+     * @param i_bathymetryFile path to the netCDF file containing bathymetry data.
+     * @param i_displacementFile path to the netCDF file containing displacement data (optional).
+     * @return Data struct with all loaded grid data and lookup helpers.
+     **/
+    static Data read( std::string const & i_bathymetryFile,
+                      std::string const & i_displacementFile = "" );
 
     /**
      * Initializes the netCDF writer, opens the file and writes the header.
@@ -78,9 +109,8 @@ class tsunami_lab::io::NetCdf {
      * @param i_b pointer to bathymetry of the cells
      * @param i_hu pointer to momentum in x-direction of the cells
      * @param i_hv pointer to momentum in y-direction of the cells
-    * @param i_filePath output path of the netCDF file.
+     * @param i_filePath output path of the netCDF file.
      **/
-
     NetCdf( t_real               i_dx,
             t_real               i_dy,
             t_real               i_originX,
@@ -95,17 +125,17 @@ class tsunami_lab::io::NetCdf {
             t_real       const * i_hv,
             std::string const & i_filePath = "solutions/solution.nc" );
 
-        /**
-         * Closes the netCDF file.
-         **/
-        ~NetCdf();
+    /**
+     * Closes the netCDF file.
+     **/
+    ~NetCdf();
 
-    /** 
+    /**
      * Writes the current time step to the netCDF file.
-     * 
+     *
      * @param simTime simulation time of the snapshot to write.
      **/
-    void writeTimeStep(t_real simTime);
+    void writeTimeStep( t_real simTime );
 };
 
 
