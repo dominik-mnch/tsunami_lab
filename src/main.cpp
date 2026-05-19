@@ -527,7 +527,7 @@ int main( int i_argc, char *i_argv[] ) {
   // derive constant time step; changes at simulation time are ignored
   // use minimum cell size for CFL stability condition
   tsunami_lab::t_real l_dMin = std::min( l_dx, l_dy );
-  tsunami_lab::t_real l_dt = 0.5 * l_dMin / l_speedMax;
+  tsunami_lab::t_real l_dt = 0.25 * l_dMin / l_speedMax;
 
   // derive scaling for a time step
   tsunami_lab::t_real l_scaling = l_dt / l_dMin;
