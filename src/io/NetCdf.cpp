@@ -7,6 +7,7 @@
  **/
 
 #include "NetCdf.h"
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <limits>
@@ -298,9 +299,27 @@ tsunami_lab::io::NetCdf::Data tsunami_lab::io::NetCdf::read( std::string const &
 	int l_varZId = -1;
 	checkNc( nc_inq_varid( l_ncId, "z", &l_varZId ), "nc_inq_varid (z)" );
 
-	// Set correct size for bathymetry data vector and read data
+	// Determine dimension ordering of z variable
+	int l_zNdims = 0;
+	int l_zDimIds[NC_MAX_VAR_DIMS];
+	checkNc( nc_inq_var( l_ncId, l_varZId, nullptr, nullptr, &l_zNdims, l_zDimIds, nullptr ), "nc_inq_var (z)" );
+
+	// Set correct size for bathymetry data vector
 	l_data.bathymetryData.resize( l_data.gridNx * l_data.gridNy );
-	checkNc( nc_get_var_float( l_ncId, l_varZId, l_data.bathymetryData.data() ), "nc_get_var_float (z)" );
+
+	if( l_zNdims == 2 && l_zDimIds[0] == l_dimXId ) {
+		// (x, y) ordering - read raw and transpose to (y, x)
+		std::vector<t_real> l_raw( l_data.gridNx * l_data.gridNy );
+		checkNc( nc_get_var_float( l_ncId, l_varZId, l_raw.data() ), "nc_get_var_float (z)" );
+		for( t_idx l_iy = 0; l_iy < l_data.gridNy; l_iy++ ) {
+			for( t_idx l_ix = 0; l_ix < l_data.gridNx; l_ix++ ) {
+				l_data.bathymetryData[l_iy * l_data.gridNx + l_ix] = l_raw[l_ix * l_data.gridNy + l_iy];
+			}
+		}
+	} else {
+		// (y, x) ordering - read directly
+		checkNc( nc_get_var_float( l_ncId, l_varZId, l_data.bathymetryData.data() ), "nc_get_var_float (z)" );
+	}
 
 	// Close bathymetry file
 	nc_close( l_ncId );
@@ -311,13 +330,59 @@ tsunami_lab::io::NetCdf::Data tsunami_lab::io::NetCdf::read( std::string const &
 		int l_ncDispId = -1;
 		checkNc( nc_open( i_displacementFile.c_str(), NC_NOWRITE, &l_ncDispId ), "nc_open (displacement)" );
 
+		// Query dimension IDs and sizes from displacement file
+		int l_dispDimXId = -1;
+		int l_dispDimYId = -1;
+		t_idx l_dispNx = 0;
+		t_idx l_dispNy = 0;
+		checkNc( nc_inq_dimid( l_ncDispId, "x", &l_dispDimXId ), "nc_inq_dimid (displacement x)" );
+		checkNc( nc_inq_dimid( l_ncDispId, "y", &l_dispDimYId ), "nc_inq_dimid (displacement y)" );
+		checkNc( nc_inq_dimlen( l_ncDispId, l_dispDimXId, &l_dispNx ), "nc_inq_dimlen (displacement x)" );
+		checkNc( nc_inq_dimlen( l_ncDispId, l_dispDimYId, &l_dispNy ), "nc_inq_dimlen (displacement y)" );
+
+		// Read displacement file's own x and y coordinates
+		int l_varDispXId = -1;
+		int l_varDispYId = -1;
+		checkNc( nc_inq_varid( l_ncDispId, "x", &l_varDispXId ), "nc_inq_varid (displacement x)" );
+		checkNc( nc_inq_varid( l_ncDispId, "y", &l_varDispYId ), "nc_inq_varid (displacement y)" );
+		std::vector<t_real> l_dispXCoords( l_dispNx );
+		std::vector<t_real> l_dispYCoords( l_dispNy );
+		checkNc( nc_get_var_float( l_ncDispId, l_varDispXId, l_dispXCoords.data() ), "nc_get_var_float (displacement x)" );
+		checkNc( nc_get_var_float( l_ncDispId, l_varDispYId, l_dispYCoords.data() ), "nc_get_var_float (displacement y)" );
+
 		// Get variable id for displacement data (named z according to COARDS convention)
 		int l_varDispId = -1;
 		checkNc( nc_inq_varid( l_ncDispId, "z", &l_varDispId ), "nc_inq_varid (displacement z)" );
 
-		// Set correct size for displacement data vector and read data
-		l_data.displacementData.resize( l_data.gridNx * l_data.gridNy );
-		checkNc( nc_get_var_float( l_ncDispId, l_varDispId, l_data.displacementData.data() ), "nc_get_var_float (displacement z)" );
+		// Determine dimension ordering of displacement z variable
+		int l_dispNdims = 0;
+		int l_dispDimIds[NC_MAX_VAR_DIMS];
+		checkNc( nc_inq_var( l_ncDispId, l_varDispId, nullptr, nullptr, &l_dispNdims, l_dispDimIds, nullptr ), "nc_inq_var (displacement z)" );
+		bool l_dispIsXY = ( l_dispNdims == 2 && l_dispDimIds[0] == l_dispDimXId );
+
+		// Read raw displacement data with size
+		std::vector<t_real> l_dispRaw( l_dispNx * l_dispNy );
+		checkNc( nc_get_var_float( l_ncDispId, l_varDispId, l_dispRaw.data() ), "nc_get_var_float (displacement z)" );
+
+		// Store displacement with its own grid dimensions
+		l_data.dispNx = l_dispNx;
+		l_data.dispNy = l_dispNy;
+		l_data.dispXCoords = std::move( l_dispXCoords );
+		l_data.dispYCoords = std::move( l_dispYCoords );
+
+		// Store raw displacement data in its native layout, normalised to (y, x) row-major
+		l_data.displacementData.resize( l_dispNx * l_dispNy );
+		if( l_dispIsXY ) {
+			// Transpose from (x, y) to (y, x)
+			for( t_idx l_iy = 0; l_iy < l_dispNy; l_iy++ ) {
+				for( t_idx l_ix = 0; l_ix < l_dispNx; l_ix++ ) {
+					l_data.displacementData[l_iy * l_dispNx + l_ix] = l_dispRaw[l_ix * l_dispNy + l_iy];
+				}
+			}
+		} else {
+			// Already (y, x) — copy directly
+			l_data.displacementData = std::move( l_dispRaw );
+		}
 
 		// Close displacement file
 		nc_close( l_ncDispId );
@@ -357,15 +422,24 @@ tsunami_lab::t_real tsunami_lab::io::NetCdf::Data::getBathymetry( t_real i_x, t_
 }
 
 tsunami_lab::t_real tsunami_lab::io::NetCdf::Data::getDisplacement( t_real i_x, t_real i_y ) const {
-	if( displacementData.empty() || xCoords.empty() || yCoords.empty() ) {
+	if( displacementData.empty() || dispXCoords.empty() || dispYCoords.empty() ) {
 		return 0;
 	}
 
-	// Find closest grid indices using nearest-neighbor
+	// Return 0 for any query point outside the displacement file's coordinate range
+	t_real l_xMin = std::min( dispXCoords.front(), dispXCoords.back() );
+	t_real l_xMax = std::max( dispXCoords.front(), dispXCoords.back() );
+	t_real l_yMin = std::min( dispYCoords.front(), dispYCoords.back() );
+	t_real l_yMax = std::max( dispYCoords.front(), dispYCoords.back() );
+	if( i_x < l_xMin || i_x > l_xMax || i_y < l_yMin || i_y > l_yMax ) {
+		return 0;
+	}
+
+	// Find closest grid indices using nearest-neighbor in the displacement grid
 	t_idx l_ix = 0;
-	t_real l_minDistX = std::abs( i_x - xCoords[0] );
-	for( t_idx l_i = 1; l_i < gridNx; l_i++ ) {
-		t_real l_dist = std::abs( i_x - xCoords[l_i] );
+	t_real l_minDistX = std::abs( i_x - dispXCoords[0] );
+	for( t_idx l_i = 1; l_i < dispNx; l_i++ ) {
+		t_real l_dist = std::abs( i_x - dispXCoords[l_i] );
 		if( l_dist < l_minDistX ) {
 			l_minDistX = l_dist;
 			l_ix = l_i;
@@ -373,17 +447,17 @@ tsunami_lab::t_real tsunami_lab::io::NetCdf::Data::getDisplacement( t_real i_x, 
 	}
 
 	t_idx l_iy = 0;
-	t_real l_minDistY = std::abs( i_y - yCoords[0] );
-	for( t_idx l_i = 1; l_i < gridNy; l_i++ ) {
-		t_real l_dist = std::abs( i_y - yCoords[l_i] );
+	t_real l_minDistY = std::abs( i_y - dispYCoords[0] );
+	for( t_idx l_i = 1; l_i < dispNy; l_i++ ) {
+		t_real l_dist = std::abs( i_y - dispYCoords[l_i] );
 		if( l_dist < l_minDistY ) {
 			l_minDistY = l_dist;
 			l_iy = l_i;
 		}
 	}
 
-	// Return value from grid
-	return displacementData[l_iy * gridNx + l_ix];
+	// Return value from displacement grid (row-major y, x)
+	return displacementData[l_iy * dispNx + l_ix];
 }
 
 tsunami_lab::io::NetCdf::~NetCdf() {

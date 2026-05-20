@@ -67,18 +67,26 @@ public:
      * Holds grid data loaded from netCDF files and provides nearest-neighbor lookups.
      **/
     struct Data {
-      //! Grid coordinates in x-direction.
+      //! Grid coordinates in x-direction (bathymetry grid).
       std::vector<t_real> xCoords;
-      //! Grid coordinates in y-direction.
+      //! Grid coordinates in y-direction (bathymetry grid).
       std::vector<t_real> yCoords;
       //! Bathymetry values on the grid (row-major, y * gridNx + x).
       std::vector<t_real> bathymetryData;
-      //! Displacement values on the grid (row-major, y * gridNx + x).
+      //! Displacement values on the displacement grid (row-major, y * dispNx + x).
       std::vector<t_real> displacementData;
-      //! Number of grid points in x-direction.
+      //! x-coordinates of the displacement grid (may differ from bathymetry).
+      std::vector<t_real> dispXCoords;
+      //! y-coordinates of the displacement grid (may differ from bathymetry).
+      std::vector<t_real> dispYCoords;
+      //! Number of grid points in x-direction (bathymetry grid).
       t_idx gridNx = 0;
-      //! Number of grid points in y-direction.
+      //! Number of grid points in y-direction (bathymetry grid).
       t_idx gridNy = 0;
+      //! Number of grid points in x-direction (displacement grid).
+      t_idx dispNx = 0;
+      //! Number of grid points in y-direction (displacement grid).
+      t_idx dispNy = 0;
 
       t_real getBathymetry( t_real i_x, t_real i_y ) const;
       t_real getDisplacement( t_real i_x, t_real i_y ) const;
