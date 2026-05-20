@@ -10,8 +10,7 @@
 #include <stdexcept>
 
 tsunami_lab::setups::TsunamiEvent2d::TsunamiEvent2d( std::string const & i_bathymetryFile,
-                                                      std::string const & i_displacementFile )
-	: m_data( tsunami_lab::io::NetCdf::read( i_bathymetryFile, i_displacementFile ) ) {
+                                                      std::string const & i_displacementFile ) {
 	// Validate bathymetry file
 	if( i_bathymetryFile.empty() ) {
 		throw std::invalid_argument( "bathymetry file path cannot be empty" );
@@ -37,6 +36,9 @@ tsunami_lab::setups::TsunamiEvent2d::TsunamiEvent2d( std::string const & i_bathy
 			throw std::invalid_argument( "displacement file must be a netCDF file (.nc): " + i_displacementFile );
 		}
 	}
+
+	// Read files after validation
+	m_data = tsunami_lab::io::NetCdf::read( i_bathymetryFile, i_displacementFile );
 }
 
 tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent2d::getHeight( t_real i_x,
