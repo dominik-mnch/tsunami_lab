@@ -132,7 +132,7 @@ The ``read`` method:
 #. opens the bathymetry file
 #. reads grid dimensions and coordinates
 #. loads bathymetry values
-#. optionally loads displacement data
+#. optionally loads displacement data with its own dimensions and coordinates
 #. stores everything in a ``NetCdf::Data`` object
 
 Data is stored in flattened arrays for efficiency.
@@ -202,7 +202,35 @@ Input-Based vs Artificial Setup
 
 To validate the input-based ``TsunamiEvent2d`` setup, its results are compared
 against the artificial setup. Since both describe the same physical scenario
-(using different representations), their outputs approximately match.
+(using different representations), their outputs should approximately match. 
+
+To show this we run both setups and compare their output. First we run the ``ArtificialTsunami2d`` setup using the following command:
+
+.. code-block:: bash
+
+   ./build/tsunami_lab 1000 1000 -5000 5000 1 300 2d artificial_tsunami_2d
+
+This runs the simulation for 300 seconds on a 1000x1000 grid covering a 10km x 10km area centered at the origin.
+We can see the results of the simulation here:
+
+.. video:: ../../res/ArtificialTsunami2d.mp4
+   :align: center
+   :width: 100%
+
+Next we run the ``TsunamiEvent2d`` setup with the following command:
+
+.. code-block:: bash
+
+   ./build/tsunami_lab 1000 1000 -5000 5000 1 300 2d tsunami2d ./res/artificialtsunami_bathymetry_1000.nc ./res/artificialtsunami_displ_1000.nc
+
+This runs the simulation for 300 seconds on a 1000x1000 grid covering a 10km x 10km area centered at the origin using the
+netCDF files provided as input for the bathymetry and displacement. We can see the results of the simulation here:
+
+.. video:: ../../res/TsunamiEvent2d.mp4
+   :align: center
+   :width: 100%
+
+As we can see, the results of both simulations are identical.
 
 Individual contributions
 ------------------------
