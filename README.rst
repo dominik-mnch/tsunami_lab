@@ -99,6 +99,13 @@ The simulator is invoked with the following syntax::
 
    Two-dimensional artificial tsunami setup (predefined setup, no parameters).
 
+9. ``tsunami2d i_bathymetryFile [i_displacementFile]``
+
+   Two-dimensional tsunami event setup with netCDF input files.
+   
+   - ``i_bathymetryFile``: Path to the bathymetry netCDF file (required, must have ``.nc`` extension).
+   - ``i_displacementFile``: Path to the displacement netCDF file (optional, must have ``.nc`` extension if provided).
+
 **Examples:**
 
 1. 1D dam break with F-Wave solver::
@@ -132,3 +139,11 @@ The simulator is invoked with the following syntax::
 8. 2D artificial tsunami::
 
    ./build/tsunami_lab 100 100 -1000 1000 1 5.0 2d artificial_tsunami_2d
+
+9. 2D tsunami event with bathymetry file only::
+
+   ./build/tsunami_lab 500 400 0 100000 1 10.0 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc
+
+10. 2D tsunami event with bathymetry and displacement files::
+
+   ./build/tsunami_lab 500 400 0 100000 1 10.0 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc res/artificialtsunami_displ_1000.nc

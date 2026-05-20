@@ -84,6 +84,7 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "  circular_dam_break_2d hIn hOut huIn hvIn huOut hvOut xMid yMid radius" << std::endl;
     std::cerr << "  artificial_tsunami_2d" << std::endl;
     std::cerr << "  tsunami_event_2d i_bathymetryFile i_displacementFile" << std::endl;
+    std::cerr << "  tsunami2d i_bathymetryFile [i_displacementFile]" << std::endl;
   };
 
   auto l_parseReal = []( std::string const & i_value, std::string const & i_name ) {
@@ -173,7 +174,8 @@ int main( int i_argc, char *i_argv[] ) {
            i_name == "tsunami_event_1d" ||
           i_name == "circular_dam_break_2d" ||
           i_name == "artificial_tsunami_2d" ||
-          i_name == "tsunami_event_2d";
+          i_name == "tsunami_event_2d" ||
+          i_name == "tsunami2d";
   };
 
   if( i_argc < 9 ) {
@@ -288,7 +290,8 @@ int main( int i_argc, char *i_argv[] ) {
 
     bool l_setupIs2d = (l_setupName == "circular_dam_break_2d" ||
                         l_setupName == "artificial_tsunami_2d" ||
-                        l_setupName == "tsunami_event_2d");
+                        l_setupName == "tsunami_event_2d" ||
+                        l_setupName == "tsunami2d");
     if( l_useWavePropagation1d && l_setupIs2d ) {
       throw std::invalid_argument( "2d setup requires 2d propagation" );
     }
@@ -397,7 +400,18 @@ int main( int i_argc, char *i_argv[] ) {
         throw std::invalid_argument( "tsunami_event_2d expects 2 parameters" );
       }
       l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], l_setupArgs[1] );
-    } 
+    }
+    else if( l_setupName == "tsunami2d" ) {
+      if( l_setupArgs.size() == 1 ) {
+        l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], "" );
+      }
+      else if( l_setupArgs.size() == 2 ) {
+        l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], l_setupArgs[1] );
+      }
+      else {
+        throw std::invalid_argument( "tsunami2d expects 1 or 2 parameters (bathymetry file and optional displacement file)" );
+      }
+    }
     else {
       throw std::invalid_argument( "unknown setup: " + l_setupName );
     }
@@ -441,7 +455,7 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
   std::cout << "  end time:                       " << l_endTime << std::endl;
 
-  if(l_setupName == "artificial_tsunami_2d" || l_setupName == "tsunami_event_2d") {
+  if(l_setupName == "artificial_tsunami_2d" || l_setupName == "tsunami_event_2d" || l_setupName == "tsunami2d") {
     l_testx = 0, l_testy = 0;
     std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
     std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
