@@ -47,10 +47,6 @@ int main( int i_argc, char *i_argv[] ) {
   bool l_useWavePropagation1d = false;
   std::string l_setupName;
 
-  // coordinates for testing the artificial and the real tsunami event setups
-  tsunami_lab::t_real l_testx = 0;
-  tsunami_lab::t_real l_testy = 1;
-
   std::cout << "####################################" << std::endl;
   std::cout << "### Tsunami Lab                  ###" << std::endl;
   std::cout << "###                              ###" << std::endl;
@@ -454,36 +450,6 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  setup:                          " << l_setupName << std::endl;
   std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
   std::cout << "  end time:                       " << l_endTime << std::endl;
-
-  if(l_setupName == "artificial_tsunami_2d" || l_setupName == "tsunami_event_2d" || l_setupName == "tsunami2d") {
-    l_testx = 0, l_testy = 0;
-    std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_testx, l_testy ) << std::endl;
-
-    l_testx = 100, l_testy = 50;
-    std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_testx, l_testy ) << std::endl;
-
-    l_testx = -300, l_testy = 200;
-    std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " << l_setup->getMomentumX( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " << l_setup->getMomentumY( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " << l_setup->getBathymetry( l_testx, l_testy ) << std::endl;
-
-    l_testx = 600, l_testy = 0;
-    std::cout << "  test coordinates:               (" << l_testx << ", " << l_testy << ")" << std::endl;
-    std::cout << "  initial height at test coord:   " << l_setup->getHeight( l_testx, l_testy ) << std::endl;
-    std::cout << "  initial momentum x at test coord: " <<	l_setup->getMomentumX(	l_testx,	l_testy ) << std::endl;
-    std::cout << "  initial momentum y at test coord: " <<	l_setup->getMomentumY(	l_testx,	l_testy ) << std::endl;
-    std::cout << "  initial bathymetry at test coord:     " <<	l_setup->getBathymetry(	l_testx,	l_testy) << std::endl;
-  }
   
   tsunami_lab::io::Stations stations(1.0); // output frequency
 
