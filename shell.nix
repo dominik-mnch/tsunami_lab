@@ -14,5 +14,6 @@ pkgs.mkShell {
     scons
     gmt
     netcdf
+    paraview
   ];
 }

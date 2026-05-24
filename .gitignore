@@ -5,6 +5,7 @@
 /solutions/
 /stations/output
 /stations/plots
+/data/
 .sconsign.dblite
 .vscode
 .cache
