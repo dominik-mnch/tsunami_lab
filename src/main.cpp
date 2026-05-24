@@ -39,9 +39,12 @@ int main( int i_argc, char *i_argv[] ) {
   // set cell size, domain, and end time
   tsunami_lab::t_real l_dx = 1;
   tsunami_lab::t_real l_dy = 1;
-  tsunami_lab::t_real l_domainStart = 0.0;
-  tsunami_lab::t_real l_domainEnd = 50000.0;
-  tsunami_lab::t_real l_domainSize = l_domainEnd - l_domainStart;
+  tsunami_lab::t_real l_domainStartX = 0.0;
+  tsunami_lab::t_real l_domainEndX   = 50000.0;
+  tsunami_lab::t_real l_domainStartY = 0.0;
+  tsunami_lab::t_real l_domainEndY   = 50000.0;
+  tsunami_lab::t_real l_domainSizeX  = l_domainEndX - l_domainStartX;
+  tsunami_lab::t_real l_domainSizeY  = l_domainEndY - l_domainStartY;
   tsunami_lab::t_real l_endTime = 1.25;
   bool l_useFWaveSolver = true;
   bool l_useWavePropagation1d = false;
@@ -55,12 +58,16 @@ int main( int i_argc, char *i_argv[] ) {
 
   auto l_printUsage = []() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/tsunami_lab NX NY DOMAIN_LOWER DOMAIN_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
+    std::cerr << "  ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
+    std::cerr << "  ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "general arguments:" << std::endl;
     std::cerr << "  NX, NY       number of cells in x- and y-direction." << std::endl;
-    std::cerr << "  DOMAIN_LOWER lower bound of the domain in x-direction." << std::endl;
-    std::cerr << "  DOMAIN_UPPER upper bound of the domain in x-direction." << std::endl;
+    std::cerr << "  <RES>m       resolution in meters (e.g. 250m); derives NX/NY from domain extents." << std::endl;
+    std::cerr << "  X_LOWER      lower bound of the domain in x-direction." << std::endl;
+    std::cerr << "  X_UPPER      upper bound of the domain in x-direction." << std::endl;
+    std::cerr << "  Y_LOWER      lower bound of the domain in y-direction." << std::endl;
+    std::cerr << "  Y_UPPER      upper bound of the domain in y-direction." << std::endl;
     std::cerr << "  SOLVER_MODE  1 for FWaveSolver, 0 for RoeSolver." << std::endl;
     std::cerr << "  END_TIME     simulation end time in seconds." << std::endl;
     std::cerr << "" << std::endl;
@@ -106,6 +113,19 @@ int main( int i_argc, char *i_argv[] ) {
     if( i_value == "1" || i_value == "true" ) return true;
     if( i_value == "0" || i_value == "false" ) return false;
     throw std::invalid_argument( "invalid boolean for '" + i_name + "': " + i_value );
+  };
+
+  auto l_parseResolution = []( std::string const & i_value, std::string const & i_name ) {
+    if( i_value.empty() || i_value.back() != 'm' ) {
+      throw std::invalid_argument( "resolution must end with 'm' (e.g. 250m): " + i_value );
+    }
+    std::string l_numStr = i_value.substr( 0, i_value.size() - 1 );
+    char * l_endPtr = nullptr;
+    double l_val = std::strtod( l_numStr.c_str(), &l_endPtr );
+    if( l_endPtr == l_numStr.c_str() || *l_endPtr != '\0' || l_val <= 0 ) {
+      throw std::invalid_argument( "invalid resolution for '" + i_name + "': " + i_value );
+    }
+    return static_cast<tsunami_lab::t_real>( l_val );
   };
 
   auto l_parseBoundaryCondition2d = []( std::string i_value ) {
@@ -174,7 +194,11 @@ int main( int i_argc, char *i_argv[] ) {
           i_name == "tsunami2d";
   };
 
-  if( i_argc < 9 ) {
+  // Detect resolution mode: first positional arg ends with 'm' (e.g. "250m")
+  bool l_resolutionMode = (i_argc >= 2 && std::string(i_argv[1]).back() == 'm');
+  int  l_minArgc        = l_resolutionMode ? 10 : 11;
+
+  if( i_argc < l_minArgc ) {
     std::cerr << "invalid number of arguments" << std::endl;
     l_printUsage();
     return EXIT_FAILURE;
@@ -184,25 +208,53 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::patches::WavePropagation *l_waveProp = nullptr;
 
   try {
-    l_nx = l_parseIdx( i_argv[1], "NX" );
-    l_ny = l_parseIdx( i_argv[2], "NY" );
-    l_domainStart = l_parseReal( i_argv[3], "DOMAIN_LOWER" );
-    l_domainEnd = l_parseReal( i_argv[4], "DOMAIN_UPPER" );
-    l_domainSize = l_domainEnd - l_domainStart;
+    // l_argBase is the index of the SOLVER_MODE argument
+    int l_argBase;
+    if( l_resolutionMode ) {
+      tsunami_lab::t_real l_res = l_parseResolution( i_argv[1], "RESOLUTION" );
+      l_domainStartX = l_parseReal( i_argv[2], "X_LOWER" );
+      l_domainEndX   = l_parseReal( i_argv[3], "X_UPPER" );
+      l_domainStartY = l_parseReal( i_argv[4], "Y_LOWER" );
+      l_domainEndY   = l_parseReal( i_argv[5], "Y_UPPER" );
+      l_domainSizeX  = l_domainEndX - l_domainStartX;
+      l_domainSizeY  = l_domainEndY - l_domainStartY;
+      if( l_domainSizeX <= 0 || l_domainSizeY <= 0 ) {
+        throw std::invalid_argument( "X_UPPER must be > X_LOWER and Y_UPPER must be > Y_LOWER" );
+      }
+      l_nx = std::max( (tsunami_lab::t_idx)1,
+                       (tsunami_lab::t_idx)std::round( l_domainSizeX / l_res ) );
+      l_ny = std::max( (tsunami_lab::t_idx)1,
+                       (tsunami_lab::t_idx)std::round( l_domainSizeY / l_res ) );
+      l_argBase = 6;
+    }
+    else {
+      l_nx           = l_parseIdx(  i_argv[1], "NX" );
+      l_ny           = l_parseIdx(  i_argv[2], "NY" );
+      l_domainStartX = l_parseReal( i_argv[3], "X_LOWER" );
+      l_domainEndX   = l_parseReal( i_argv[4], "X_UPPER" );
+      l_domainStartY = l_parseReal( i_argv[5], "Y_LOWER" );
+      l_domainEndY   = l_parseReal( i_argv[6], "Y_UPPER" );
+      l_domainSizeX  = l_domainEndX - l_domainStartX;
+      l_domainSizeY  = l_domainEndY - l_domainStartY;
+      if( l_domainSizeX <= 0 || l_domainSizeY <= 0 ) {
+        throw std::invalid_argument( "X_UPPER must be > X_LOWER and Y_UPPER must be > Y_LOWER" );
+      }
+      l_argBase = 7;
+    }
 
-    int l_solverMode = static_cast<int>( l_parseIdx( i_argv[5], "SOLVER_MODE" ) );
+    int l_solverMode = static_cast<int>( l_parseIdx( i_argv[l_argBase], "SOLVER_MODE" ) );
     if( l_solverMode != 0 && l_solverMode != 1 ) {
       throw std::invalid_argument( "SOLVER_MODE must be 0 or 1" );
     }
     l_useFWaveSolver = (l_solverMode == 1);
 
-    l_endTime = l_parseReal( i_argv[6], "END_TIME" );
-
-    if( l_domainSize <= 0 || l_endTime <= 0 ) {
-      throw std::invalid_argument( "DOMAIN_UPPER must be > DOMAIN_LOWER and END_TIME must be > 0" );
+    l_endTime = l_parseReal( i_argv[l_argBase + 1], "END_TIME" );
+    if( l_endTime <= 0 ) {
+      throw std::invalid_argument( "END_TIME must be > 0" );
     }
 
-    std::string l_propagationMode = i_argv[7];
+    int l_propArgIdx = l_argBase + 2;
+    std::string l_propagationMode = i_argv[l_propArgIdx];
     for( char & l_ch: l_propagationMode ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
 
     int l_setupArgStart = 0;
@@ -213,11 +265,11 @@ int main( int i_argc, char *i_argv[] ) {
 
     if( l_propagationMode == "1d" ) {
       l_useWavePropagation1d = true;
-      if( i_argc < 10 ) {
+      if( i_argc < l_propArgIdx + 3 ) {
         throw std::invalid_argument( "propagation mode '1d' requires a boundary mode and setup" );
       }
 
-      std::string l_boundaryMode = i_argv[8];
+      std::string l_boundaryMode = i_argv[l_propArgIdx + 1];
       for( char & l_ch: l_boundaryMode ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
 
       if( l_boundaryMode == "outflow" ) {
@@ -236,7 +288,7 @@ int main( int i_argc, char *i_argv[] ) {
         throw std::invalid_argument( "unknown 1d boundary mode: " + l_boundaryMode );
       }
 
-      l_setupArgStart = 9;
+      l_setupArgStart = l_propArgIdx + 2;
       l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx,
                                                                  l_useFWaveSolver,
                                                                  l_boundaryCondition );
@@ -249,18 +301,18 @@ int main( int i_argc, char *i_argv[] ) {
     else if( l_propagationMode == "2d" ) {
       l_useWavePropagation1d = false;
 
-      std::string l_nextArg = i_argv[8];
+      std::string l_nextArg = i_argv[l_propArgIdx + 1];
       for( char & l_ch: l_nextArg ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
 
       if( l_isKnownSetupName( l_nextArg ) ) {
-        l_setupArgStart = 8;
+        l_setupArgStart = l_propArgIdx + 1;
       }
       else {
-        if( i_argc < 10 ) {
+        if( i_argc < l_propArgIdx + 3 ) {
           throw std::invalid_argument( "propagation mode '2d' boundary mode requires a setup" );
         }
         l_boundaryCondition2d = l_parseBoundaryCondition2d( l_nextArg );
-        l_setupArgStart = 9;
+        l_setupArgStart = l_propArgIdx + 2;
       }
 
       l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
@@ -412,9 +464,9 @@ int main( int i_argc, char *i_argv[] ) {
       throw std::invalid_argument( "unknown setup: " + l_setupName );
     }
 
-    // Calculate cell sizes using the domain argument
-    l_dx = l_domainSize / l_nx;
-    l_dy = l_domainSize / l_ny;
+    // Calculate cell sizes from independent x and y domain extents
+    l_dx = l_domainSizeX / l_nx;
+    l_dy = l_domainSizeY / l_ny;
   }
   catch( std::exception const & i_ex ) {
     std::cerr << "invalid configuration: " << i_ex.what() << std::endl;
@@ -431,7 +483,7 @@ int main( int i_argc, char *i_argv[] ) {
     return EXIT_FAILURE;
   }
 
-  if( l_nx < 1 || l_ny < 1 || l_domainSize <= 0 || l_endTime <= 0 ) {
+  if( l_nx < 1 || l_ny < 1 || l_domainSizeX <= 0 || l_domainSizeY <= 0 || l_endTime <= 0 ) {
       std::cerr << "invalid configuration: check cell counts, domain size, and end time" << std::endl;
       delete l_setup;
       delete l_waveProp;
@@ -441,9 +493,10 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "runtime configuration" << std::endl;
   std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
   std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
-  std::cout << "  domain lower bound x:          " << l_domainStart << std::endl;
-  std::cout << "  domain upper bound x:          " << l_domainEnd << std::endl;
-  std::cout << "  domain size:                    " << l_domainSize << std::endl;
+  std::cout << "  domain x:                       [" << l_domainStartX << ", " << l_domainEndX << "]" << std::endl;
+  std::cout << "  domain y:                       [" << l_domainStartY << ", " << l_domainEndY << "]" << std::endl;
+  std::cout << "  domain size x:                  " << l_domainSizeX << std::endl;
+  std::cout << "  domain size y:                  " << l_domainSizeY << std::endl;
   std::cout << "  cell size x:                    " << l_dx << std::endl;
   std::cout << "  cell size y:                    " << l_dy << std::endl;
   std::cout << "  propagation:                    " << (l_useWavePropagation1d ? "1d" : "2d") << std::endl;
@@ -458,10 +511,10 @@ int main( int i_argc, char *i_argv[] ) {
 
   // set up solver
   for( tsunami_lab::t_idx l_cy = 0; l_cy < l_ny; l_cy++ ) {
-    tsunami_lab::t_real l_y = l_domainStart + l_cy * l_dy;
+    tsunami_lab::t_real l_y = l_domainStartY + l_cy * l_dy;
 
     for( tsunami_lab::t_idx l_cx = 0; l_cx < l_nx; l_cx++ ) {
-      tsunami_lab::t_real l_x = l_domainStart + l_cx * l_dx;
+      tsunami_lab::t_real l_x = l_domainStartX + l_cx * l_dx;
 
       // get initial values of the setup
       tsunami_lab::t_real l_h = l_setup->getHeight( l_x,
@@ -526,8 +579,8 @@ int main( int i_argc, char *i_argv[] ) {
   // create netCDF writer
   tsunami_lab::io::NetCdf l_netCdf( l_dx,
                                     l_dy,
-                                    l_domainStart,
-                                    l_domainStart,
+                                    l_domainStartX,
+                                    l_domainStartY,
                                     l_nx,
                                     l_ny,
                                     l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
