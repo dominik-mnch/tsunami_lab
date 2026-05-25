@@ -504,7 +504,7 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
   std::cout << "  end time:                       " << l_endTime << std::endl;
   
-  tsunami_lab::io::Stations stations(1.0); // output frequency
+  tsunami_lab::io::Stations stations(10.0); // output frequency
 
   // maximum observed height in the setup
   tsunami_lab::t_real l_hMax = std::numeric_limits< tsunami_lab::t_real >::lowest();
