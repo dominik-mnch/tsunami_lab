@@ -115,3 +115,87 @@ TEST_CASE( "Test the 2d wave propagation with circular dam break setup.", "[Wave
   REQUIRE( l_hasMomentum );
 }
 
+TEST_CASE( "Test 2d reflecting top/bottom boundary conditions produce a reflected wave.", "[WaveProp2dReflectingBC]" ) {
+  /*
+   * Test case:
+   *
+   * Uniform northward wave in a 10x20 ocean domain (all wet, b=-100).
+   * Initial conditions: h=10, hv=+1 (moving toward top), hu=0.
+   * BoundaryTop is enabled — the wave should hit the top wall, reflect,
+   * and produce negative hv values in the interior.
+   *
+   * With outflow, hv stays non-negative throughout (wave exits).
+   * With reflecting, hv should become negative after the bounce.
+   */
+  const tsunami_lab::t_idx l_nx = 10;
+  const tsunami_lab::t_idx l_ny = 20;
+
+  // --- reflecting case ---
+  tsunami_lab::patches::WavePropagation2d l_reflect( l_nx, l_ny, true,
+    tsunami_lab::patches::WavePropagation2d::BoundaryCondition::BoundaryTop );
+
+  for( tsunami_lab::t_idx l_iy = 0; l_iy < l_ny; l_iy++ ) {
+    for( tsunami_lab::t_idx l_ix = 0; l_ix < l_nx; l_ix++ ) {
+      l_reflect.setHeight(    l_ix, l_iy, 10.0f );
+      l_reflect.setMomentumX( l_ix, l_iy, 0.0f  );
+      l_reflect.setMomentumY( l_ix, l_iy, 1.0f  );
+      l_reflect.setBathymetry( l_ix, l_iy, -100.0f );
+    }
+  }
+
+  // dt/dx = 0.01 (well within CFL ≈ 0.45 for wave speed ~9.9)
+  const tsunami_lab::t_real l_scaling = 0.01f;
+
+  for( int l_step = 0; l_step < 300; l_step++ ) {
+    l_reflect.setGhostOutflow();
+    l_reflect.timeStep( l_scaling );
+  }
+
+  // After 300 steps the wave must have hit the top wall and reflected back.
+  // At least one interior cell should now have negative hv.
+  bool l_hasNegativeHv = false;
+  tsunami_lab::t_real const * l_hvReflect = l_reflect.getMomentumY();
+  for( tsunami_lab::t_idx l_iy = 0; l_iy < l_ny; l_iy++ ) {
+    for( tsunami_lab::t_idx l_ix = 0; l_ix < l_nx; l_ix++ ) {
+      if( l_hvReflect[ l_iy * l_reflect.getStride() + l_ix ] < -1e-6f ) {
+        l_hasNegativeHv = true;
+        break;
+      }
+    }
+    if( l_hasNegativeHv ) break;
+  }
+  REQUIRE( l_hasNegativeHv );
+
+  // --- outflow case (control): same setup but no reflecting BC ---
+  tsunami_lab::patches::WavePropagation2d l_outflow( l_nx, l_ny, true,
+    tsunami_lab::patches::WavePropagation2d::BoundaryCondition::GhostOutflow );
+
+  for( tsunami_lab::t_idx l_iy = 0; l_iy < l_ny; l_iy++ ) {
+    for( tsunami_lab::t_idx l_ix = 0; l_ix < l_nx; l_ix++ ) {
+      l_outflow.setHeight(    l_ix, l_iy, 10.0f );
+      l_outflow.setMomentumX( l_ix, l_iy, 0.0f  );
+      l_outflow.setMomentumY( l_ix, l_iy, 1.0f  );
+      l_outflow.setBathymetry( l_ix, l_iy, -100.0f );
+    }
+  }
+
+  for( int l_step = 0; l_step < 300; l_step++ ) {
+    l_outflow.setGhostOutflow();
+    l_outflow.timeStep( l_scaling );
+  }
+
+  // With outflow, no reflected wave — hv should remain non-negative everywhere.
+  bool l_outflowHasNegativeHv = false;
+  tsunami_lab::t_real const * l_hvOutflow = l_outflow.getMomentumY();
+  for( tsunami_lab::t_idx l_iy = 0; l_iy < l_ny; l_iy++ ) {
+    for( tsunami_lab::t_idx l_ix = 0; l_ix < l_nx; l_ix++ ) {
+      if( l_hvOutflow[ l_iy * l_outflow.getStride() + l_ix ] < -1e-6f ) {
+        l_outflowHasNegativeHv = true;
+        break;
+      }
+    }
+    if( l_outflowHasNegativeHv ) break;
+  }
+  REQUIRE_FALSE( l_outflowHasNegativeHv );
+}
+
