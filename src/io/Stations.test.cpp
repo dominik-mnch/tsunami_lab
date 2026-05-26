@@ -69,7 +69,7 @@ TEST_CASE("Stations reads mock configuration and writes CSV output with frequenc
   tsunami_lab::io::Stations stations(1.0);
 
   // Test 1: Write at time 1.0 (first write should happen since time >= frequency)
-  stations.writeToCSV(1.0, 1.0, 1.0, &wave_prop);
+  stations.writeToCSV(1.0, 1.0, 1.0, 0.0, 0.0, &wave_prop);
 
   // Verify that output directory exists
   REQUIRE(std::filesystem::exists(output_dir));
@@ -99,7 +99,7 @@ TEST_CASE("Stations reads mock configuration and writes CSV output with frequenc
   }
 
   // Test 3: Verify frequency control - write at time 1.5 should NOT happen (< 2.0)
-  stations.writeToCSV(1.5, 1.0, 1.0, &wave_prop);
+  stations.writeToCSV(1.5, 1.0, 1.0, 0.0, 0.0, &wave_prop);
 
   // Count lines in TestStation1.csv (should still be 2: header + one data line)
   {
@@ -114,7 +114,7 @@ TEST_CASE("Stations reads mock configuration and writes CSV output with frequenc
   }
 
   // Test 4: Write at time 2.0 should happen (>= 1.0 since last write at 1.0)
-  stations.writeToCSV(2.0, 1.0, 1.0, &wave_prop);
+  stations.writeToCSV(2.0, 1.0, 1.0, 0.0, 0.0, &wave_prop);
 
   // Count lines in TestStation1.csv (should now be 3: header + two data lines)
   {

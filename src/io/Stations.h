@@ -74,6 +74,8 @@ class tsunami_lab::io::Stations {
     void writeToCSV(t_real time,
                     t_real dx,
                     t_real dy,
+                    t_real domainStartX,
+                    t_real domainStartY,
                     tsunami_lab::patches::WavePropagation *waveProp);
 };
 #endif

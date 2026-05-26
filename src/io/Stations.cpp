@@ -95,6 +95,8 @@ void writeCSVLine(tsunami_lab::t_real time,
 void tsunami_lab::io::Stations::writeToCSV( t_real time,
                                             t_real l_dx,
                                             t_real l_dy,
+                                            t_real domainStartX,
+                                            t_real domainStartY,
                                             tsunami_lab::patches::WavePropagation* l_waveProp) {
 
 
@@ -121,8 +123,8 @@ void tsunami_lab::io::Stations::writeToCSV( t_real time,
         }
 
         // calculate the index of the location
-        t_idx i_x = s.x/l_dx;
-        t_idx i_y = s.y/l_dy;
+        t_idx i_x = (t_idx)((s.x - domainStartX) / l_dx);
+        t_idx i_y = (t_idx)((s.y - domainStartY) / l_dy);
         t_idx finalIndex = i_x + i_y * l_waveProp->getStride();
 
         // write data

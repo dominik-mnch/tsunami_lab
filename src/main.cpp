@@ -608,6 +608,8 @@ int main( int i_argc, char *i_argv[] ) {
     stations.writeToCSV(  l_simTime,
                           l_dx,
                           l_dy,
+                          l_domainStartX,
+                          l_domainStartY,
                           l_waveProp
                         );
 
