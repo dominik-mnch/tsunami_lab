@@ -12,12 +12,13 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    :maxdepth: 1
    :caption: Contents:
 
-   self
-   f_wave_solver
-   finite_volume_discretization
-   bathymetry_boundary_conditions
-   two-dimensional_solver
-   large_data_input_and_output
+   Overview <self>
+   chapters/f_wave_solver
+   chapters/finite_volume_discretization
+   chapters/bathymetry_boundary_conditions
+   chapters/two-dimensional_solver
+   chapters/large_data_input_and_output
+   chapters/tsunami_simulations
 
 You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.
 
