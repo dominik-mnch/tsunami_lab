@@ -145,6 +145,20 @@ Visualisations
    :align: center
    :width: 100%
 
+Comments on the simulations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Unfortunately, the wave heights go down very quickly here which is why they are barely visible in the simulations and seem to fizzle out very quickly.
+This makes sense since the total height goes up roughly 7000 m above sea level while the wave height is on the order of single digit meters, sometimes even below 1 meter.
+To visualise the wave a bit better, we visualized the tsunami again and fixed the color scale to be between -2 and 2 meters.
+This way we can see the wave much better:
+
+**500 m - outflow boundaries, fixed color scale**
+
+.. video:: ../../../res/tsunami_simulations/chile_500m_scaled.mp4
+   :align: center
+   :width: 100%
+
+After a little while the waves become so small that they move at an incredibly slow rate which is why they don't reach the boundaries at all within the 2 hours of simulation time.
 
 Tohoku Event
 ------------
@@ -152,7 +166,7 @@ Tohoku Event
 Once again, we want to inspect the input data first. The bathymetry (file:
 ``tohoku_gebco20_ucsb3_250m_bath.nc``) is visualised in the following figure:
 
-.. image:: ../../../res/tsunami_simulations/japan_bathymetry.png
+.. image:: ../../../res/tsunami_simulations/tohoku_bathymetry.png
    :align: center
 
 To see where the earthquake occurred, we can overlay the bathymetry file and displacement file (``tohoku_gebco20_ucsb3_250m_displ.nc``), warped by the bathymetry and colored by displacement:
@@ -294,6 +308,11 @@ Visualisations
    :align: center
    :width: 100%
 
+Comments on the simulations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Similarly to the Chile event, the wave heights fizzle out very quickly and it is hard to see the wave when it goes far out into the open ocean.
+When the reflecting boundary is reached, the wave is already very small and is barely visible at all.
+
 Sōma Travel Time Estimate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -415,4 +434,4 @@ yields a peak of :math:`\approx 9\,\text{m}`, matching the measured run-up close
 
 Individual contributions
 ------------------------
-Unfortunately, Magdalena Schwarzkopf was sick this week which is why the work was done by Dominik Münnch this week.
+Unfortunately, Magdalena Schwarzkopf was sick this week which is why the work was done by Dominik Münch this week.
