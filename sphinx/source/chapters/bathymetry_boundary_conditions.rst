@@ -115,7 +115,7 @@ To illustrate the effect of the bathymetry, we can look at the following simulat
 
 - Shock Shock with parameters :math:`(h = 0.5, m = 0.3, l_{\text{discontinuity}} = 50, b_{\text{offset}} = 0.25, b_{\text{center}} = 50.0, b_{\text{scale}} = -0.08)`:
 
-.. image:: ../../res/bathymetry_effect.gif
+.. image:: ../../res/bathymetry_boundary_conditions/bathymetry_effect.gif
    :align: center
 
 We can clearly see that instead of the wave in the middle having equal height everywhere, there are two peaks on either side.
@@ -200,7 +200,7 @@ We can see the effect of the reflecting boundary conditions in the following Dam
 
 - Dam Break with parameters :math:`(h_L = 5, m_L = 0, h_R = 2, l_{\text{Dam}} = 50)`:
 
-.. image:: ../../res/reflecting_boundary_conditions.gif
+.. image:: ../../res/bathymetry_boundary_conditions/reflecting_boundary_conditions.gif
    :align: center
 
 When the shock wave comes in contact with the right wall, it is reflected back and starts traveling to the left.
@@ -268,7 +268,7 @@ To be able to simulate scenarios with hydraulic jumps, we implemented the ``Subc
 Subcritical Setup
 ~~~~~~~~~~~~~~~~~
 
-.. image:: ../../res/animation_subcritical.gif
+.. image:: ../../res/bathymetry_boundary_conditions/animation_subcritical.gif
    :align: center
 
 As we can see, there is a small "water valley" where the hump in the bathymetry is.
@@ -292,7 +292,7 @@ This result makes sense since the flow is subcritical, so the Froude number shou
 Supercritical Setup
 ~~~~~~~~~~~~~~~~~~~
 
-.. image:: ../../res/animation_supercritical.gif
+.. image:: ../../res/bathymetry_boundary_conditions/animation_supercritical.gif
    :align: center
 
 **Maximum Froude Number:**
@@ -356,14 +356,14 @@ The ``TsunamiEvent1d.cpp`` class implements the scenario as a setup by reading t
 
 We can now execute our setup by calling ``./build/tsunami_lab 2000 440000 1 2000`` which executes the simulation with 2000 cells, a domain length of 440000, the F-Wave solver and 2000 time steps:
 
-.. image:: ../../res/tsunami_event.gif
+.. image:: ../../res/bathymetry_boundary_conditions/tsunami_event.gif
    :align: center
 
 Unfortunately, we can barely see the wave at all. This is expected since the wave is only a few meters high whereas the depth of the ocean goes down to almost 8000 meters, making the wave pretty much invisible.
 
 To be able to see the wave, we can modify the artifical displacement to be 100 times higher than it originally was.
 
-.. image:: ../../res/tsunami_event_factor_100.gif
+.. image:: ../../res/bathymetry_boundary_conditions/tsunami_event_factor_100.gif
    :align: center
 
 Now we can clearly see the wave. On the right side it flows out normally, while on the left side it is reflected by the shore line and than travels back into the ocean.

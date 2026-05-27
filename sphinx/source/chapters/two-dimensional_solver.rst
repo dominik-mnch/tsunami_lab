@@ -32,7 +32,7 @@ We can calculate the net updates by applying our F-Wave solver (or Roe solver) t
 
 We can see this in action in the following simulation of a dam break in a 2D domain:
 
-.. video:: ../../res/Dam_Break_2d.mp4
+.. video:: ../../res/two_dimensional_solver/Dam_Break_2d.mp4
    :align: center
    :width: 100%
 
@@ -40,7 +40,7 @@ This looks very similar to the 1D Dam Break simulation but it doesn't really add
 
 To illustrate the 2D simulation when the y-direction actually has an effect, we implemented the ``CircularDamBreak2d.cpp`` setup which simulates a circular dam break in the middle of a :math:`100 \times 100` domain.
 
-.. video:: ../../res/Circular_Dam_Break_2d_no_bath.mp4
+.. video:: ../../res/two_dimensional_solver/Circular_Dam_Break_2d_no_bath.mp4
    :align: center
    :width: 100%
 
@@ -57,7 +57,7 @@ The above simulation also didn't have any bathymetry. To show the effects that b
 
 That means that there is now a small hill in the water. To show the effects this has on the simulation, we can take a look at the following simulation:
 
-.. video:: ../../res/Circular_Dam_Break_2d_bath.mp4
+.. video:: ../../res/two_dimensional_solver/Circular_Dam_Break_2d_bath.mp4
    :align: center
    :width: 100%
 
@@ -99,11 +99,11 @@ We now run a 1D Dam Break simulation with a domain size of :math:`100` and initi
 This of course means that Station1 will be located in the left half where the water is higher initially and then get lower over time whereas Station2 will
 be located in the right half where the water is lower initially and then get higher over time which is reflected in the following plots:
 
-.. image:: ../../res/Station1_plot_1d.png
+.. image:: ../../res/two_dimensional_solver/Station1_plot_1d.png
    :align: center
    :width: 100%
 
-.. image:: ../../res/Station2_plot_1d.png
+.. image:: ../../res/two_dimensional_solver/Station2_plot_1d.png
    :align: center
    :width: 100%
 
@@ -111,11 +111,11 @@ To compare this to the 2D case, we run the simulation again with a 2D Circular D
 This means that the stations will now be located at a symmetric position away from the circular dam and both with an initial height of :math:`5`. Since they are symmetrically located, they will have the same values 
 for the water height and momenta with the momenta in the x-direction having a different sign. This is reflected in the following plots:
 
-.. image:: ../../res/Station1_plot_2d.png
+.. image:: ../../res/two_dimensional_solver/Station1_plot_2d.png
    :align: center
    :width: 100%
 
-.. image:: ../../res/Station2_plot_2d.png
+.. image:: ../../res/two_dimensional_solver/Station2_plot_2d.png
    :align: center
    :width: 100%
 

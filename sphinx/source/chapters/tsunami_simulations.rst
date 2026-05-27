@@ -16,12 +16,12 @@ Chile Event
 To understand the Chile event, we want to first understand the input data we are working with.
 We can see the bathymetry visualised from the file ``chile_gebco20_usgs_250m_bath.nc`` in the following figure:
 
-.. image:: ../../res/chile_bathymetry.png
+.. image:: ../../res/tsunami_simulations/chile_bathymetry.png
    :align: center
 
 To see where the earthquake occurred, we can overlay the bathymetry file and displacement file (``chile_gebco20_usgs_250m_displ.nc``), warped by the bathymetry and colored by displacement:
 
-.. image:: ../../res/chile_displacement.png
+.. image:: ../../res/tsunami_simulations/chile_displacement.png
    :align: center
 
 Domain and simulation setup
@@ -129,19 +129,19 @@ Visualisations
 
 **1 000 m – outflow boundaries**
 
-.. video:: ../../res/chile_1000m_outflow.mp4
+.. video:: ../../res/tsunami_simulations/chile_1000m_outflow.mp4
    :align: center
    :width: 100%
 
 **1 000 m – reflecting boundaries**
 
-.. video:: ../../res/chile_1000m_reflecting.mp4
+.. video:: ../../res/tsunami_simulations/chile_1000m_reflecting.mp4
    :align: center
    :width: 100%
 
 **500 m – outflow boundaries**
 
-.. video:: ../../res/chile_500m_outflow.mp4
+.. video:: ../../res/tsunami_simulations/chile_500m_outflow.mp4
    :align: center
    :width: 100%
 
@@ -152,12 +152,12 @@ Tohoku Event
 Once again, we want to inspect the input data first. The bathymetry (file:
 ``tohoku_gebco20_ucsb3_250m_bath.nc``) is visualised in the following figure:
 
-.. image:: ../../res/japan_bathymetry.png
+.. image:: ../../res/tsunami_simulations/japan_bathymetry.png
    :align: center
 
 To see where the earthquake occurred, we can overlay the bathymetry file and displacement file (``tohoku_gebco20_ucsb3_250m_displ.nc``), warped by the bathymetry and colored by displacement:
 
-.. image:: ../../res/tohoku_displacement.png
+.. image:: ../../res/tsunami_simulations/tohoku_displacement.png
    :align: center
 
 Domain and simulation setup
@@ -272,25 +272,25 @@ Visualisations
 
 **1 000 m – outflow boundaries**
 
-.. video:: ../../res/tohoku_1000m_outflow.mp4
+.. video:: ../../res/tsunami_simulations/tohoku_1000m_outflow.mp4
    :align: center
    :width: 100%
 
 **1 000 m – reflecting boundaries**
 
-.. video:: ../../res/tohoku_1000m_reflecting.mp4
+.. video:: ../../res/tsunami_simulations/tohoku_1000m_reflecting.mp4
    :align: center
    :width: 100%
 
 **500 m – outflow boundaries**
 
-.. video:: ../../res/tohoku_500m_outflow.mp4
+.. video:: ../../res/tsunami_simulations/tohoku_500m_outflow.mp4
    :align: center
    :width: 100%
 
 **500 m – reflecting boundaries**
 
-.. video:: ../../res/tohoku_500m_reflecting.mp4
+.. video:: ../../res/tsunami_simulations/tohoku_500m_reflecting.mp4
    :align: center
    :width: 100%
 
@@ -409,7 +409,7 @@ the total water column height :math:`h`; the surface elevation anomaly
 :math:`\eta = h + b` at the station cell (bathymetry :math:`b \approx -20\,\text{m}`)
 yields a peak of :math:`\approx 9\,\text{m}`, matching the measured run-up closely.
 
-.. image:: ../../res/Soma_plot_1000m.png
+.. image:: ../../res/tsunami_simulations/Soma_plot_1000m.png
    :align: center
    :width: 100%
 
