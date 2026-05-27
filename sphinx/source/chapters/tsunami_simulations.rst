@@ -315,6 +315,7 @@ When the reflecting boundary is reached, the wave is already very small and is b
 As with the Chile event, we visualised the tsunami again with a fixed color scale between -2 and 2 meters to see the wave better:
 
 **500 m - outflow boundaries, fixed color scale**
+
 .. video:: ../../../res/tsunami_simulations/tohoku_500m_scaled.mp4
    :align: center
    :width: 100%
