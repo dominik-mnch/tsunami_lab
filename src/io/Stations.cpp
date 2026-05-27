@@ -39,6 +39,8 @@ tsunami_lab::io::Stations::Stations(t_real output_frequency) {
         std::filesystem::remove( l_entry.path() );
       }
     }
+  } else {
+    std::filesystem::create_directories( l_outputDir );
   }
 
     std::string line; 
