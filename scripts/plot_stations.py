@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-def find_first_arrival(times, heights, margin=0.05):
+def find_first_arrivals(times, heights, margin=0.1):
     """
-    Return the time at which water height first exceeds initial value + margin.
+    Return the first times at which water height exceeds initial value by +/- margin.
 
     Parameters:
     -----------
@@ -21,21 +21,22 @@ def find_first_arrival(times, heights, margin=0.05):
     heights : array-like
         Water height values
     margin : float
-        Threshold above initial water height to consider as arrival
+        Threshold above/below initial water height to consider as an arrival
 
-    Returns the arrival time, or None if the threshold is never exceeded.
+    Returns a tuple (rise_time, drop_time), each being the first time the
+    threshold is crossed in that direction, or None if never crossed.
     """
     if len(heights) == 0:
-        return None
+        return None, None
     initial = heights.iloc[0]
-    threshold = initial + margin
-    mask = heights > threshold
-    if not mask.any():
-        return None
-    return times[mask.idxmax()]
+    rise_mask = heights > initial + margin
+    drop_mask = heights < initial - margin
+    rise_time = times[rise_mask.idxmax()] if rise_mask.any() else None
+    drop_time = times[drop_mask.idxmax()] if drop_mask.any() else None
+    return rise_time, drop_time
 
 
-def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots", arrival_margin=0.05):
+def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots", arrival_margin=0.1):
     """
     Read all CSV files in the output directory and create plots for each station.
     
@@ -83,10 +84,13 @@ def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots
             ax.plot(df['time'], df['momentum_x'], 'r-', linewidth=2, label='Momentum X (m²/s)')
             ax.plot(df['time'], df['momentum_y'], 'g-', linewidth=2, label='Momentum Y (m²/s)')
 
-            arrival_time = find_first_arrival(df['time'], df['water_height'], margin=arrival_margin)
-            if arrival_time is not None:
-                ax.axvline(x=arrival_time, color='purple', linestyle='--', linewidth=1.5,
-                           label=f'First arrival (t={arrival_time:.1f} s)')
+            rise_time, drop_time = find_first_arrivals(df['time'], df['water_height'], margin=arrival_margin)
+            if rise_time is not None:
+                ax.axvline(x=rise_time, color='purple', linestyle='--', linewidth=1.5,
+                           label=f'First rise (t={rise_time:.1f} s)')
+            if drop_time is not None:
+                ax.axvline(x=drop_time, color='orange', linestyle='--', linewidth=1.5,
+                           label=f'First drop (t={drop_time:.1f} s)')
 
             ax.set_xlabel('Time (s)', fontsize=12)
             ax.set_ylabel('Value', fontsize=12)
