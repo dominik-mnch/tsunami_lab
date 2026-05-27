@@ -213,7 +213,7 @@ To show this we run both setups and compare their output. First we run the ``Art
 This runs the simulation for 300 seconds on a 1000x1000 grid covering a 10km x 10km area centered at the origin.
 We can see the results of the simulation here:
 
-.. video:: ../../res/large_data_input_and_output/ArtificialTsunami2d.mp4
+.. video:: ../../../res/large_data_input_and_output/ArtificialTsunami2d.mp4
    :align: center
    :width: 100%
 
@@ -226,7 +226,7 @@ Next we run the ``TsunamiEvent2d`` setup with the following command:
 This runs the simulation for 300 seconds on a 1000x1000 grid covering a 10km x 10km area centered at the origin using the
 netCDF files provided as input for the bathymetry and displacement. We can see the results of the simulation here:
 
-.. video:: ../../res/large_data_input_and_output/TsunamiEvent2d.mp4
+.. video:: ../../../res/large_data_input_and_output/TsunamiEvent2d.mp4
    :align: center
    :width: 100%
 
