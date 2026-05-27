@@ -10,7 +10,32 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots"):
+def find_first_arrival(times, heights, margin=0.05):
+    """
+    Return the time at which water height first exceeds initial value + margin.
+
+    Parameters:
+    -----------
+    times : array-like
+        Time values
+    heights : array-like
+        Water height values
+    margin : float
+        Threshold above initial water height to consider as arrival
+
+    Returns the arrival time, or None if the threshold is never exceeded.
+    """
+    if len(heights) == 0:
+        return None
+    initial = heights.iloc[0]
+    threshold = initial + margin
+    mask = heights > threshold
+    if not mask.any():
+        return None
+    return times[mask.idxmax()]
+
+
+def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots", arrival_margin=0.05):
     """
     Read all CSV files in the output directory and create plots for each station.
     
@@ -20,6 +45,8 @@ def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots
         Directory containing the station CSV files
     save_dir : str
         Directory where plots will be saved
+    arrival_margin : float
+        Minimum increase above initial water height (in metres) to detect tsunami arrival
     """
     
     # Create save directory if it doesn't exist
@@ -55,7 +82,12 @@ def plot_station_data(output_dir="./stations/output", save_dir="./stations/plots
             ax.plot(df['time'], df['water_height'], 'b-', linewidth=2, label='Water Height (m)')
             ax.plot(df['time'], df['momentum_x'], 'r-', linewidth=2, label='Momentum X (m²/s)')
             ax.plot(df['time'], df['momentum_y'], 'g-', linewidth=2, label='Momentum Y (m²/s)')
-            
+
+            arrival_time = find_first_arrival(df['time'], df['water_height'], margin=arrival_margin)
+            if arrival_time is not None:
+                ax.axvline(x=arrival_time, color='purple', linestyle='--', linewidth=1.5,
+                           label=f'First arrival (t={arrival_time:.1f} s)')
+
             ax.set_xlabel('Time (s)', fontsize=12)
             ax.set_ylabel('Value', fontsize=12)
             ax.grid(True, alpha=0.3)
