@@ -583,6 +583,7 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_domainStartY,
                                     l_nx,
                                     l_ny,
+                                   // l_k,
                                     l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
                                     l_simTime,
                                     l_waveProp->getHeight(),

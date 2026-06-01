@@ -35,6 +35,8 @@ class tsunami_lab::io::NetCdf {
     t_idx m_nx;
     //! Number of interior cells in y-direction.
     t_idx m_ny;
+    //! Number of cells that get averaged to reduce output (k x k block gets averaged to 1 cell in output).
+    t_idx m_k;
     //! Row stride of the field arrays.
     t_idx m_stride;
     //! Stored simulation time value.
@@ -115,6 +117,7 @@ public:
      * @param i_originY origin of the y-coordinate system.
      * @param i_nx number of cells in x-direction.
      * @param i_ny number of cells in y-direction.
+     * @param i_k number of cells that get averaged to reduce output 
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
      * @param i_time simulation time of the snapshot.
      * @param i_h pointer to water height of the cells
@@ -129,6 +132,7 @@ public:
             t_real               i_originY,
             t_idx                i_nx,
             t_idx                i_ny,
+            t_idx                i_k,
             t_idx                i_stride,
             t_real               i_time,
             t_real       const * i_h,

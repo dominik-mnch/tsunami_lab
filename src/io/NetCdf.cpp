@@ -76,6 +76,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								t_real i_originY,
 								t_idx i_nx,
 								t_idx i_ny,
+								t_idx i_k,
 								t_idx i_stride,
 								t_real i_time,
 								t_real const * i_h,
@@ -89,6 +90,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_originY( i_originY ),
 		m_nx( i_nx ),
 		m_ny( i_ny ),
+		m_k( i_k ),
 		m_stride( i_stride ),
 		m_time( i_time ),
 		m_h( i_h ),
@@ -129,8 +131,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 
 		// define dimensions (time (unlimited), y (size of y-direction), x (size of x-direction))
 		checkNc( nc_def_dim( m_ncId, "time", NC_UNLIMITED, &l_dimTimeId ), "nc_def_dim(time)" );
-		checkNc( nc_def_dim( m_ncId, "y", m_ny, &l_dimYId ), "nc_def_dim(y)" );
-		checkNc( nc_def_dim( m_ncId, "x", m_nx, &l_dimXId ), "nc_def_dim(x)" );
+		checkNc( nc_def_dim( m_ncId, "y", m_ny/m_k, &l_dimYId ), "nc_def_dim(y)" );
+		checkNc( nc_def_dim( m_ncId, "x", m_nx/m_k, &l_dimXId ), "nc_def_dim(x)" );
 
 		l_dimsYX[0] = l_dimYId;
 		l_dimsYX[1] = l_dimXId;
@@ -206,15 +208,24 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		checkNc( nc_enddef( toNcId( m_ncId ) ), "nc_enddef" );
 
 		// write cell positions for x and y dimensions
-		putCoordinates( toNcId( m_ncId ), l_varXId, m_nx, m_originX, m_dx );
-		putCoordinates( toNcId( m_ncId ), l_varYId, m_ny, m_originY, m_dy );
+		putCoordinates( toNcId( m_ncId ), l_varXId, m_nx/m_k, m_originX, m_dx );
+		putCoordinates( toNcId( m_ncId ), l_varYId, m_ny/m_k, m_originY, m_dy );
 
 		// write bathymetry data once as it does not change over time
 		if( m_varBathyId != c_invalidId ) {
-			std::vector<t_real> l_buffer( m_nx * m_ny );
-			for( t_idx l_iy = 0; l_iy < m_ny; l_iy++ ) {
-				for( t_idx l_ix = 0; l_ix < m_nx; l_ix++ ) {
-					l_buffer[l_iy * m_nx + l_ix] = m_b[l_iy * m_stride + l_ix];
+			std::vector<t_real> l_buffer( m_nx/m_k * m_ny/m_k );
+			for( t_idx l_iy = 0; l_iy < m_ny/m_k; l_iy+= m_k ) {
+				for( t_idx l_ix = 0; l_ix < m_nx/m_k; l_ix+= m_k ) {
+					t_real bathyAvg = 0;
+
+					for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
+						for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+							bathyAvg += m_b[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+						}
+					}
+					t_idx l_oy = l_iy / m_k;
+					t_idx l_ox = l_ix / m_k;
+					l_buffer[l_oy * (m_nx/m_k) + l_ox] = bathyAvg / (m_k * m_k);
 				}
 			}
 			checkNc( nc_put_var_float( toNcId( m_ncId ), toNcId( m_varBathyId ), l_buffer.data() ), "nc_put_var_float(bathymetry)" );
@@ -231,27 +242,47 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 	checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varTimeId ), l_startT, l_countT, &simTime ), "nc_put_vara_float(time)" );
 
 	// buffer for data to be written to the netCDF file
-	std::vector<t_real> l_buffer( m_nx * m_ny );
+	std::vector<t_real> l_buffer( m_nx/m_k * m_ny/m_k );
 
 	// begin at current time step and write a block of size nx*ny
 	std::size_t l_startData[3] = { m_timeStep, 0, 0 };
-	std::size_t l_countData[3] = { 1, m_ny, m_nx };
+	std::size_t l_countData[3] = { 1, m_ny/m_k, m_nx/m_k };
 
 	// write height data
 	if( m_h != nullptr && m_varHeightId != c_invalidId ) {
-		for( t_idx l_iy = 0; l_iy < m_ny; l_iy++ ) {
-			for( t_idx l_ix = 0; l_ix < m_nx; l_ix++ ) {
-				l_buffer[l_iy * m_nx + l_ix] = m_h[l_iy * m_stride + l_ix];
+		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
+			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
+				t_real heightAvg = 0;
+
+				for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
+    				for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+        				heightAvg += m_h[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+					}
+				}
+				t_idx l_oy = l_iy / m_k;
+                t_idx l_ox = l_ix / m_k;
+
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = heightAvg / (m_k * m_k);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varHeightId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(height)" );
-	}
+    }
+
 
 	// write x momentum data
 	if( m_hu != nullptr && m_varMomentumXId != c_invalidId ) {
-		for( t_idx l_iy = 0; l_iy < m_ny; l_iy++ ) {
-			for( t_idx l_ix = 0; l_ix < m_nx; l_ix++ ) {
-				l_buffer[l_iy * m_nx + l_ix] = m_hu[l_iy * m_stride + l_ix];
+		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
+			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
+				t_real momentumXAvg = 0;
+
+				for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
+					for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+						momentumXAvg += m_hu[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+					}
+				}
+				t_idx l_oy = l_iy / m_k;
+				t_idx l_ox = l_ix / m_k;
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumXAvg / (m_k * m_k);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumXId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_x)" );
@@ -259,9 +290,18 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 
 	// write y momentum data
 	if( m_hv != nullptr && m_varMomentumYId != c_invalidId ) {
-		for( t_idx l_iy = 0; l_iy < m_ny; l_iy++ ) {
-			for( t_idx l_ix = 0; l_ix < m_nx; l_ix++ ) {
-				l_buffer[l_iy * m_nx + l_ix] = m_hv[l_iy * m_stride + l_ix];
+		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
+			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
+				t_real momentumYAvg = 0;
+
+				for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
+					for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+						momentumYAvg += m_hv[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+					}
+				}
+				t_idx l_oy = l_iy / m_k;
+				t_idx l_ox = l_ix / m_k;
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumYAvg / (m_k * m_k);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumYId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_y)" );
