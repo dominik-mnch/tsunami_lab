@@ -61,6 +61,10 @@ class tsunami_lab::io::NetCdf {
     t_idx m_varMomentumXId;
     //! Variable identifier of the y-momentum variable.
     t_idx m_varMomentumYId;
+    //! netCDF file handle for the checkpoint file (c_invalidId if no checkpoint).
+    t_idx m_checkpointNcId;
+    //! Simulation time of the last written time step (used by overwriteCheckpointEndTime).
+    t_real m_lastSimTime;
 public:
 
     /**
@@ -144,6 +148,19 @@ public:
      * @param simTime simulation time of the snapshot to write.
      **/
     void writeTimeStep( t_real simTime );
+
+    /**
+     * Creates a checkpoint file and writes all simulation parameters as global attributes.
+     * The end_time attribute is initialised to 0 and updated after every write cycle.
+     *
+     * @param i_filePath output path of the checkpoint file.
+     **/
+    void defineCheckpoint( std::string const & i_filePath );
+
+    /**
+     * Overwrites the end time of the netCDF checkpoint file.
+     **/
+    void overwriteCheckpointEndTime();
 };
 
 

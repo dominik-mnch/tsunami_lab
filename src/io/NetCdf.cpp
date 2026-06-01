@@ -101,7 +101,9 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_varBathyId( c_invalidId ),
 		m_varHeightId( c_invalidId ),
 		m_varMomentumXId( c_invalidId ),
-		m_varMomentumYId( c_invalidId ) {
+		m_varMomentumYId( c_invalidId ),
+		m_checkpointNcId( c_invalidId ),
+		m_lastSimTime( 0 ) {
 	std::filesystem::path l_path( i_filePath );
 	if( l_path.has_parent_path() ) {
 		std::filesystem::create_directories( l_path.parent_path() );
@@ -218,6 +220,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			checkNc( nc_put_var_float( toNcId( m_ncId ), toNcId( m_varBathyId ), l_buffer.data() ), "nc_put_var_float(bathymetry)" );
 		}
 	}
+	defineCheckpoint( (l_path.parent_path() / "checkpoint.nc").string() );
 }
 
 void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
@@ -264,7 +267,47 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumYId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_y)" );
 	}
 
+	m_lastSimTime = simTime;
+	overwriteCheckpointEndTime();
 	m_timeStep++;
+}
+
+void tsunami_lab::io::NetCdf::defineCheckpoint( std::string const & i_filePath ) {
+	std::filesystem::path l_path( i_filePath );
+	if( l_path.has_parent_path() ) {
+		std::filesystem::create_directories( l_path.parent_path() );
+	}
+
+	int l_ncId = -1;
+	checkNc( nc_create( i_filePath.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_ncId ), "nc_create(checkpoint)" );
+	m_checkpointNcId = fromNcId( l_ncId );
+
+	int   l_nx      = static_cast<int>( m_nx );
+	int   l_ny      = static_cast<int>( m_ny );
+	float l_dx      = static_cast<float>( m_dx );
+	float l_dy      = static_cast<float>( m_dy );
+	float l_originX = static_cast<float>( m_originX );
+	float l_originY = static_cast<float>( m_originY );
+	float l_endTime = 0.0f;
+
+	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "nx",       NC_INT,   1, &l_nx      ), "nc_put_att_int(nx)"       );
+	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "ny",       NC_INT,   1, &l_ny      ), "nc_put_att_int(ny)"       );
+	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "dx",       NC_FLOAT, 1, &l_dx      ), "nc_put_att_float(dx)"     );
+	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "dy",       NC_FLOAT, 1, &l_dy      ), "nc_put_att_float(dy)"     );
+	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_x", NC_FLOAT, 1, &l_originX ), "nc_put_att_float(origin_x)" );
+	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_y", NC_FLOAT, 1, &l_originY ), "nc_put_att_float(origin_y)" );
+	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "end_time", NC_FLOAT, 1, &l_endTime ), "nc_put_att_float(end_time)" );
+
+	checkNc( nc_sync( l_ncId ), "nc_sync(checkpoint)" );
+}
+
+void tsunami_lab::io::NetCdf::overwriteCheckpointEndTime() {
+	if( m_checkpointNcId == c_invalidId ) return;
+
+	float l_simTimeF = static_cast<float>( m_lastSimTime );
+	checkNc( nc_put_att_float( toNcId( m_checkpointNcId ), NC_GLOBAL, "end_time", NC_FLOAT, 1, &l_simTimeF ),
+	         "nc_put_att_float(end_time)" );
+	checkNc( nc_sync( toNcId( m_checkpointNcId ) ), "nc_sync(checkpoint)" );
 }
 
 tsunami_lab::io::NetCdf::Data tsunami_lab::io::NetCdf::read( std::string const & i_bathymetryFile,
@@ -473,6 +516,10 @@ tsunami_lab::io::NetCdf::~NetCdf() {
 	if( m_ncId != c_invalidId ) {
 		nc_close( toNcId( m_ncId ) );
 		m_ncId = c_invalidId;
+	}
+	if( m_checkpointNcId != c_invalidId ) {
+		nc_close( toNcId( m_checkpointNcId ) );
+		m_checkpointNcId = c_invalidId;
 	}
 }
 
