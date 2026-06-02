@@ -42,6 +42,7 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 											2,
 											2,
 											4,
+											1,
 											0.0,
 											l_h + 5,
 											l_b + 5,

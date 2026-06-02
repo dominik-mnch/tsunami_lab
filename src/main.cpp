@@ -45,6 +45,7 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::t_real l_domainEndY   = 50000.0;
   tsunami_lab::t_real l_domainSizeX  = l_domainEndX - l_domainStartX;
   tsunami_lab::t_real l_domainSizeY  = l_domainEndY - l_domainStartY;
+  tsunami_lab::t_idx l_k = 1;
   tsunami_lab::t_real l_endTime = 1.25;
   bool l_useFWaveSolver = true;
   bool l_useWavePropagation1d = false;
@@ -58,8 +59,8 @@ int main( int i_argc, char *i_argv[] ) {
 
   auto l_printUsage = []() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
-    std::cerr << "  ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
+    std::cerr << "  ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
+    std::cerr << "  ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "general arguments:" << std::endl;
     std::cerr << "  NX, NY       number of cells in x- and y-direction." << std::endl;
@@ -68,6 +69,7 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "  X_UPPER      upper bound of the domain in x-direction." << std::endl;
     std::cerr << "  Y_LOWER      lower bound of the domain in y-direction." << std::endl;
     std::cerr << "  Y_UPPER      upper bound of the domain in y-direction." << std::endl;
+    std::cerr << "  K            for a coarse output, k*k cells get averaged." << std::endl;
     std::cerr << "  SOLVER_MODE  1 for FWaveSolver, 0 for RoeSolver." << std::endl;
     std::cerr << "  END_TIME     simulation end time in seconds." << std::endl;
     std::cerr << "" << std::endl;
@@ -216,6 +218,7 @@ int main( int i_argc, char *i_argv[] ) {
       l_domainEndX   = l_parseReal( i_argv[3], "X_UPPER" );
       l_domainStartY = l_parseReal( i_argv[4], "Y_LOWER" );
       l_domainEndY   = l_parseReal( i_argv[5], "Y_UPPER" );
+      l_k            = l_parseIdx( i_argv[6], "K" );
       l_domainSizeX  = l_domainEndX - l_domainStartX;
       l_domainSizeY  = l_domainEndY - l_domainStartY;
       if( l_domainSizeX <= 0 || l_domainSizeY <= 0 ) {
@@ -225,6 +228,9 @@ int main( int i_argc, char *i_argv[] ) {
                        (tsunami_lab::t_idx)std::round( l_domainSizeX / l_res ) );
       l_ny = std::max( (tsunami_lab::t_idx)1,
                        (tsunami_lab::t_idx)std::round( l_domainSizeY / l_res ) );
+      if( l_nx % l_k != 0 || l_ny % l_k != 0 || l_k < 1 ) {
+        throw std::invalid_argument( "K must be a positive integer divisor of NX and NY" );
+      }
       l_argBase = 6;
     }
     else {
@@ -234,10 +240,14 @@ int main( int i_argc, char *i_argv[] ) {
       l_domainEndX   = l_parseReal( i_argv[4], "X_UPPER" );
       l_domainStartY = l_parseReal( i_argv[5], "Y_LOWER" );
       l_domainEndY   = l_parseReal( i_argv[6], "Y_UPPER" );
+      l_k            = l_parseIdx( i_argv[7], "K" );
       l_domainSizeX  = l_domainEndX - l_domainStartX;
       l_domainSizeY  = l_domainEndY - l_domainStartY;
       if( l_domainSizeX <= 0 || l_domainSizeY <= 0 ) {
         throw std::invalid_argument( "X_UPPER must be > X_LOWER and Y_UPPER must be > Y_LOWER" );
+      }
+      if( l_nx % l_k != 0 || l_ny % l_k != 0 || l_k < 1 ) {
+        throw std::invalid_argument( "K must be a positive integer divisor of NX and NY" );
       }
       l_argBase = 7;
     }
@@ -583,7 +593,7 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_domainStartY,
                                     l_nx,
                                     l_ny,
-                                   // l_k,
+                                    l_k,
                                     l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
                                     l_simTime,
                                     l_waveProp->getHeight(),
