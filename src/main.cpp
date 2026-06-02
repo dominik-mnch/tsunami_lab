@@ -231,7 +231,7 @@ int main( int i_argc, char *i_argv[] ) {
       if( l_nx % l_k != 0 || l_ny % l_k != 0 || l_k < 1 ) {
         throw std::invalid_argument( "K must be a positive integer divisor of NX and NY" );
       }
-      l_argBase = 6;
+      l_argBase = 7;
     }
     else {
       l_nx           = l_parseIdx(  i_argv[1], "NX" );
