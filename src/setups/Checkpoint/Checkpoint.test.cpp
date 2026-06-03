@@ -9,6 +9,7 @@
 #include "Checkpoint.h"
 #include "../../io/NetCdf.h"
 #include <cstdio>
+#include <filesystem>
 #include <netcdf.h>
 #include <string>
 #include <vector>
@@ -20,7 +21,8 @@ static void createCheckpointFile( std::string const & i_path,
                                   int i_nx, int i_ny,
                                   float i_dx, float i_dy,
                                   float i_originX, float i_originY,
-                                  float i_endTime ) {
+                                  float i_endTime,
+                                  float i_simTime = 0.0f ) {
   int l_ncId = -1;
   REQUIRE( nc_create( i_path.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_ncId ) == NC_NOERR );
   REQUIRE( nc_put_att_int(   l_ncId, NC_GLOBAL, "nx",       NC_INT,   1, &i_nx      ) == NC_NOERR );
@@ -30,6 +32,7 @@ static void createCheckpointFile( std::string const & i_path,
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_x", NC_FLOAT, 1, &i_originX ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_y", NC_FLOAT, 1, &i_originY ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "end_time", NC_FLOAT, 1, &i_endTime ) == NC_NOERR );
+  REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "sim_time", NC_FLOAT, 1, &i_simTime ) == NC_NOERR );
   REQUIRE( nc_close( l_ncId ) == NC_NOERR );
 }
 
@@ -121,8 +124,10 @@ static void createSolutionFile( std::string const & i_path,
 }
 
 TEST_CASE( "Checkpoint setup loads simulation parameters from checkpoint.nc.", "[Checkpoint]" ) {
-  std::string l_cpFile  = "test_checkpoint.nc";
-  std::string l_solFile = "test_solution.nc";
+  std::string l_dir    = "test_cp_params_dir";
+  std::string l_cpFile = l_dir + "/checkpoint.nc";
+  std::string l_solFile = l_dir + "/solution.nc";
+  std::filesystem::create_directories( l_dir );
   std::remove( l_cpFile.c_str() );
   std::remove( l_solFile.c_str() );
 
@@ -144,18 +149,10 @@ TEST_CASE( "Checkpoint setup loads simulation parameters from checkpoint.nc.", "
 
   std::remove( l_cpFile.c_str() );
   std::remove( l_solFile.c_str() );
+  std::filesystem::remove( l_dir );
 }
 
 TEST_CASE( "Checkpoint setup loads last committed state and ignores partial step.", "[Checkpoint]" ) {
-  std::string l_cpFile  = "test_checkpoint2.nc";
-  std::string l_solFile = "test_solution2.nc";
-  std::remove( l_cpFile.c_str() );
-  std::remove( l_solFile.c_str() );
-
-  // rename solution.nc to match the sibling-file convention:
-  // Checkpoint derives solution.nc from the directory of the checkpoint file.
-  // Both files are in cwd here so we use the same directory.
-
   constexpr tsunami_lab::t_idx l_nx = 3;
   constexpr tsunami_lab::t_idx l_ny = 2;
   constexpr float l_dx = 1000.0f;
