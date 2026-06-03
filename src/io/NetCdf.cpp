@@ -244,8 +244,22 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		putCoordinates( toNcId( m_ncId ), l_varXId, m_nx/m_k, m_originX, m_dx );
 		putCoordinates( toNcId( m_ncId ), l_varYId, m_ny/m_k, m_originY, m_dy );
 
-		// write bathymetry data once as it does not change over time 
-		helperWritingData(m_b, m_varBathyId);
+		// write bathymetry data once as it does not change over time
+		if( m_b != nullptr && m_varBathyId != c_invalidId ) {
+			std::vector<t_real> l_buffer( m_nx/m_k * m_ny/m_k );
+			for( t_idx l_iy = 0; l_iy < m_ny; l_iy += m_k ) {
+				for( t_idx l_ix = 0; l_ix < m_nx; l_ix += m_k ) {
+					t_real l_avg = 0;
+					t_idx blockHeight = std::min(m_k, m_ny - l_iy);
+					t_idx blockWidth  = std::min(m_k, m_nx - l_ix);
+					for( t_idx l_j = 0; l_j < blockHeight; l_j++ )
+						for( t_idx l_i = 0; l_i < blockWidth; l_i++ )
+							l_avg += m_b[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+					l_buffer[(l_iy/m_k) * (m_nx/m_k) + (l_ix/m_k)] = l_avg / (blockHeight * blockWidth);
+				}
+			}
+			checkNc( nc_put_var_float( toNcId( m_ncId ), toNcId( m_varBathyId ), l_buffer.data() ), "nc_put_var_float(bathymetry)" );
+		}
 	}
 	else {
 		// File already exists (checkpoint resume): open for appending and look up variable IDs.
