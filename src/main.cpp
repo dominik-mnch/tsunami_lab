@@ -247,7 +247,7 @@ int main( int i_argc, char *i_argv[] ) {
                        (tsunami_lab::t_idx)std::round( l_domainSizeX / l_res ) );
       l_ny = std::max( (tsunami_lab::t_idx)1,
                        (tsunami_lab::t_idx)std::round( l_domainSizeY / l_res ) );
-      if( l_k < 0 || l_ny < l_k || l_nx < l_k ) {
+      if( l_ny < l_k || l_nx < l_k ) {
         throw std::invalid_argument( "K must be a positive integer." );
       }
       l_argBase = 7;
@@ -265,7 +265,7 @@ int main( int i_argc, char *i_argv[] ) {
       if( l_domainSizeX <= 0 || l_domainSizeY <= 0 ) {
         throw std::invalid_argument( "X_UPPER must be > X_LOWER and Y_UPPER must be > Y_LOWER" );
       }
-      if( l_nx % l_k != 0 || l_ny % l_k != 0 || l_k < 1 ) {
+      if( l_ny < l_k || l_nx < l_k ) {
         throw std::invalid_argument( "K must be a positive integer divisor of NX and NY" );
       }
       l_argBase = 8;
