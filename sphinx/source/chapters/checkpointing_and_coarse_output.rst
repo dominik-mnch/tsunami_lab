@@ -15,6 +15,9 @@ state to disk.  When the simulator is started again with the same output directo
 the checkpoint automatically and resumes from the last saved state without any additional
 command-line arguments.
 
+To make the output more manageable, we also implemented a **coarse output** mode that writes a downsampled
+version of the full-resolution wave field. This allows for reduced storage and faster visualization while still capturing the overall dynamics of the tsunami.
+
 
 File Layout
 -----------
@@ -279,10 +282,11 @@ The coarse output is written to a separate NetCDF file, which can be used for vi
 Simulating Tohoku earthquake and tsunami with coarse output
 ------------------------------------------------------------
 
+.. code-block:: bash
 
-./build/tsunami_lab 100m -200000 2500000 -750000 750000 50 1 3600 2d outflow tsunami2d \
-    data/output/tohoku_gebco20_ucsb3_250m_bath.nc \
-    data/output/tohoku_gebco20_ucsb3_250m_displ.nc
+  ./build/tsunami_lab 100m -200000 2500000 -750000 750000 50 1 3600 2d outflow tsunami2d \
+      data/output/tohoku_gebco20_ucsb3_250m_bath.nc \
+      data/output/tohoku_gebco20_ucsb3_250m_displ.nc
 
 We tried to run the simulation on the elaine machine over night since it would take a long amount of time.
 However, the simulation was killed after a few hours due to a disconnect of the SSH session.
