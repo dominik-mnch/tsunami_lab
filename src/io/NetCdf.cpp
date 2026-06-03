@@ -94,12 +94,12 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_k( i_k ),
 		m_stride( i_stride ),
 		m_time( i_time ),
+		m_endTime( i_endTime ),
 		m_h( i_h ),
 		m_b( i_b ),
 		m_hu( i_hu ),
 		m_hv( i_hv ),
 		m_timeStep( 0 ),
-		m_endTime( i_endTime ),
 		m_ncId( c_invalidId ),
 		m_varTimeId( c_invalidId ),
 		m_varBathyId( c_invalidId ),
@@ -326,7 +326,7 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 	}
 
 	m_lastSimTime = simTime;
-	overwriteCheckpointEndTime();
+	overwriteCheckpointSimTime();
 	m_timeStep++;
 }
 

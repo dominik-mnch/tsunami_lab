@@ -41,9 +41,10 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 											0.0,
 											2,
 											2,
-											4,
 											1,
+											4,
 											0.0,
+											1.0,
 											l_h + 5,
 											l_b + 5,
 											l_hu + 5,
@@ -116,6 +117,7 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 
 	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
 	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
 }
 
 TEST_CASE( "NetCDF reader reads bathymetry and displacement data.", "[NetCdf]" ) {

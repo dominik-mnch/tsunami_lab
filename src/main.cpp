@@ -562,6 +562,7 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  domain size y:                  " << l_domainSizeY << std::endl;
   std::cout << "  cell size x:                    " << l_dx << std::endl;
   std::cout << "  cell size y:                    " << l_dy << std::endl;
+  std::cout << "  coarse output factor k:         " << l_k << std::endl;
   std::cout << "  propagation:                    " << (l_useWavePropagation1d ? "1d" : "2d") << std::endl;
   std::cout << "  setup:                          " << l_setupName << std::endl;
   std::cout << "  solver:                         " << (l_useFWaveSolver ? "FWave" : "Roe") << std::endl;
