@@ -99,14 +99,24 @@ Resume Detection
 At startup, before parsing any command-line arguments, ``main`` checks for the existence of
 ``solutions/checkpoint.nc``:
 
-.. code-block:: text
+.. code-block:: cpp
 
-   if solutions/checkpoint.nc exists:
-       read CheckpointData from checkpoint.nc + solution.nc
-       if simTime > 0:
-           set l_useCheckpoint = true
-       else:
-           fall through to normal (fresh) start
+    bool l_useCheckpoint = false;
+    if( std::filesystem::exists( l_checkpointPath ) ) {
+        try {
+            tsunami_lab::io::NetCdf::CheckpointData l_cpData =
+                tsunami_lab::io::NetCdf::readCheckpoint( l_checkpointPath );
+            // only resume if at least one time step is present (sim_time > 0)
+            if( l_cpData.simTime > 0 ) {
+                l_useCheckpoint = true;
+                std::cout << "checkpoint detected — resuming from t = " << l_cpData.simTime << std::endl;
+            }
+        }
+        catch( std::exception const & i_ex ) {
+        std::cout << "Failed to read checkpoint data: " << i_ex.what() << std::endl;
+        }
+    }
+
 
 The condition ``simTime > 0`` guards against two edge cases:
 
@@ -177,7 +187,7 @@ Checkpointing is **fully automatic** — no extra flags are needed.
 
 .. code-block:: bash
 
-   ./build/tsunami_lab 250m -200000 2500000 -750000 750000 1 1 7200 2d outflow tsunami2d \
+   ./build/tsunami_lab 2000m -200000 2500000 -750000 750000 1 1 3600 2d outflow tsunami2d \
        data/output/tohoku_gebco20_ucsb3_250m_bath.nc \
        data/output/tohoku_gebco20_ucsb3_250m_displ.nc
 
@@ -185,7 +195,7 @@ Checkpointing is **fully automatic** — no extra flags are needed.
 
 .. code-block:: bash
 
-   ./build/tsunami_lab 250m -200000 2500000 -750000 750000 1 1 7200 2d outflow tsunami2d \
+   ./build/tsunami_lab 2000m -200000 2500000 -750000 750000 1 1 3600 2d outflow tsunami2d \
        data/output/tohoku_gebco20_ucsb3_250m_bath.nc \
        data/output/tohoku_gebco20_ucsb3_250m_displ.nc
 
@@ -205,6 +215,36 @@ Delete the checkpoint and solution files before invoking the simulator:
 .. code-block:: bash
 
    rm solutions/checkpoint.nc solutions/solution.nc
+
+Example
+-------
+To demonstrate the checkpointing working correctly, we ran the simulation with the above commands and killed the process after 489.928s of simulation time.
+After that, the checkpoint file contained the following attributes:
+
+.. code-block:: text
+
+    netcdf checkpoint {
+
+    // global attributes:
+                    :nx = 1350 ;
+                    :ny = 750 ;
+                    :dx = 2000.f ;
+                    :dy = 2000.f ;
+                    :origin_x = -200000.f ;
+                    :origin_y = -750000.f ;
+                    :end_time = 3600.f ;
+                    :sim_time = 489.9281f ;
+    }
+
+
+When we ran the same command again, the simulator detected the checkpoint and resumed from t=489.928s, appending to the existing solution file.
+The resulting simulation looks like this (visualised in 2d):
+
+.. video:: ../../../res/checkpointing_and_coarse_output/checkpointed.mp4
+   :align: center
+   :width: 100%
+
+As we can see, the simulation resumed correctly and the crash is not noticeable in the output.
 
 Coarse Output 
 -------------
