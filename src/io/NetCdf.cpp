@@ -350,6 +350,121 @@ void tsunami_lab::io::NetCdf::overwriteCheckpointEndTime() {
 	checkNc( nc_sync( toNcId( m_checkpointNcId ) ), "nc_sync(checkpoint)" );
 }
 
+tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint( std::string const & i_checkpointFile ) {
+	if( !std::filesystem::exists( i_checkpointFile ) ) {
+		throw std::invalid_argument( "checkpoint file does not exist: " + i_checkpointFile );
+	}
+
+	CheckpointData l_cp;
+
+	// ── 1. Read simulation parameters from checkpoint.nc ──────────────────────
+	int l_cpId = -1;
+	checkNc( nc_open( i_checkpointFile.c_str(), NC_NOWRITE, &l_cpId ), "nc_open(checkpoint)" );
+
+	int   l_nx = 0, l_ny = 0;
+	float l_dx = 0, l_dy = 0, l_originX = 0, l_originY = 0, l_endTime = 0;
+
+	checkNc( nc_get_att_int(   l_cpId, NC_GLOBAL, "nx",       &l_nx      ), "nc_get_att(nx)"       );
+	checkNc( nc_get_att_int(   l_cpId, NC_GLOBAL, "ny",       &l_ny      ), "nc_get_att(ny)"       );
+	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "dx",       &l_dx      ), "nc_get_att(dx)"       );
+	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "dy",       &l_dy      ), "nc_get_att(dy)"       );
+	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "origin_x", &l_originX ), "nc_get_att(origin_x)" );
+	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "origin_y", &l_originY ), "nc_get_att(origin_y)" );
+	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "end_time", &l_endTime ), "nc_get_att(end_time)" );
+
+	nc_close( l_cpId );
+
+	l_cp.nx      = static_cast<t_idx>( l_nx );
+	l_cp.ny      = static_cast<t_idx>( l_ny );
+	l_cp.dx      = static_cast<t_real>( l_dx );
+	l_cp.dy      = static_cast<t_real>( l_dy );
+	l_cp.originX = static_cast<t_real>( l_originX );
+	l_cp.originY = static_cast<t_real>( l_originY );
+	l_cp.endTime = static_cast<t_real>( l_endTime );
+
+	// ── 2. Derive solution.nc path (sibling file in the same directory) ────────
+	std::filesystem::path l_solutionFile =
+		std::filesystem::path( i_checkpointFile ).parent_path() / "solution.nc";
+
+	if( !std::filesystem::exists( l_solutionFile ) ) {
+		throw std::runtime_error( "solution file not found: " + l_solutionFile.string() );
+	}
+
+	// ── 3. Open solution.nc and find the last valid time step ──────────────────
+	int l_ncId = -1;
+	checkNc( nc_open( l_solutionFile.string().c_str(), NC_NOWRITE, &l_ncId ), "nc_open(solution)" );
+
+	int         l_dimTimeId = -1;
+	std::size_t l_nSteps    = 0;
+	checkNc( nc_inq_dimid(  l_ncId, "time", &l_dimTimeId ), "nc_inq_dimid(time)" );
+	checkNc( nc_inq_dimlen( l_ncId, l_dimTimeId, &l_nSteps ), "nc_inq_dimlen(time)" );
+
+	if( l_nSteps == 0 ) {
+		nc_close( l_ncId );
+		throw std::runtime_error( "solution.nc contains no time steps" );
+	}
+
+	int l_varTimeId = -1, l_varHId = -1, l_varHuId = -1, l_varHvId = -1, l_varBId = -1;
+	checkNc( nc_inq_varid( l_ncId, "time",       &l_varTimeId ), "nc_inq_varid(time)"       );
+	checkNc( nc_inq_varid( l_ncId, "height",     &l_varHId    ), "nc_inq_varid(height)"     );
+	checkNc( nc_inq_varid( l_ncId, "momentum_x", &l_varHuId   ), "nc_inq_varid(momentum_x)" );
+	checkNc( nc_inq_varid( l_ncId, "bathymetry", &l_varBId    ), "nc_inq_varid(bathymetry)" );
+
+	int  l_varHvId2     = -1;
+	bool l_hasHv        = ( nc_inq_varid( l_ncId, "momentum_y", &l_varHvId2 ) == NC_NOERR );
+	l_varHvId           = l_varHvId2;
+
+	// scan backwards for last step whose time == end_time (commit marker)
+	std::size_t l_lastStep = std::numeric_limits<std::size_t>::max();
+	for( std::size_t l_i = l_nSteps; l_i-- > 0; ) {
+		float       l_t   = 0;
+		std::size_t l_s[] = { l_i };
+		std::size_t l_c[] = { 1   };
+		nc_get_vara_float( l_ncId, l_varTimeId, l_s, l_c, &l_t );
+		if( l_t == l_endTime ) { l_lastStep = l_i; break; }
+	}
+
+	// fallback: last step with a valid finite time value
+	if( l_lastStep == std::numeric_limits<std::size_t>::max() ) {
+		for( std::size_t l_i = l_nSteps; l_i-- > 0; ) {
+			float       l_t   = 0;
+			std::size_t l_s[] = { l_i };
+			std::size_t l_c[] = { 1   };
+			nc_get_vara_float( l_ncId, l_varTimeId, l_s, l_c, &l_t );
+			if( std::isfinite( l_t ) && l_t < 9e+36f ) { l_lastStep = l_i; break; }
+		}
+	}
+
+	if( l_lastStep == std::numeric_limits<std::size_t>::max() ) {
+		nc_close( l_ncId );
+		throw std::runtime_error( "solution.nc contains no valid time step" );
+	}
+
+	// ── 4. Read h, hu, hv, b at the last valid time step ──────────────────────
+	t_idx l_size = l_cp.nx * l_cp.ny;
+	l_cp.h.resize(  l_size );
+	l_cp.hu.resize( l_size );
+	l_cp.hv.resize( l_size, 0 );
+	l_cp.b.resize(  l_size );
+
+	std::size_t l_startTYX[3] = { l_lastStep, 0, 0 };
+	std::size_t l_countTYX[3] = { 1, l_cp.ny, l_cp.nx };
+
+	checkNc( nc_get_vara_float( l_ncId, l_varHId,  l_startTYX, l_countTYX, l_cp.h.data()  ), "nc_get_vara(height)"     );
+	checkNc( nc_get_vara_float( l_ncId, l_varHuId, l_startTYX, l_countTYX, l_cp.hu.data() ), "nc_get_vara(momentum_x)" );
+
+	if( l_hasHv ) {
+		checkNc( nc_get_vara_float( l_ncId, l_varHvId, l_startTYX, l_countTYX, l_cp.hv.data() ), "nc_get_vara(momentum_y)" );
+	}
+
+	std::size_t l_startYX[2] = { 0, 0 };
+	std::size_t l_countYX[2] = { l_cp.ny, l_cp.nx };
+	checkNc( nc_get_vara_float( l_ncId, l_varBId, l_startYX, l_countYX, l_cp.b.data() ), "nc_get_vara(bathymetry)" );
+
+	nc_close( l_ncId );
+	return l_cp;
+}
+
 tsunami_lab::io::NetCdf::Data tsunami_lab::io::NetCdf::read( std::string const & i_bathymetryFile,
 														   std::string const & i_displacementFile ) {
 	Data l_data;

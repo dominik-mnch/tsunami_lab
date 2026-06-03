@@ -109,6 +109,43 @@ public:
                       std::string const & i_displacementFile = "" );
 
     /**
+     * Holds all data loaded from a checkpoint + solution file pair.
+     **/
+    struct CheckpointData {
+      //! Number of cells in x-direction.
+      t_idx nx = 0;
+      //! Number of cells in y-direction.
+      t_idx ny = 0;
+      //! Cell width in x-direction.
+      t_real dx = 0;
+      //! Cell width in y-direction.
+      t_real dy = 0;
+      //! Origin of the x-coordinate system.
+      t_real originX = 0;
+      //! Origin of the y-coordinate system.
+      t_real originY = 0;
+      //! Simulation end time.
+      t_real endTime = 0;
+      //! Water height at the last valid checkpoint step (row-major, ny * nx).
+      std::vector<t_real> h;
+      //! x-momentum at the last valid checkpoint step (row-major, ny * nx).
+      std::vector<t_real> hu;
+      //! y-momentum at the last valid checkpoint step (row-major, ny * nx). Empty for 1d.
+      std::vector<t_real> hv;
+      //! Bathymetry (row-major, ny * nx).
+      std::vector<t_real> b;
+    };
+
+    /**
+     * Reads simulation parameters from a checkpoint file and the last valid
+     * state (h, hu, hv, b) from the sibling solution.nc.
+     *
+     * @param i_checkpointFile path to the checkpoint netCDF file.
+     * @return CheckpointData struct with all data needed to resume.
+     **/
+    static CheckpointData readCheckpoint( std::string const & i_checkpointFile );
+
+    /**
      * Initializes the netCDF writer, opens the file and writes the header.
      *
      * @param i_dx cell width in x-direction.
