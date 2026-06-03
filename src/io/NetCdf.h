@@ -70,6 +70,14 @@ class tsunami_lab::io::NetCdf {
     //! Simulation time of the last written time step (used by overwriteCheckpointEndTime).
     t_real m_lastSimTime;
 
+
+    /**
+     * Helper function that writes a 2d field (height, momentum, bathymetry) to the netCDF file.
+     * Averages k x k blocks to reduce output resolution and writes the data of the current time step.
+     * 
+     * @param i_data pointer to the field data to write (row-major, ny * stride).
+     * @param i_varId variable identifier of the netCDF variable to write to.
+     */
     void helperWritingData( t_real const * i_data, t_idx i_varId ) const;
 public:
 

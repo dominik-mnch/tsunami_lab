@@ -70,7 +70,7 @@ namespace {
 	}
 }
 
-void tsunami_lab::io::NetCdf::helperWritingData(t_real const * m_some, t_idx m_someId) const {
+void tsunami_lab::io::NetCdf::helperWritingData(t_real const * i_data, t_idx i_varId) const {
 	// begin at current time step and write a block of size nx*ny
 	std::size_t l_startData[3] = { m_timeStep, 0, 0 };
 	std::size_t l_countData[3] = { 1, m_ny/m_k, m_nx/m_k };
@@ -78,10 +78,10 @@ void tsunami_lab::io::NetCdf::helperWritingData(t_real const * m_some, t_idx m_s
 	// buffer for data to be written to the netCDF file
 	std::vector<t_real> l_buffer( (m_nx + m_k - 1) / m_k * (m_ny + m_k - 1) / m_k );
 	
-	if( m_some != nullptr && m_someId != c_invalidId ) {
+	if( i_data != nullptr && i_varId != c_invalidId ) {
 		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
 			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
-				t_real momentumYAvg = 0;
+				t_real l_avg = 0;
 
 				// Handle blocks that might be smaler at the edges
 				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
@@ -89,15 +89,15 @@ void tsunami_lab::io::NetCdf::helperWritingData(t_real const * m_some, t_idx m_s
 
 				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
 					for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
-						momentumYAvg += m_some[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+						l_avg += i_data[(l_iy+l_j) * m_stride + (l_ix+l_i)];
 					}
 				}
 				t_idx l_oy = l_iy / m_k;
 				t_idx l_ox = l_ix / m_k;
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumYAvg / (blockHeight * blockWidth);
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = l_avg / (blockHeight * blockWidth);
 			}
 		}
-		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumYId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_y)" );
+		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( i_varId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float" );
 	}
 }
 
