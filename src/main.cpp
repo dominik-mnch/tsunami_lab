@@ -268,7 +268,7 @@ int main( int i_argc, char *i_argv[] ) {
       if( l_nx % l_k != 0 || l_ny % l_k != 0 || l_k < 1 ) {
         throw std::invalid_argument( "K must be a positive integer divisor of NX and NY" );
       }
-      l_argBase = 7;
+      l_argBase = 8;
     }
 
     int l_solverMode = static_cast<int>( l_parseIdx( i_argv[l_argBase], "SOLVER_MODE" ) );
