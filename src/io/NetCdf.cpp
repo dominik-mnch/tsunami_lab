@@ -220,14 +220,18 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 				for( t_idx l_ix = 0; l_ix < m_nx/m_k; l_ix+= m_k ) {
 					t_real bathyAvg = 0;
 
-					for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
-						for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+					// Handle blocks that might be smaler at the edges
+					t_idx blockHeight = std::min(m_k, m_ny - l_iy);
+					t_idx blockWidth = std::min(m_k, m_nx - l_ix);
+
+					for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
+						for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
 							bathyAvg += m_b[(l_iy+l_j) * m_stride + (l_ix+l_i)];
 						}
 					}
 					t_idx l_oy = l_iy / m_k;
 					t_idx l_ox = l_ix / m_k;
-					l_buffer[l_oy * (m_nx/m_k) + l_ox] = bathyAvg / (m_k * m_k);
+					l_buffer[l_oy * (m_nx/m_k) + l_ox] = bathyAvg / (blockHeight * blockWidth);
 				}
 			}
 			checkNc( nc_put_var_float( toNcId( m_ncId ), toNcId( m_varBathyId ), l_buffer.data() ), "nc_put_var_float(bathymetry)" );
@@ -244,7 +248,7 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 	checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varTimeId ), l_startT, l_countT, &simTime ), "nc_put_vara_float(time)" );
 
 	// buffer for data to be written to the netCDF file
-	std::vector<t_real> l_buffer( m_nx/m_k * m_ny/m_k );
+	std::vector<t_real> l_buffer( (m_nx + m_k - 1) / m_k * (m_ny + m_k - 1) / m_k );
 
 	// begin at current time step and write a block of size nx*ny
 	std::size_t l_startData[3] = { m_timeStep, 0, 0 };
@@ -256,15 +260,19 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
 				t_real heightAvg = 0;
 
-				for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
-    				for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+				// Handle blocks that might be smaler at the edges
+				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
+				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
+
+				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
+    				for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
         				heightAvg += m_h[(l_iy+l_j) * m_stride + (l_ix+l_i)];
 					}
 				}
 				t_idx l_oy = l_iy / m_k;
                 t_idx l_ox = l_ix / m_k;
 
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = heightAvg / (m_k * m_k);
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = heightAvg / (blockHeight * blockWidth);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varHeightId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(height)" );
@@ -277,14 +285,18 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
 				t_real momentumXAvg = 0;
 
-				for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
-					for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+				// Handle blocks that might be smaler at the edges
+				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
+				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
+
+				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
+					for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
 						momentumXAvg += m_hu[(l_iy+l_j) * m_stride + (l_ix+l_i)];
 					}
 				}
 				t_idx l_oy = l_iy / m_k;
 				t_idx l_ox = l_ix / m_k;
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumXAvg / (m_k * m_k);
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumXAvg / (blockHeight * blockWidth);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumXId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_x)" );
@@ -296,14 +308,18 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
 				t_real momentumYAvg = 0;
 
-				for( t_idx l_j = 0; l_j < m_k; l_j++ ) {
-					for( t_idx l_i = 0; l_i < m_k; l_i++ ) {
+				// Handle blocks that might be smaler at the edges
+				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
+				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
+
+				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
+					for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
 						momentumYAvg += m_hv[(l_iy+l_j) * m_stride + (l_ix+l_i)];
 					}
 				}
 				t_idx l_oy = l_iy / m_k;
 				t_idx l_ox = l_ix / m_k;
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumYAvg / (m_k * m_k);
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumYAvg / (blockHeight * blockWidth);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumYId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_y)" );

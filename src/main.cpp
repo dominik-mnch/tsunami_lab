@@ -247,8 +247,8 @@ int main( int i_argc, char *i_argv[] ) {
                        (tsunami_lab::t_idx)std::round( l_domainSizeX / l_res ) );
       l_ny = std::max( (tsunami_lab::t_idx)1,
                        (tsunami_lab::t_idx)std::round( l_domainSizeY / l_res ) );
-      if( l_nx % l_k != 0 || l_ny % l_k != 0 || l_k < 1 ) {
-        throw std::invalid_argument( "K must be a positive integer divisor of NX and NY" );
+      if( l_k < 0 || l_ny < l_k || l_nx < l_k ) {
+        throw std::invalid_argument( "K must be a positive integer." );
       }
       l_argBase = 7;
     }
