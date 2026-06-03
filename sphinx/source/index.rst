@@ -58,7 +58,7 @@ To execute tests or the program itself you can use:
 .. code-block:: bash
 
    ./build/tests
-   ./build/tsunami_lab [nx] [ny] [domain_lower] [domain_upper] [solver_mode] [end_time] [propagation] [prop_params] [setup] [setup_params]
+   ./build/tsunami_lab [nx] [ny] [x_lower] [x_upper] [y_lower] [y_upper] [k] [solver_mode] [end_time] [propagation] [prop_params] [setup] [setup_params]
 
 Continuous Integration:
 =======================

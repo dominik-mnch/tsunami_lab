@@ -20,8 +20,8 @@ Command Line Interface
 
 The simulator is invoked with the following syntax::
 
-   ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
-   ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
+   ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
+   ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
 
 **General Arguments:**
 
@@ -32,6 +32,7 @@ The simulator is invoked with the following syntax::
 - ``X_UPPER``: Upper bound of the domain in x-direction (real, must be greater than ``X_LOWER``).
 - ``Y_LOWER``: Lower bound of the domain in y-direction (real).
 - ``Y_UPPER``: Upper bound of the domain in y-direction (real, must be greater than ``Y_LOWER``).
+- ``K``: Coarsening factor; ``k*k`` cells are averaged into one output cell (positive integer, default: ``1`` for no coarsening).
 - ``SOLVER_MODE``: ``1`` for F-Wave solver, ``0`` for Roe solver.
 - ``END_TIME``: Simulation end time in seconds (positive real).
 
@@ -114,40 +115,40 @@ The simulator is invoked with the following syntax::
 
 1. 1D dam break with F-Wave solver::
 
-   ./build/tsunami_lab 100 1 0 10000 0 0 1 2.5 1d outflow dam_break_1d 10 0 5 0 5000
+   ./build/tsunami_lab 100 1 0 10000 0 0 1 1 2.5 1d outflow dam_break_1d 10 0 5 0 5000
 
 2. 1D shock-shock with reflecting boundary on the right::
 
-   ./build/tsunami_lab 50 1 0 5000 0 0 1 1.0 1d right shock_shock_1d 5 2.5 2500
+   ./build/tsunami_lab 50 1 0 5000 0 0 1 1 1.0 1d right shock_shock_1d 5 2.5 2500
 
 3. 1D rare-rare with parabolic bathymetry::
 
-   ./build/tsunami_lab 100 1 0 10000 0 0 1 5.0 1d outflow rare_rare_1d 4 -1 5000 1 0.5 5000 -0.0001
+   ./build/tsunami_lab 100 1 0 10000 0 0 1 1 5.0 1d outflow rare_rare_1d 4 -1 5000 1 0.5 5000 -0.0001
 
 4. 1D subcritical flow (Roe solver)::
 
-   ./build/tsunami_lab 200 1 0 50000 0 0 0 10.0 1d outflow subcritical_1d
+   ./build/tsunami_lab 200 1 0 50000 0 0 1 0 10.0 1d outflow subcritical_1d
 
 5. 2D circular dam break::
 
-   ./build/tsunami_lab 50 40 0 5000 0 4000 1 2.0 2d circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
+   ./build/tsunami_lab 50 40 0 5000 0 4000 1 1 2.0 2d circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
 
 6. 2D circular dam break with reflecting left/right boundaries::
 
-   ./build/tsunami_lab 50 40 0 5000 0 4000 1 2.0 2d bothx circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
+   ./build/tsunami_lab 50 40 0 5000 0 4000 1 1 2.0 2d bothx circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
 
 7. 2D artificial tsunami::
 
-   ./build/tsunami_lab 100 100 -1000 1000 -1000 1000 1 5.0 2d artificial_tsunami_2d
+   ./build/tsunami_lab 100 100 -1000 1000 -1000 1000 1 1 5.0 2d artificial_tsunami_2d
 
 8. 2D tsunami event with bathymetry file only::
 
-   ./build/tsunami_lab 500 400 0 100000 0 80000 1 10.0 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc
+   ./build/tsunami_lab 500 400 0 100000 0 80000 1 1 10.0 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc
 
 9. 2D tsunami event with bathymetry and displacement files::
 
-   ./build/tsunami_lab 500 400 0 100000 0 80000 1 10.0 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc res/artificialtsunami_displ_1000.nc
+   ./build/tsunami_lab 500 400 0 100000 0 80000 1 1 10.0 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc res/artificialtsunami_displ_1000.nc
 
 10. Tohoku 2011 at 1 km resolution using resolution mode::
 
-   ./build/tsunami_lab 1000m -200000 2500000 -750000 750000 1 7200 2d outflow tsunami2d data/output/tohoku_gebco20_ucsb3_250m_bath.nc data/output/tohoku_gebco20_ucsb3_250m_displ.nc
+   ./build/tsunami_lab 1000m -200000 2500000 -750000 750000 1 1 7200 2d outflow tsunami2d data/output/tohoku_gebco20_ucsb3_250m_bath.nc data/output/tohoku_gebco20_ucsb3_250m_displ.nc
