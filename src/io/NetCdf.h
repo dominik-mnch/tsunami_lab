@@ -69,6 +69,8 @@ class tsunami_lab::io::NetCdf {
     t_idx m_checkpointNcId;
     //! Simulation time of the last written time step (used by overwriteCheckpointEndTime).
     t_real m_lastSimTime;
+
+    void helperWritingData( t_real const * i_data, t_idx i_varId ) const;
 public:
 
     /**

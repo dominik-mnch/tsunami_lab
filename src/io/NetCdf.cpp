@@ -70,6 +70,37 @@ namespace {
 	}
 }
 
+void tsunami_lab::io::NetCdf::helperWritingData(t_real const * m_some, t_idx m_someId) const {
+	// begin at current time step and write a block of size nx*ny
+	std::size_t l_startData[3] = { m_timeStep, 0, 0 };
+	std::size_t l_countData[3] = { 1, m_ny/m_k, m_nx/m_k };
+
+	// buffer for data to be written to the netCDF file
+	std::vector<t_real> l_buffer( (m_nx + m_k - 1) / m_k * (m_ny + m_k - 1) / m_k );
+	
+	if( m_some != nullptr && m_someId != c_invalidId ) {
+		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
+			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
+				t_real momentumYAvg = 0;
+
+				// Handle blocks that might be smaler at the edges
+				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
+				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
+
+				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
+					for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
+						momentumYAvg += m_some[(l_iy+l_j) * m_stride + (l_ix+l_i)];
+					}
+				}
+				t_idx l_oy = l_iy / m_k;
+				t_idx l_ox = l_ix / m_k;
+				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumYAvg / (blockHeight * blockWidth);
+			}
+		}
+		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumYId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_y)" );
+	}
+}
+
 tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								t_real i_dy,
 								t_real i_originX,
@@ -213,29 +244,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		putCoordinates( toNcId( m_ncId ), l_varXId, m_nx/m_k, m_originX, m_dx );
 		putCoordinates( toNcId( m_ncId ), l_varYId, m_ny/m_k, m_originY, m_dy );
 
-		// write bathymetry data once as it does not change over time
-		if( m_varBathyId != c_invalidId ) {
-			std::vector<t_real> l_buffer( m_nx/m_k * m_ny/m_k );
-			for( t_idx l_iy = 0; l_iy < m_ny/m_k; l_iy+= m_k ) {
-				for( t_idx l_ix = 0; l_ix < m_nx/m_k; l_ix+= m_k ) {
-					t_real bathyAvg = 0;
-
-					// Handle blocks that might be smaler at the edges
-					t_idx blockHeight = std::min(m_k, m_ny - l_iy);
-					t_idx blockWidth = std::min(m_k, m_nx - l_ix);
-
-					for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
-						for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
-							bathyAvg += m_b[(l_iy+l_j) * m_stride + (l_ix+l_i)];
-						}
-					}
-					t_idx l_oy = l_iy / m_k;
-					t_idx l_ox = l_ix / m_k;
-					l_buffer[l_oy * (m_nx/m_k) + l_ox] = bathyAvg / (blockHeight * blockWidth);
-				}
-			}
-			checkNc( nc_put_var_float( toNcId( m_ncId ), toNcId( m_varBathyId ), l_buffer.data() ), "nc_put_var_float(bathymetry)" );
-		}
+		// write bathymetry data once as it does not change over time 
+		helperWritingData(m_b, m_varBathyId);
 	}
 	defineCheckpoint( (l_path.parent_path() / "checkpoint.nc").string() );
 }
@@ -247,83 +257,16 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 	std::size_t l_countT[1] = { 1 };
 	checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varTimeId ), l_startT, l_countT, &simTime ), "nc_put_vara_float(time)" );
 
-	// buffer for data to be written to the netCDF file
-	std::vector<t_real> l_buffer( (m_nx + m_k - 1) / m_k * (m_ny + m_k - 1) / m_k );
-
-	// begin at current time step and write a block of size nx*ny
-	std::size_t l_startData[3] = { m_timeStep, 0, 0 };
-	std::size_t l_countData[3] = { 1, m_ny/m_k, m_nx/m_k };
 
 	// write height data
-	if( m_h != nullptr && m_varHeightId != c_invalidId ) {
-		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
-			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
-				t_real heightAvg = 0;
-
-				// Handle blocks that might be smaler at the edges
-				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
-				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
-
-				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
-    				for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
-        				heightAvg += m_h[(l_iy+l_j) * m_stride + (l_ix+l_i)];
-					}
-				}
-				t_idx l_oy = l_iy / m_k;
-                t_idx l_ox = l_ix / m_k;
-
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = heightAvg / (blockHeight * blockWidth);
-			}
-		}
-		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varHeightId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(height)" );
-    }
+	helperWritingData(m_h, m_varHeightId);
 
 
 	// write x momentum data
-	if( m_hu != nullptr && m_varMomentumXId != c_invalidId ) {
-		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
-			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
-				t_real momentumXAvg = 0;
-
-				// Handle blocks that might be smaler at the edges
-				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
-				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
-
-				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
-					for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
-						momentumXAvg += m_hu[(l_iy+l_j) * m_stride + (l_ix+l_i)];
-					}
-				}
-				t_idx l_oy = l_iy / m_k;
-				t_idx l_ox = l_ix / m_k;
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumXAvg / (blockHeight * blockWidth);
-			}
-		}
-		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumXId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_x)" );
-	}
+	helperWritingData(m_hu, m_varMomentumXId);
 
 	// write y momentum data
-	if( m_hv != nullptr && m_varMomentumYId != c_invalidId ) {
-		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
-			for( t_idx l_ix = 0; l_ix < m_nx; l_ix+= m_k ) {
-				t_real momentumYAvg = 0;
-
-				// Handle blocks that might be smaler at the edges
-				t_idx blockHeight = std::min(m_k, m_ny - l_iy);
-				t_idx blockWidth = std::min(m_k, m_nx - l_ix);
-
-				for( t_idx l_j = 0; l_j < blockHeight; l_j++ ) {
-					for( t_idx l_i = 0; l_i < blockWidth; l_i++ ) {
-						momentumYAvg += m_hv[(l_iy+l_j) * m_stride + (l_ix+l_i)];
-					}
-				}
-				t_idx l_oy = l_iy / m_k;
-				t_idx l_ox = l_ix / m_k;
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = momentumYAvg / (blockHeight * blockWidth);
-			}
-		}
-		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( m_varMomentumYId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float(momentum_y)" );
-	}
+	helperWritingData(m_hv, m_varMomentumYId);
 
 	m_lastSimTime = simTime;
 	overwriteCheckpointSimTime();
