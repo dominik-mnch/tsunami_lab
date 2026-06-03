@@ -217,14 +217,14 @@ int main( int i_argc, char *i_argv[] ) {
     try {
       tsunami_lab::io::NetCdf::CheckpointData l_cpData =
         tsunami_lab::io::NetCdf::readCheckpoint( l_checkpointPath );
-      // only resume if at least one time step is present (end_time > 0)
-      if( l_cpData.endTime > 0 ) {
+      // only resume if at least one time step is present (sim_time > 0)
+      if( l_cpData.simTime > 0 ) {
         l_useCheckpoint = true;
-        std::cout << "checkpoint detected — resuming from t = " << l_cpData.endTime << std::endl;
+        std::cout << "checkpoint detected — resuming from t = " << l_cpData.simTime << std::endl;
       }
     }
-    catch( std::exception const & ) {
-      // corrupt or empty checkpoint — fall through to normal init
+    catch( std::exception const & i_ex ) {
+      std::cout << "Failed to read checkpoint data: " << i_ex.what() << std::endl;
     }
   }
 

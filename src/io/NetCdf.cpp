@@ -247,6 +247,39 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		// write bathymetry data once as it does not change over time 
 		helperWritingData(m_b, m_varBathyId);
 	}
+	else {
+		// File already exists (checkpoint resume): open for appending and look up variable IDs.
+		int l_ncId = -1;
+		checkNc( nc_open( i_filePath.c_str(), NC_WRITE, &l_ncId ), "nc_open(existing)" );
+		m_ncId = fromNcId( l_ncId );
+
+		int l_varTimeId = -1;
+		checkNc( nc_inq_varid( l_ncId, "time", &l_varTimeId ), "nc_inq_varid(time)" );
+		m_varTimeId = fromNcId( l_varTimeId );
+
+		int l_varBathyId = -1;
+		if( m_b != nullptr && nc_inq_varid( l_ncId, "bathymetry", &l_varBathyId ) == NC_NOERR )
+			m_varBathyId = fromNcId( l_varBathyId );
+
+		int l_varHeightId = -1;
+		if( m_h != nullptr && nc_inq_varid( l_ncId, "height", &l_varHeightId ) == NC_NOERR )
+			m_varHeightId = fromNcId( l_varHeightId );
+
+		int l_varMomentumXId = -1;
+		if( m_hu != nullptr && nc_inq_varid( l_ncId, "momentum_x", &l_varMomentumXId ) == NC_NOERR )
+			m_varMomentumXId = fromNcId( l_varMomentumXId );
+
+		int l_varMomentumYId = -1;
+		if( m_hv != nullptr && nc_inq_varid( l_ncId, "momentum_y", &l_varMomentumYId ) == NC_NOERR )
+			m_varMomentumYId = fromNcId( l_varMomentumYId );
+
+		// Set m_timeStep to the existing number of steps so new writes append correctly.
+		int         l_dimTimeId = -1;
+		std::size_t l_nSteps    = 0;
+		if( nc_inq_dimid( l_ncId, "time", &l_dimTimeId ) == NC_NOERR )
+			nc_inq_dimlen( l_ncId, l_dimTimeId, &l_nSteps );
+		m_timeStep = static_cast<t_idx>( l_nSteps );
+	}
 	defineCheckpoint( (l_path.parent_path() / "checkpoint.nc").string() );
 }
 
@@ -270,6 +303,7 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 
 	m_lastSimTime = simTime;
 	overwriteCheckpointSimTime();
+	checkNc( nc_sync( toNcId( m_ncId ) ), "nc_sync(solution)" );
 	m_timeStep++;
 }
 
