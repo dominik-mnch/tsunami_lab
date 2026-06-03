@@ -15,6 +15,7 @@
 #include "setups/Supercritical1d/Supercritical1d.h"
 #include "setups/TsunamiEvent1d/TsunamiEvent1d.h"
 #include "setups/TsunamiEvent2d/TsunamiEvent2d.h"
+#include "setups/Checkpoint/Checkpoint.h"
 #include "io/Csv.h"
 #include "io/NetCdf.h"
 #include "io/Stations.h"
@@ -209,6 +210,24 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::setups::Setup *l_setup = nullptr;
   tsunami_lab::patches::WavePropagation *l_waveProp = nullptr;
 
+  // Check whether a valid checkpoint exists — if so, bypass regular setup parsing
+  static constexpr char const * l_checkpointPath = "solutions/checkpoint.nc";
+  bool l_useCheckpoint = false;
+  if( std::filesystem::exists( l_checkpointPath ) ) {
+    try {
+      tsunami_lab::io::NetCdf::CheckpointData l_cpData =
+        tsunami_lab::io::NetCdf::readCheckpoint( l_checkpointPath );
+      // only resume if at least one time step is present (end_time > 0)
+      if( l_cpData.endTime > 0 ) {
+        l_useCheckpoint = true;
+        std::cout << "checkpoint detected — resuming from t = " << l_cpData.endTime << std::endl;
+      }
+    }
+    catch( std::exception const & ) {
+      // corrupt or empty checkpoint — fall through to normal init
+    }
+  }
+
   try {
     // l_argBase is the index of the SOLVER_MODE argument
     int l_argBase;
@@ -341,6 +360,38 @@ int main( int i_argc, char *i_argv[] ) {
     l_setupName = i_argv[l_setupArgStart];
     for( char & l_ch: l_setupName ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
 
+    // Override with checkpoint setup if a valid checkpoint was detected
+    if( l_useCheckpoint ) {
+      l_setup = new tsunami_lab::setups::Checkpoint( l_checkpointPath );
+      auto * l_cpSetup = static_cast<tsunami_lab::setups::Checkpoint *>( l_setup );
+      l_nx         = l_cpSetup->getNx();
+      l_ny         = l_cpSetup->getNy();
+      l_dx         = l_cpSetup->getDx();
+      l_dy         = l_cpSetup->getDy();
+      l_domainStartX = l_cpSetup->getOriginX();
+      l_domainStartY = l_cpSetup->getOriginY();
+      // l_endTime keeps its command-line value (when to stop);
+      // l_simTime will be set to getEndTime() (where to resume from) after the init loop.
+      l_setupName  = "checkpoint";
+      // Recreate wave propagation with checkpoint dimensions
+      delete l_waveProp;
+      if( l_useWavePropagation1d ) {
+        tsunami_lab::patches::WavePropagation1d::BoundaryCondition l_bc =
+          tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
+        l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx,
+                                                                   l_useFWaveSolver,
+                                                                   l_bc );
+      }
+      else {
+        tsunami_lab::patches::WavePropagation2d::BoundaryCondition l_bc2d =
+          tsunami_lab::patches::WavePropagation2d::BoundaryCondition::GhostOutflow;
+        l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
+                                                                   l_ny,
+                                                                   l_useFWaveSolver,
+                                                                   l_bc2d );
+      }
+    }
+
     std::vector<std::string> l_setupArgs;
     for( int l_ar = l_setupArgStart + 1; l_ar < i_argc; l_ar++ ) {
       l_setupArgs.emplace_back( i_argv[l_ar] );
@@ -354,9 +405,9 @@ int main( int i_argc, char *i_argv[] ) {
       throw std::invalid_argument( "2d setup requires 2d propagation" );
     }
 
+    if( !l_useCheckpoint ) {
     if( l_setupName == "dam_break_1d" ) {
-      if( l_setupArgs.size() != 5 ) {
-        throw std::invalid_argument( "dam_break_1d expects 5 parameters" );
+      if( l_setupArgs.size() != 5 ) {        throw std::invalid_argument( "dam_break_1d expects 5 parameters" );
       }
 
       l_setup = new tsunami_lab::setups::DamBreak1d( l_parseReal( l_setupArgs[0], "hL" ),
@@ -473,6 +524,7 @@ int main( int i_argc, char *i_argv[] ) {
     else {
       throw std::invalid_argument( "unknown setup: " + l_setupName );
     }
+    } // end !l_useCheckpoint
 
     // Calculate cell sizes from independent x and y domain extents
     l_dx = l_domainSizeX / l_nx;
@@ -584,7 +636,17 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "entering time loop" << std::endl;
 
   std::filesystem::create_directories( "solutions" );
-  std::filesystem::remove( "solutions/solution.nc" );
+
+  // When resuming from a checkpoint, keep the existing solution.nc so the
+  // writer can append to it; otherwise start fresh.
+  if( !l_useCheckpoint ) {
+    std::filesystem::remove( "solutions/solution.nc" );
+  }
+  else {
+    // restore simTime to the last committed checkpoint time
+    l_simTime = static_cast<tsunami_lab::setups::Checkpoint *>( l_setup )->getEndTime();
+    std::cout << "  resuming simulation at t = " << l_simTime << std::endl;
+  }
 
   // create netCDF writer
   tsunami_lab::io::NetCdf l_netCdf( l_dx,
