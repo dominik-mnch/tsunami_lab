@@ -79,6 +79,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								t_idx i_k,
 								t_idx i_stride,
 								t_real i_time,
+								t_real i_endTime,
 								t_real const * i_h,
 								t_real const * i_b,
 								t_real const * i_hu,
@@ -98,6 +99,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_hu( i_hu ),
 		m_hv( i_hv ),
 		m_timeStep( 0 ),
+		m_endTime( i_endTime ),
 		m_ncId( c_invalidId ),
 		m_varTimeId( c_invalidId ),
 		m_varBathyId( c_invalidId ),
@@ -328,7 +330,9 @@ void tsunami_lab::io::NetCdf::defineCheckpoint( std::string const & i_filePath )
 	float l_dy      = static_cast<float>( m_dy );
 	float l_originX = static_cast<float>( m_originX );
 	float l_originY = static_cast<float>( m_originY );
-	float l_endTime = 0.0f;
+	float l_endTime = static_cast<float>( m_endTime );
+	float l_simTime = 0.0f;
+
 
 	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "nx",       NC_INT,   1, &l_nx      ), "nc_put_att_int(nx)"       );
 	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "ny",       NC_INT,   1, &l_ny      ), "nc_put_att_int(ny)"       );
@@ -337,16 +341,17 @@ void tsunami_lab::io::NetCdf::defineCheckpoint( std::string const & i_filePath )
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_x", NC_FLOAT, 1, &l_originX ), "nc_put_att_float(origin_x)" );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_y", NC_FLOAT, 1, &l_originY ), "nc_put_att_float(origin_y)" );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "end_time", NC_FLOAT, 1, &l_endTime ), "nc_put_att_float(end_time)" );
+	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "sim_time", NC_FLOAT, 1, &l_simTime ), "nc_put_att_float(sim_time)" );
 
 	checkNc( nc_sync( l_ncId ), "nc_sync(checkpoint)" );
 }
 
-void tsunami_lab::io::NetCdf::overwriteCheckpointEndTime() {
+void tsunami_lab::io::NetCdf::overwriteCheckpointSimTime() {
 	if( m_checkpointNcId == c_invalidId ) return;
 
 	float l_simTimeF = static_cast<float>( m_lastSimTime );
-	checkNc( nc_put_att_float( toNcId( m_checkpointNcId ), NC_GLOBAL, "end_time", NC_FLOAT, 1, &l_simTimeF ),
-	         "nc_put_att_float(end_time)" );
+	checkNc( nc_put_att_float( toNcId( m_checkpointNcId ), NC_GLOBAL, "sim_time", NC_FLOAT, 1, &l_simTimeF ),
+	         "nc_put_att_float(sim_time)" );
 	checkNc( nc_sync( toNcId( m_checkpointNcId ) ), "nc_sync(checkpoint)" );
 }
 
@@ -362,7 +367,7 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	checkNc( nc_open( i_checkpointFile.c_str(), NC_NOWRITE, &l_cpId ), "nc_open(checkpoint)" );
 
 	int   l_nx = 0, l_ny = 0;
-	float l_dx = 0, l_dy = 0, l_originX = 0, l_originY = 0, l_endTime = 0;
+	float l_dx = 0, l_dy = 0, l_originX = 0, l_originY = 0, l_endTime = 0, l_simTime = 0;
 
 	checkNc( nc_get_att_int(   l_cpId, NC_GLOBAL, "nx",       &l_nx      ), "nc_get_att(nx)"       );
 	checkNc( nc_get_att_int(   l_cpId, NC_GLOBAL, "ny",       &l_ny      ), "nc_get_att(ny)"       );
@@ -371,6 +376,7 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "origin_x", &l_originX ), "nc_get_att(origin_x)" );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "origin_y", &l_originY ), "nc_get_att(origin_y)" );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "end_time", &l_endTime ), "nc_get_att(end_time)" );
+	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "sim_time", &l_simTime ), "nc_get_att(sim_time)" );
 
 	nc_close( l_cpId );
 
@@ -381,6 +387,7 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	l_cp.originX = static_cast<t_real>( l_originX );
 	l_cp.originY = static_cast<t_real>( l_originY );
 	l_cp.endTime = static_cast<t_real>( l_endTime );
+	l_cp.simTime = static_cast<t_real>( l_simTime );
 
 	// ── 2. Derive solution.nc path (sibling file in the same directory) ────────
 	std::filesystem::path l_solutionFile =

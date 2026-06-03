@@ -41,6 +41,8 @@ class tsunami_lab::io::NetCdf {
     t_idx m_stride;
     //! Stored simulation time value.
     t_real m_time;
+    //! Stored simulation end time.
+    t_real m_endTime;
     //! Pointer to water height values.
     t_real const * m_h;
     //! Pointer to bathymetry values.
@@ -124,6 +126,8 @@ public:
       t_real originX = 0;
       //! Origin of the y-coordinate system.
       t_real originY = 0;
+      //! Simulation time of the checkpoint.
+      t_real simTime = 0;
       //! Simulation end time.
       t_real endTime = 0;
       //! Water height at the last valid checkpoint step (row-major, ny * nx).
@@ -157,6 +161,7 @@ public:
      * @param i_k number of cells that get averaged to reduce output 
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
      * @param i_time simulation time of the snapshot.
+     * @param i_endTime simulation end time (for checkpoint)
      * @param i_h pointer to water height of the cells
      * @param i_b pointer to bathymetry of the cells
      * @param i_hu pointer to momentum in x-direction of the cells
@@ -172,6 +177,7 @@ public:
             t_idx                i_k,
             t_idx                i_stride,
             t_real               i_time,
+            t_real               i_endTime,
             t_real       const * i_h,
             t_real       const * i_b,
             t_real       const * i_hu,
@@ -192,16 +198,16 @@ public:
 
     /**
      * Creates a checkpoint file and writes all simulation parameters as global attributes.
-     * The end_time attribute is initialised to 0 and updated after every write cycle.
+     * The sim_time attribute is initialised to 0 and updated after every write cycle.
      *
      * @param i_filePath output path of the checkpoint file.
      **/
     void defineCheckpoint( std::string const & i_filePath );
 
     /**
-     * Overwrites the end time of the netCDF checkpoint file.
+     * Overwrites the current simulation time of the netCDF checkpoint file.
      **/
-    void overwriteCheckpointEndTime();
+    void overwriteCheckpointSimTime();
 };
 
 

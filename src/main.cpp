@@ -370,9 +370,9 @@ int main( int i_argc, char *i_argv[] ) {
       l_dy         = l_cpSetup->getDy();
       l_domainStartX = l_cpSetup->getOriginX();
       l_domainStartY = l_cpSetup->getOriginY();
-      // l_endTime keeps its command-line value (when to stop);
-      // l_simTime will be set to getEndTime() (where to resume from) after the init loop.
+      l_endTime      = l_cpSetup->getEndTime();
       l_setupName  = "checkpoint";
+
       // Recreate wave propagation with checkpoint dimensions
       delete l_waveProp;
       if( l_useWavePropagation1d ) {
@@ -406,125 +406,126 @@ int main( int i_argc, char *i_argv[] ) {
     }
 
     if( !l_useCheckpoint ) {
-    if( l_setupName == "dam_break_1d" ) {
-      if( l_setupArgs.size() != 5 ) {        throw std::invalid_argument( "dam_break_1d expects 5 parameters" );
-      }
+      if( l_setupName == "dam_break_1d" ) {
+        if( l_setupArgs.size() != 5 ) {
+          throw std::invalid_argument( "dam_break_1d expects 5 parameters" );
+        }
 
-      l_setup = new tsunami_lab::setups::DamBreak1d( l_parseReal( l_setupArgs[0], "hL" ),
-                                                      l_parseReal( l_setupArgs[1], "huL" ),
-                                                      l_parseReal( l_setupArgs[2], "hR" ),
-                                                      l_parseReal( l_setupArgs[3], "huR" ),
-                                                      l_parseReal( l_setupArgs[4], "xDam" ) );
-    }
-    else if( l_setupName == "shock_shock_1d" ) {
-      if( l_setupArgs.size() == 3 ) {
-        l_setup = new tsunami_lab::setups::ShockShock1d( l_parseReal( l_setupArgs[0], "h" ),
+        l_setup = new tsunami_lab::setups::DamBreak1d( l_parseReal( l_setupArgs[0], "hL" ),
+                                                        l_parseReal( l_setupArgs[1], "huL" ),
+                                                        l_parseReal( l_setupArgs[2], "hR" ),
+                                                        l_parseReal( l_setupArgs[3], "huR" ),
+                                                        l_parseReal( l_setupArgs[4], "xDam" ) );
+      }
+      else if( l_setupName == "shock_shock_1d" ) {
+        if( l_setupArgs.size() == 3 ) {
+          l_setup = new tsunami_lab::setups::ShockShock1d( l_parseReal( l_setupArgs[0], "h" ),
+                                                            l_parseReal( l_setupArgs[1], "hu" ),
+                                                            l_parseReal( l_setupArgs[2], "xDisc" ) );
+        }
+        else if( l_setupArgs.size() == 4 ) {
+          l_setup = new tsunami_lab::setups::ShockShock1d( l_parseReal( l_setupArgs[0], "h" ),
+                                                            l_parseReal( l_setupArgs[1], "hu" ),
+                                                            l_parseReal( l_setupArgs[2], "xDisc" ),
+                                                            l_parseBool( l_setupArgs[3], "useParabola" ) );
+        }
+        else if( l_setupArgs.size() == 7 ) {
+          l_setup = new tsunami_lab::setups::ShockShock1d( l_parseReal( l_setupArgs[0], "h" ),
+                                                            l_parseReal( l_setupArgs[1], "hu" ),
+                                                            l_parseReal( l_setupArgs[2], "xDisc" ),
+                                                            l_parseBool( l_setupArgs[3], "useParabola" ),
+                                                            l_parseReal( l_setupArgs[4], "offset" ),
+                                                            l_parseReal( l_setupArgs[5], "center" ),
+                                                            l_parseReal( l_setupArgs[6], "scale" ) );
+        }
+        else {
+          throw std::invalid_argument( "shock_shock_1d expects 3, 4 or 7 parameters" );
+        }
+      }
+      else if( l_setupName == "rare_rare_1d" ) {
+        if( l_setupArgs.size() == 3 ) {
+          l_setup = new tsunami_lab::setups::RareRare1d( l_parseReal( l_setupArgs[0], "h" ),
                                                           l_parseReal( l_setupArgs[1], "hu" ),
                                                           l_parseReal( l_setupArgs[2], "xDisc" ) );
-      }
-      else if( l_setupArgs.size() == 4 ) {
-        l_setup = new tsunami_lab::setups::ShockShock1d( l_parseReal( l_setupArgs[0], "h" ),
+        }
+        else if( l_setupArgs.size() == 4 ) {
+          l_setup = new tsunami_lab::setups::RareRare1d( l_parseReal( l_setupArgs[0], "h" ),
                                                           l_parseReal( l_setupArgs[1], "hu" ),
                                                           l_parseReal( l_setupArgs[2], "xDisc" ),
                                                           l_parseBool( l_setupArgs[3], "useParabola" ) );
-      }
-      else if( l_setupArgs.size() == 7 ) {
-        l_setup = new tsunami_lab::setups::ShockShock1d( l_parseReal( l_setupArgs[0], "h" ),
+        }
+        else if( l_setupArgs.size() == 7 ) {
+          l_setup = new tsunami_lab::setups::RareRare1d( l_parseReal( l_setupArgs[0], "h" ),
                                                           l_parseReal( l_setupArgs[1], "hu" ),
                                                           l_parseReal( l_setupArgs[2], "xDisc" ),
                                                           l_parseBool( l_setupArgs[3], "useParabola" ),
                                                           l_parseReal( l_setupArgs[4], "offset" ),
                                                           l_parseReal( l_setupArgs[5], "center" ),
                                                           l_parseReal( l_setupArgs[6], "scale" ) );
+        }
+        else {
+          throw std::invalid_argument( "rare_rare_1d expects 3, 4 or 7 parameters" );
+        }
       }
-      else {
-        throw std::invalid_argument( "shock_shock_1d expects 3, 4 or 7 parameters" );
+      else if( l_setupName == "subcritical_1d" ) {
+        if( !l_setupArgs.empty() ) {
+          throw std::invalid_argument( "subcritical_1d expects no parameters" );
+        }
+        l_setup = new tsunami_lab::setups::Subcritical1d();
       }
-    }
-    else if( l_setupName == "rare_rare_1d" ) {
-      if( l_setupArgs.size() == 3 ) {
-        l_setup = new tsunami_lab::setups::RareRare1d( l_parseReal( l_setupArgs[0], "h" ),
-                                                        l_parseReal( l_setupArgs[1], "hu" ),
-                                                        l_parseReal( l_setupArgs[2], "xDisc" ) );
+      else if( l_setupName == "supercritical_1d" ) {
+        if( !l_setupArgs.empty() ) {
+          throw std::invalid_argument( "supercritical_1d expects no parameters" );
+        }
+        l_setup = new tsunami_lab::setups::Supercritical1d();
       }
-      else if( l_setupArgs.size() == 4 ) {
-        l_setup = new tsunami_lab::setups::RareRare1d( l_parseReal( l_setupArgs[0], "h" ),
-                                                        l_parseReal( l_setupArgs[1], "hu" ),
-                                                        l_parseReal( l_setupArgs[2], "xDisc" ),
-                                                        l_parseBool( l_setupArgs[3], "useParabola" ) );
+      else if( l_setupName == "tsunami_event_1d" ) {
+        if( !l_setupArgs.empty() ) {
+          throw std::invalid_argument( "tsunami_event_1d expects no parameters" );
+        }
+        l_setup = new tsunami_lab::setups::TsunamiEvent1d();
       }
-      else if( l_setupArgs.size() == 7 ) {
-        l_setup = new tsunami_lab::setups::RareRare1d( l_parseReal( l_setupArgs[0], "h" ),
-                                                        l_parseReal( l_setupArgs[1], "hu" ),
-                                                        l_parseReal( l_setupArgs[2], "xDisc" ),
-                                                        l_parseBool( l_setupArgs[3], "useParabola" ),
-                                                        l_parseReal( l_setupArgs[4], "offset" ),
-                                                        l_parseReal( l_setupArgs[5], "center" ),
-                                                        l_parseReal( l_setupArgs[6], "scale" ) );
+      else if( l_setupName == "circular_dam_break_2d" ) {
+        if( l_setupArgs.size() != 9 ) {
+          throw std::invalid_argument( "circular_dam_break_2d expects 9 parameters" );
+        }
+        l_setup = new tsunami_lab::setups::CircularDamBreak2d( l_parseReal( l_setupArgs[0], "hIn" ),
+                                                                l_parseReal( l_setupArgs[1], "hOut" ),
+                                                                l_parseReal( l_setupArgs[2], "huIn" ),
+                                                                l_parseReal( l_setupArgs[3], "hvIn" ),
+                                                                l_parseReal( l_setupArgs[4], "huOut" ),
+                                                                l_parseReal( l_setupArgs[5], "hvOut" ),
+                                                                l_parseReal( l_setupArgs[6], "xMid" ),
+                                                                l_parseReal( l_setupArgs[7], "yMid" ),
+                                                                l_parseReal( l_setupArgs[8], "radius" ) );
       }
-      else {
-        throw std::invalid_argument( "rare_rare_1d expects 3, 4 or 7 parameters" );
+      else if( l_setupName == "artificial_tsunami_2d" ) {
+        if( !l_setupArgs.empty() ) {
+          throw std::invalid_argument( "artificial_tsunami_2d expects no parameters" );
+        }
+        l_setup = new tsunami_lab::setups::ArtificialTsunami2d();
       }
-    }
-    else if( l_setupName == "subcritical_1d" ) {
-      if( !l_setupArgs.empty() ) {
-        throw std::invalid_argument( "subcritical_1d expects no parameters" );
-      }
-      l_setup = new tsunami_lab::setups::Subcritical1d();
-    }
-    else if( l_setupName == "supercritical_1d" ) {
-      if( !l_setupArgs.empty() ) {
-        throw std::invalid_argument( "supercritical_1d expects no parameters" );
-      }
-      l_setup = new tsunami_lab::setups::Supercritical1d();
-    }
-    else if( l_setupName == "tsunami_event_1d" ) {
-      if( !l_setupArgs.empty() ) {
-        throw std::invalid_argument( "tsunami_event_1d expects no parameters" );
-      }
-      l_setup = new tsunami_lab::setups::TsunamiEvent1d();
-    }
-    else if( l_setupName == "circular_dam_break_2d" ) {
-      if( l_setupArgs.size() != 9 ) {
-        throw std::invalid_argument( "circular_dam_break_2d expects 9 parameters" );
-      }
-      l_setup = new tsunami_lab::setups::CircularDamBreak2d( l_parseReal( l_setupArgs[0], "hIn" ),
-                                                              l_parseReal( l_setupArgs[1], "hOut" ),
-                                                              l_parseReal( l_setupArgs[2], "huIn" ),
-                                                              l_parseReal( l_setupArgs[3], "hvIn" ),
-                                                              l_parseReal( l_setupArgs[4], "huOut" ),
-                                                              l_parseReal( l_setupArgs[5], "hvOut" ),
-                                                              l_parseReal( l_setupArgs[6], "xMid" ),
-                                                              l_parseReal( l_setupArgs[7], "yMid" ),
-                                                              l_parseReal( l_setupArgs[8], "radius" ) );
-    }
-    else if( l_setupName == "artificial_tsunami_2d" ) {
-      if( !l_setupArgs.empty() ) {
-        throw std::invalid_argument( "artificial_tsunami_2d expects no parameters" );
-      }
-      l_setup = new tsunami_lab::setups::ArtificialTsunami2d();
-    }
-    else if( l_setupName == "tsunami_event_2d" ) {
-      if( l_setupArgs.size() != 2 ) {
-        throw std::invalid_argument( "tsunami_event_2d expects 2 parameters" );
-      }
-      l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], l_setupArgs[1] );
-    }
-    else if( l_setupName == "tsunami2d" ) {
-      if( l_setupArgs.size() == 1 ) {
-        l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], "" );
-      }
-      else if( l_setupArgs.size() == 2 ) {
+      else if( l_setupName == "tsunami_event_2d" ) {
+        if( l_setupArgs.size() != 2 ) {
+          throw std::invalid_argument( "tsunami_event_2d expects 2 parameters" );
+        }
         l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], l_setupArgs[1] );
       }
+      else if( l_setupName == "tsunami2d" ) {
+        if( l_setupArgs.size() == 1 ) {
+          l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], "" );
+        }
+        else if( l_setupArgs.size() == 2 ) {
+          l_setup = new tsunami_lab::setups::TsunamiEvent2d( l_setupArgs[0], l_setupArgs[1] );
+        }
+        else {
+          throw std::invalid_argument( "tsunami2d expects 1 or 2 parameters (bathymetry file and optional displacement file)" );
+        }
+      }
       else {
-        throw std::invalid_argument( "tsunami2d expects 1 or 2 parameters (bathymetry file and optional displacement file)" );
+        throw std::invalid_argument( "unknown setup: " + l_setupName );
       }
     }
-    else {
-      throw std::invalid_argument( "unknown setup: " + l_setupName );
-    }
-    } // end !l_useCheckpoint
 
     // Calculate cell sizes from independent x and y domain extents
     l_dx = l_domainSizeX / l_nx;
@@ -644,7 +645,7 @@ int main( int i_argc, char *i_argv[] ) {
   }
   else {
     // restore simTime to the last committed checkpoint time
-    l_simTime = static_cast<tsunami_lab::setups::Checkpoint *>( l_setup )->getEndTime();
+    l_simTime = static_cast<tsunami_lab::setups::Checkpoint *>( l_setup )->getSimTime();
     std::cout << "  resuming simulation at t = " << l_simTime << std::endl;
   }
 
@@ -658,6 +659,7 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_k,
                                     l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
                                     l_simTime,
+                                    l_endTime,
                                     l_waveProp->getHeight(),
                                     l_waveProp->getBathymetry(),
                                     l_waveProp->getMomentumX(),

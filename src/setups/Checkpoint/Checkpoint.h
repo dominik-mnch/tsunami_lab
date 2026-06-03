@@ -36,6 +36,8 @@ class tsunami_lab::setups::Checkpoint: public Setup {
     t_real m_originX = 0;
     //! Origin of the y-coordinate system.
     t_real m_originY = 0;
+    //! Simulation time read from checkpoint (already done).
+    t_real m_simTime = 0;
     //! Simulation end time read from checkpoint.
     t_real m_endTime = 0;
     //! Loaded water height values (row-major, ny * nx).
@@ -91,6 +93,11 @@ class tsunami_lab::setups::Checkpoint: public Setup {
      * Gets the origin of the y-coordinate system.
      */
     t_real getOriginY() const { return m_originY; }
+
+    /**
+     * Gets the simulation time read from checkpoint.
+     */
+    t_real getSimTime() const { return m_simTime; }
 
     /**
      * Gets the simulation end time read from checkpoint.

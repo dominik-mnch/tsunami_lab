@@ -21,6 +21,7 @@ tsunami_lab::setups::Checkpoint::Checkpoint( std::string const & i_checkpointFil
   m_dy      = l_data.dy;
   m_originX = l_data.originX;
   m_originY = l_data.originY;
+  m_simTime = l_data.simTime;
   m_endTime = l_data.endTime;
   m_h       = std::move( l_data.h  );
   m_hu      = std::move( l_data.hu );
