@@ -5,8 +5,6 @@
 # Entry-point for builds.
 ##
 import SCons
-import re
-import subprocess
 
 print( '####################################' )
 print( '### Tsunami Lab                  ###' )
@@ -87,20 +85,9 @@ env.Append( CXXFLAGS = [ '-isystem', 'submodules/Catch2/single_include' ] )
 # add netCDF-C and netCDF-C++
 env.ParseConfig('nc-config --libs --cflags')
 
-# GCC versions before 9 keep std::filesystem in a separate library.
-def add_filesystem_library_if_needed( i_env ):
-  try:
-    l_version = subprocess.check_output( [ i_env.subst('$CXX'), '-dumpfullversion', '-dumpversion' ],
-                                         stderr = subprocess.DEVNULL,
-                                         universal_newlines = True ).strip().splitlines()[0]
-    l_match = re.match( r'^(\d+)', l_version )
-    if l_match and int( l_match.group(1) ) < 9:
-      print( 'detected GCC ' + l_version + ', adding stdc++fs for std::filesystem' )
-      i_env.Append( LIBS = [ 'stdc++fs' ] )
-  except ( OSError, subprocess.CalledProcessError, IndexError ):
-    pass
-
-add_filesystem_library_if_needed( env )
+# Draco's system library stack requires this explicitly for std::filesystem.
+# Keep it after nc-config's libraries so the linker can resolve filesystem users.
+env.Append( LIBS = [ 'stdc++fs' ] )
 
 # get source files
 VariantDir( variant_dir = 'build/src',
