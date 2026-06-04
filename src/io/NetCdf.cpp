@@ -18,6 +18,7 @@
 
 namespace {
 	constexpr tsunami_lab::t_idx c_invalidId = std::numeric_limits<tsunami_lab::t_idx>::max();
+	constexpr int c_deflateLevel = 7;
 
 	// convert from t_idx to regular int for id
 	int toNcId( tsunami_lab::t_idx i_id ) {
@@ -184,7 +185,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		checkNc( nc_def_var( toNcId( m_ncId ), "x", NC_FLOAT, 1, &l_dimXId, &l_varXId ), "nc_def_var(x)" );
 
 		// enable compression on time variable
-		checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varTimeId, 1, 1, 4 ), "nc_def_var_deflate(time)" );
+		checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varTimeId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(time)" );
 
 		// add text attributes to time and coordinate variables for paraview
 		putAttText( toNcId( m_ncId ), l_varTimeId, "long_name", "time" );
@@ -210,7 +211,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			checkNc( nc_def_var( toNcId( m_ncId ), "height", NC_FLOAT, 3, l_dimsTYX, &l_varHeightId ), "nc_def_var(height)" );
 			m_varHeightId = fromNcId( l_varHeightId );
 			// enable compression on height variable
-			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varHeightId, 1, 1, 4 ), "nc_def_var_deflate(height)" );
+			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varHeightId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(height)" );
 			putAttText( toNcId( m_ncId ), l_varHeightId, "long_name", "water height" );
 			putAttText( toNcId( m_ncId ), l_varHeightId, "units", "m" );
 		}
@@ -221,7 +222,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			checkNc( nc_def_var( toNcId( m_ncId ), "momentum_x", NC_FLOAT, 3, l_dimsTYX, &l_varMomentumXId ), "nc_def_var(momentum_x)" );
 			m_varMomentumXId = fromNcId( l_varMomentumXId );
 			// enable compression on momentum_x variable
-			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varMomentumXId, 1, 1, 4 ), "nc_def_var_deflate(momentum_x)" );
+			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varMomentumXId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(momentum_x)" );
 			putAttText( toNcId( m_ncId ), l_varMomentumXId, "long_name", "x momentum" );
 			putAttText( toNcId( m_ncId ), l_varMomentumXId, "units", "m^2 s^-1" );
 		}
@@ -232,7 +233,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			checkNc( nc_def_var( toNcId( m_ncId ), "momentum_y", NC_FLOAT, 3, l_dimsTYX, &l_varMomentumYId ), "nc_def_var(momentum_y)" );
 			m_varMomentumYId = fromNcId( l_varMomentumYId );
 			// enable compression on momentum_y variable
-			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varMomentumYId, 1, 1, 4 ), "nc_def_var_deflate(momentum_y)" );
+			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varMomentumYId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(momentum_y)" );
 			putAttText( toNcId( m_ncId ), l_varMomentumYId, "long_name", "y momentum" );
 			putAttText( toNcId( m_ncId ), l_varMomentumYId, "units", "m^2 s^-1" );
 		}
