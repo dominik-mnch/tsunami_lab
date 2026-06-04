@@ -5,6 +5,7 @@
 # Entry-point for builds.
 ##
 import SCons
+import re
 import subprocess
 
 print( '####################################' )
@@ -23,7 +24,8 @@ vars.AddVariables(
                 'compile modes, option \'san\' enables address and undefined behavior sanitizers',
                 'release',
                 allowed_values=('release', 'debug', 'release+san', 'debug+san' )
-              )
+              ),
+  ('CXX', 'C++ compiler executable', 'g++')
 )
 
 # exit in the case of unknown variables
@@ -34,6 +36,10 @@ if vars.UnknownVariables():
 # create environment
 env = Environment( variables = vars )
 env.Append(CPPPATH=['src'])
+
+# The final programs are assembled from object files. Make the linker explicit so
+# SCons uses the C++ compiler driver and links the C++ standard library reliably.
+env.Replace( LINK = '$CXX' )
 
 # generate help message
 Help( vars.GenerateHelpText( env ) )
@@ -80,6 +86,21 @@ env.Append( CXXFLAGS = [ '-isystem', 'submodules/Catch2/single_include' ] )
 
 # add netCDF-C and netCDF-C++
 env.ParseConfig('nc-config --libs --cflags')
+
+# GCC versions before 9 keep std::filesystem in a separate library.
+def add_filesystem_library_if_needed( i_env ):
+  try:
+    l_version = subprocess.check_output( [ i_env.subst('$CXX'), '-dumpfullversion', '-dumpversion' ],
+                                         stderr = subprocess.DEVNULL,
+                                         universal_newlines = True ).strip().splitlines()[0]
+    l_match = re.match( r'^(\d+)', l_version )
+    if l_match and int( l_match.group(1) ) < 9:
+      print( 'detected GCC ' + l_version + ', adding stdc++fs for std::filesystem' )
+      i_env.Append( LIBS = [ 'stdc++fs' ] )
+  except ( OSError, subprocess.CalledProcessError, IndexError ):
+    pass
+
+add_filesystem_library_if_needed( env )
 
 # get source files
 VariantDir( variant_dir = 'build/src',
