@@ -19,6 +19,7 @@
 #include "io/Csv.h"
 #include "io/NetCdf.h"
 #include "io/Stations.h"
+#include <chrono>
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
@@ -633,6 +634,7 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::t_idx  l_timeStep = 0;
   tsunami_lab::t_idx  l_nOut = 0;
   tsunami_lab::t_real l_simTime = 0;
+  double l_timeSteppingSeconds = 0.0;
 
 
   std::cout << "entering time loop" << std::endl;
@@ -689,12 +691,27 @@ int main( int i_argc, char *i_argv[] ) {
                           l_waveProp
                         );
 
+    auto const l_stepStart = std::chrono::steady_clock::now();
     l_waveProp->setGhostOutflow();
     l_waveProp->timeStep( l_scaling );
+    auto const l_stepEnd = std::chrono::steady_clock::now();
+
+    l_timeSteppingSeconds += std::chrono::duration<double>(
+      l_stepEnd - l_stepStart
+    ).count();
 
     l_timeStep++;
     l_simTime += l_dt;
   }
+
+  double const l_timePerCellIteration = l_timeSteppingSeconds /
+    ( static_cast<double>( l_nx ) * static_cast<double>( l_ny ) *
+      static_cast<double>( l_timeStep ) );
+
+  std::cout << "time stepping seconds: " << l_timeSteppingSeconds << std::endl;
+  std::cout << "time steps: " << l_timeStep << std::endl;
+  std::cout << "time per cell and iteration: "
+            << l_timePerCellIteration << std::endl;
 
   std::cout << "finished time loop" << std::endl;
 
