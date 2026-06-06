@@ -25,11 +25,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <fstream>
 #include <limits>
 #include <filesystem>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -220,23 +222,38 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::setups::Setup *l_setup = nullptr;
   tsunami_lab::patches::WavePropagation *l_waveProp = nullptr;
 
-  // Check whether a valid checkpoint exists — if so, bypass regular setup parsing
+  // Check whether a checkpoint exists. The actual resume decision is made after
+  // parsing the current command so we can compare the full input signature.
   static constexpr char const * l_checkpointPath = "solutions/checkpoint.nc";
+  std::string l_solutionPath = "solutions/solution.nc";
+  std::string l_inputSignature;
+  bool l_defaultCheckpointExists = std::filesystem::exists( l_checkpointPath );
+  bool l_checkpointReadable = false;
   bool l_useCheckpoint = false;
-  if( std::filesystem::exists( l_checkpointPath ) ) {
+  tsunami_lab::io::NetCdf::CheckpointData l_checkpointData;
+  if( l_defaultCheckpointExists ) {
     try {
-      tsunami_lab::io::NetCdf::CheckpointData l_cpData =
-        tsunami_lab::io::NetCdf::readCheckpoint( l_checkpointPath );
-      // only resume if at least one time step is present (sim_time > 0)
-      if( l_cpData.simTime > 0 ) {
-        l_useCheckpoint = true;
-        std::cout << "checkpoint detected — resuming from t = " << l_cpData.simTime << std::endl;
-      }
+      l_checkpointData = tsunami_lab::io::NetCdf::readCheckpoint( l_checkpointPath );
+      l_checkpointReadable = true;
     }
     catch( std::exception const & i_ex ) {
       std::cout << "Failed to read checkpoint data: " << i_ex.what() << std::endl;
     }
   }
+
+  auto l_makeSeparateSolutionPath = []() {
+    auto const l_ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    std::filesystem::path l_dir = std::filesystem::path( "solutions" ) /
+      ( "run_" + std::to_string( l_ticks ) );
+    tsunami_lab::t_idx l_suffix = 0;
+    while( !std::filesystem::create_directories( l_dir ) ) {
+      l_dir = std::filesystem::path( "solutions" ) /
+        ( "run_" + std::to_string( l_ticks ) + "_" + std::to_string( l_suffix++ ) );
+    }
+    return ( l_dir / "solution.nc" ).string();
+  };
 
   try {
     // l_argBase is the index of the SOLVER_MODE argument
@@ -298,6 +315,7 @@ int main( int i_argc, char *i_argv[] ) {
       tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
     tsunami_lab::patches::WavePropagation2d::BoundaryCondition l_boundaryCondition2d =
       tsunami_lab::patches::WavePropagation2d::BoundaryCondition::GhostOutflow;
+    std::string l_boundarySignature = "0";
 
     if( l_propagationMode == "1d" ) {
       l_useWavePropagation1d = true;
@@ -307,6 +325,7 @@ int main( int i_argc, char *i_argv[] ) {
 
       std::string l_boundaryMode = i_argv[l_propArgIdx + 1];
       for( char & l_ch: l_boundaryMode ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
+      l_boundarySignature = l_boundaryMode;
 
       if( l_boundaryMode == "outflow" ) {
         l_boundaryCondition = tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
@@ -342,12 +361,14 @@ int main( int i_argc, char *i_argv[] ) {
 
       if( l_isKnownSetupName( l_nextArg ) ) {
         l_setupArgStart = l_propArgIdx + 1;
+        l_boundarySignature = "0";
       }
       else {
         if( i_argc < l_propArgIdx + 3 ) {
           throw std::invalid_argument( "propagation mode '2d' boundary mode requires a setup" );
         }
         l_boundaryCondition2d = l_parseBoundaryCondition2d( l_nextArg );
+        l_boundarySignature = std::to_string( static_cast<unsigned short>( l_boundaryCondition2d ) );
         l_setupArgStart = l_propArgIdx + 2;
       }
 
@@ -367,7 +388,57 @@ int main( int i_argc, char *i_argv[] ) {
     l_setupName = i_argv[l_setupArgStart];
     for( char & l_ch: l_setupName ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
 
-    // Override with checkpoint setup if a valid checkpoint was detected
+    std::vector<std::string> l_setupArgs;
+    for( int l_ar = l_setupArgStart + 1; l_ar < i_argc; l_ar++ ) {
+      l_setupArgs.emplace_back( i_argv[l_ar] );
+    }
+
+    bool l_setupIs2d = (l_setupName == "circular_dam_break_2d" ||
+                        l_setupName == "artificial_tsunami_2d" ||
+                        l_setupName == "tsunami_event_2d" ||
+                        l_setupName == "tsunami2d");
+    if( l_useWavePropagation1d && l_setupIs2d ) {
+      throw std::invalid_argument( "2d setup requires 2d propagation" );
+    }
+
+    std::ostringstream l_signatureStream;
+    l_signatureStream << std::setprecision( std::numeric_limits<tsunami_lab::t_real>::max_digits10 );
+    l_signatureStream << "argc=" << ( i_argc - 1 );
+    for( int l_ar = 1; l_ar < i_argc; l_ar++ ) {
+      std::string const l_arg = i_argv[l_ar];
+      l_signatureStream << ";arg_len=" << l_arg.size() << ";arg=" << l_arg;
+    }
+    l_signatureStream << ";nx=" << l_nx
+                      << ";ny=" << l_ny
+                      << ";x_lower=" << l_domainStartX
+                      << ";x_upper=" << l_domainEndX
+                      << ";y_lower=" << l_domainStartY
+                      << ";y_upper=" << l_domainEndY
+                      << ";k=" << l_k
+                      << ";solver_mode=" << ( l_useFWaveSolver ? 1 : 0 )
+                      << ";end_time=" << l_endTime
+                      << ";propagation=" << l_propagationMode
+                      << ";boundary=" << l_boundarySignature
+                      << ";setup=" << l_setupName;
+    for( std::string const & l_arg: l_setupArgs ) {
+      l_signatureStream << ";setup_arg=" << l_arg;
+    }
+    l_inputSignature = l_signatureStream.str();
+
+    if( l_defaultCheckpointExists ) {
+      if( l_checkpointReadable && l_checkpointData.simTime > 0 &&
+          !l_checkpointData.inputSignature.empty() &&
+          l_checkpointData.inputSignature == l_inputSignature ) {
+        l_useCheckpoint = true;
+        std::cout << "checkpoint detected — resuming from t = " << l_checkpointData.simTime << std::endl;
+      }
+      else {
+        l_solutionPath = l_makeSeparateSolutionPath();
+        std::cout << "checkpoint exists but does not match current input; writing separate output to "
+                  << l_solutionPath << std::endl;
+      }
+    }
+
     if( l_useCheckpoint ) {
       l_setup = new tsunami_lab::setups::Checkpoint( l_checkpointPath );
       auto * l_cpSetup = static_cast<tsunami_lab::setups::Checkpoint *>( l_setup );
@@ -403,19 +474,6 @@ int main( int i_argc, char *i_argv[] ) {
                                                                    l_useFWaveSolver,
                                                                    l_bc2d );
       }
-    }
-
-    std::vector<std::string> l_setupArgs;
-    for( int l_ar = l_setupArgStart + 1; l_ar < i_argc; l_ar++ ) {
-      l_setupArgs.emplace_back( i_argv[l_ar] );
-    }
-
-    bool l_setupIs2d = (l_setupName == "circular_dam_break_2d" ||
-                        l_setupName == "artificial_tsunami_2d" ||
-                        l_setupName == "tsunami_event_2d" ||
-                        l_setupName == "tsunami2d");
-    if( l_useWavePropagation1d && l_setupIs2d ) {
-      throw std::invalid_argument( "2d setup requires 2d propagation" );
     }
 
     if( !l_useCheckpoint ) {
@@ -656,7 +714,7 @@ int main( int i_argc, char *i_argv[] ) {
   // When resuming from a checkpoint, keep the existing solution.nc so the
   // writer can append to it; otherwise start fresh.
   if( !l_useCheckpoint ) {
-    std::filesystem::remove( "solutions/solution.nc" );
+    std::filesystem::remove( l_solutionPath );
   }
   else {
     // restore simTime to the last committed checkpoint time
@@ -678,11 +736,12 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_useFWaveSolver ? 1 : 0,
                                     l_useWavePropagation1d ? "1d" : "2d",
                                     l_setupName,
+                                    l_inputSignature,
                                     l_waveProp->getHeight(),
                                     l_waveProp->getBathymetry(),
                                     l_waveProp->getMomentumX(),
                                     l_useWavePropagation1d ? nullptr : l_waveProp->getMomentumY(),
-                                    "solutions/solution.nc" );
+                                    l_solutionPath );
 
   // iterate over time
   while( l_simTime < l_endTime ){
@@ -690,7 +749,7 @@ int main( int i_argc, char *i_argv[] ) {
       std::cout << "  simulation time / #time steps: "
                 << l_simTime << " / " << l_timeStep << std::endl;
 
-      std::cout << "  appending wave field to ./solutions/solution.nc" << std::endl;
+      std::cout << "  appending wave field to " << l_solutionPath << std::endl;
 
       // write time step to netCDF file
       l_netCdf.writeTimeStep( l_simTime );

@@ -139,6 +139,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								int i_solverMode,
 								std::string const & i_propagation,
 								std::string const & i_setup,
+								std::string const & i_inputSignature,
 								t_real const * i_h,
 								t_real const * i_b,
 								t_real const * i_hu,
@@ -157,6 +158,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_solverMode( i_solverMode ),
 		m_propagation( i_propagation ),
 		m_setup( i_setup ),
+		m_inputSignature( i_inputSignature ),
 		m_h( i_h ),
 		m_b( i_b ),
 		m_hu( i_hu ),
@@ -386,6 +388,7 @@ void tsunami_lab::io::NetCdf::defineCheckpoint( std::string const & i_filePath )
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "sim_time", NC_FLOAT, 1, &l_simTime ), "nc_put_att_float(sim_time)" );
 	putAttText( l_ncId, NC_GLOBAL, "propagation", m_propagation );
 	putAttText( l_ncId, NC_GLOBAL, "setup", m_setup );
+	putAttText( l_ncId, NC_GLOBAL, "input_signature", m_inputSignature );
 
 	checkNc( nc_sync( l_ncId ), "nc_sync(checkpoint)" );
 }
@@ -427,6 +430,7 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	l_cp.setup       = "checkpoint";
 	getOptionalAttText( l_cpId, NC_GLOBAL, "propagation", l_cp.propagation );
 	getOptionalAttText( l_cpId, NC_GLOBAL, "setup", l_cp.setup );
+	getOptionalAttText( l_cpId, NC_GLOBAL, "input_signature", l_cp.inputSignature );
 
 	nc_close( l_cpId );
 

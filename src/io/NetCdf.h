@@ -49,6 +49,8 @@ class tsunami_lab::io::NetCdf {
     std::string m_propagation;
     //! Setup name written to checkpoint.
     std::string m_setup;
+    //! Canonical input signature written to checkpoint.
+    std::string m_inputSignature;
     //! Pointer to water height values.
     t_real const * m_h;
     //! Pointer to bathymetry values.
@@ -154,6 +156,8 @@ public:
       std::string propagation;
       //! Setup name.
       std::string setup;
+      //! Canonical input signature.
+      std::string inputSignature;
       //! Water height at the last valid checkpoint step (row-major, ny * nx).
       std::vector<t_real> h;
       //! x-momentum at the last valid checkpoint step (row-major, ny * nx).
@@ -186,9 +190,10 @@ public:
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
      * @param i_time simulation time of the snapshot.
      * @param i_endTime simulation end time (for checkpoint)
-    * @param i_solverMode solver mode (1 for F-Wave, 0 for Roe)
-    * @param i_propagation propagation mode
-    * @param i_setup setup name
+      * @param i_solverMode solver mode (1 for F-Wave, 0 for Roe)
+      * @param i_propagation propagation mode
+      * @param i_setup setup name
+      * @param i_inputSignature canonical input signature
      * @param i_h pointer to water height of the cells
      * @param i_b pointer to bathymetry of the cells
      * @param i_hu pointer to momentum in x-direction of the cells
@@ -208,6 +213,7 @@ public:
             int                  i_solverMode,
             std::string const &  i_propagation,
             std::string const &  i_setup,
+            std::string const &  i_inputSignature,
             t_real       const * i_h,
             t_real       const * i_b,
             t_real       const * i_hu,

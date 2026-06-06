@@ -48,6 +48,7 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 											1,
 											"2d",
 											"artificial_tsunami_2d",
+											"nx=2;ny=2;k=1;solver=1;propagation=2d;setup=artificial_tsunami_2d",
 											l_h + 5,
 											l_b + 5,
 											l_hu + 5,
@@ -132,14 +133,19 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 
 	size_t l_propagationLen = 0;
 	size_t l_setupLen = 0;
+	size_t l_inputSignatureLen = 0;
 	REQUIRE( nc_inq_attlen( l_checkpointNcId, NC_GLOBAL, "propagation", &l_propagationLen ) == NC_NOERR );
 	REQUIRE( nc_inq_attlen( l_checkpointNcId, NC_GLOBAL, "setup", &l_setupLen ) == NC_NOERR );
+	REQUIRE( nc_inq_attlen( l_checkpointNcId, NC_GLOBAL, "input_signature", &l_inputSignatureLen ) == NC_NOERR );
 	std::string l_propagation( l_propagationLen, '\0' );
 	std::string l_setup( l_setupLen, '\0' );
+	std::string l_inputSignature( l_inputSignatureLen, '\0' );
 	REQUIRE( nc_get_att_text( l_checkpointNcId, NC_GLOBAL, "propagation", l_propagation.data() ) == NC_NOERR );
 	REQUIRE( nc_get_att_text( l_checkpointNcId, NC_GLOBAL, "setup", l_setup.data() ) == NC_NOERR );
+	REQUIRE( nc_get_att_text( l_checkpointNcId, NC_GLOBAL, "input_signature", l_inputSignature.data() ) == NC_NOERR );
 	REQUIRE( l_propagation == "2d" );
 	REQUIRE( l_setup == "artificial_tsunami_2d" );
+	REQUIRE( l_inputSignature == "nx=2;ny=2;k=1;solver=1;propagation=2d;setup=artificial_tsunami_2d" );
 	REQUIRE( nc_close( l_checkpointNcId ) == NC_NOERR );
 	std::remove( l_filePath.c_str() );
 	std::remove( "checkpoint.nc" );
