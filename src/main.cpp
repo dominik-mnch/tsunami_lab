@@ -112,6 +112,15 @@ int main( int i_argc, char *i_argv[] ) {
     return static_cast<tsunami_lab::t_idx>( l_val );
   };
 
+  auto l_parseSolverMode = []( std::string const & i_value ) {
+    char * l_endPtr = nullptr;
+    long l_val = std::strtol( i_value.c_str(), &l_endPtr, 10 );
+    if( l_endPtr == i_value.c_str() || *l_endPtr != '\0' || (l_val != 0 && l_val != 1) ) {
+      throw std::invalid_argument( "SOLVER_MODE must be 0 or 1" );
+    }
+    return static_cast<int>( l_val );
+  };
+
   auto l_parseBool = []( std::string i_value, std::string const & i_name ) {
     for( char & l_ch: i_value ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
     if( i_value == "1" || i_value == "true" ) return true;
@@ -272,10 +281,7 @@ int main( int i_argc, char *i_argv[] ) {
       l_argBase = 8;
     }
 
-    int l_solverMode = static_cast<int>( l_parseIdx( i_argv[l_argBase], "SOLVER_MODE" ) );
-    if( l_solverMode != 0 && l_solverMode != 1 ) {
-      throw std::invalid_argument( "SOLVER_MODE must be 0 or 1" );
-    }
+    int l_solverMode = l_parseSolverMode( i_argv[l_argBase] );
     l_useFWaveSolver = (l_solverMode == 1);
 
     l_endTime = l_parseReal( i_argv[l_argBase + 1], "END_TIME" );
@@ -369,12 +375,18 @@ int main( int i_argc, char *i_argv[] ) {
       l_ny         = l_cpSetup->getNy();
       l_dx         = l_cpSetup->getDx();
       l_dy         = l_cpSetup->getDy();
+      l_k          = l_cpSetup->getK();
       l_domainStartX = l_cpSetup->getOriginX();
       l_domainStartY = l_cpSetup->getOriginY();
+      l_domainSizeX  = l_dx * l_nx;
+      l_domainSizeY  = l_dy * l_ny;
+      l_domainEndX   = l_domainStartX + l_domainSizeX;
+      l_domainEndY   = l_domainStartY + l_domainSizeY;
       l_endTime      = l_cpSetup->getEndTime();
-      l_setupName  = "checkpoint";
+      l_useFWaveSolver = (l_cpSetup->getSolverMode() == 1);
+      l_useWavePropagation1d = (l_cpSetup->getPropagation() == "1d");
+      l_setupName  = l_cpSetup->getSetup();
 
-      // Recreate wave propagation with checkpoint dimensions
       delete l_waveProp;
       if( l_useWavePropagation1d ) {
         tsunami_lab::patches::WavePropagation1d::BoundaryCondition l_bc =
@@ -663,6 +675,9 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_useWavePropagation1d ? 1 : l_waveProp->getStride(),
                                     l_simTime,
                                     l_endTime,
+                                    l_useFWaveSolver ? 1 : 0,
+                                    l_useWavePropagation1d ? "1d" : "2d",
+                                    l_setupName,
                                     l_waveProp->getHeight(),
                                     l_waveProp->getBathymetry(),
                                     l_waveProp->getMomentumX(),

@@ -22,17 +22,25 @@ static void createCheckpointFile( std::string const & i_path,
                                   float i_dx, float i_dy,
                                   float i_originX, float i_originY,
                                   float i_endTime,
-                                  float i_simTime = 0.0f ) {
+                                  float i_simTime = 0.0f,
+                                  int i_k = 1,
+                                  int i_solverMode = 1,
+                                  std::string const & i_propagation = "2d",
+                                  std::string const & i_setup = "artificial_tsunami_2d" ) {
   int l_ncId = -1;
   REQUIRE( nc_create( i_path.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_ncId ) == NC_NOERR );
   REQUIRE( nc_put_att_int(   l_ncId, NC_GLOBAL, "nx",       NC_INT,   1, &i_nx      ) == NC_NOERR );
   REQUIRE( nc_put_att_int(   l_ncId, NC_GLOBAL, "ny",       NC_INT,   1, &i_ny      ) == NC_NOERR );
+  REQUIRE( nc_put_att_int(   l_ncId, NC_GLOBAL, "k",        NC_INT,   1, &i_k       ) == NC_NOERR );
+  REQUIRE( nc_put_att_int(   l_ncId, NC_GLOBAL, "solver_mode", NC_INT, 1, &i_solverMode ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "dx",       NC_FLOAT, 1, &i_dx      ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "dy",       NC_FLOAT, 1, &i_dy      ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_x", NC_FLOAT, 1, &i_originX ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_y", NC_FLOAT, 1, &i_originY ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "end_time", NC_FLOAT, 1, &i_endTime ) == NC_NOERR );
   REQUIRE( nc_put_att_float( l_ncId, NC_GLOBAL, "sim_time", NC_FLOAT, 1, &i_simTime ) == NC_NOERR );
+  REQUIRE( nc_put_att_text( l_ncId, NC_GLOBAL, "propagation", i_propagation.size(), i_propagation.c_str() ) == NC_NOERR );
+  REQUIRE( nc_put_att_text( l_ncId, NC_GLOBAL, "setup", i_setup.size(), i_setup.c_str() ) == NC_NOERR );
   REQUIRE( nc_close( l_ncId ) == NC_NOERR );
 }
 
@@ -146,6 +154,92 @@ TEST_CASE( "Checkpoint setup loads simulation parameters from checkpoint.nc.", "
   REQUIRE( l_cp.getOriginX() == Approx( 100.0 ) );
   REQUIRE( l_cp.getOriginY() == Approx( 200.0 ) );
   REQUIRE( l_cp.getEndTime() == Approx( 5.0   ) );
+  REQUIRE( l_cp.getK() == 1 );
+  REQUIRE( l_cp.getSolverMode() == 1 );
+  REQUIRE( l_cp.getPropagation() == "2d" );
+  REQUIRE( l_cp.getSetup() == "artificial_tsunami_2d" );
+
+  std::remove( l_cpFile.c_str() );
+  std::remove( l_solFile.c_str() );
+  std::filesystem::remove( l_dir );
+}
+
+TEST_CASE( "Checkpoint setup expands coarsened solution data using k.", "[Checkpoint]" ) {
+  constexpr tsunami_lab::t_idx l_nx = 4;
+  constexpr tsunami_lab::t_idx l_ny = 2;
+  constexpr int l_k = 2;
+  std::string l_dir = "test_cp_coarse_dir";
+  std::string l_cpFile = l_dir + "/checkpoint.nc";
+  std::string l_solFile = l_dir + "/solution.nc";
+  std::filesystem::create_directories( l_dir );
+  std::remove( l_cpFile.c_str() );
+  std::remove( l_solFile.c_str() );
+
+  createCheckpointFile( l_cpFile,
+                        l_nx,
+                        l_ny,
+                        10.0f,
+                        20.0f,
+                        0.0f,
+                        0.0f,
+                        1.0f,
+                        1.0f,
+                        l_k,
+                        0,
+                        "2d",
+                        "circular_dam_break_2d" );
+
+  int l_ncId = -1;
+  REQUIRE( nc_create( l_solFile.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_ncId ) == NC_NOERR );
+  int l_dimTimeId = -1, l_dimYId = -1, l_dimXId = -1;
+  REQUIRE( nc_def_dim( l_ncId, "time", NC_UNLIMITED, &l_dimTimeId ) == NC_NOERR );
+  REQUIRE( nc_def_dim( l_ncId, "y", l_ny / l_k, &l_dimYId ) == NC_NOERR );
+  REQUIRE( nc_def_dim( l_ncId, "x", l_nx / l_k, &l_dimXId ) == NC_NOERR );
+  int l_dimsYX[2] = { l_dimYId, l_dimXId };
+  int l_dimsTYX[3] = { l_dimTimeId, l_dimYId, l_dimXId };
+  int l_varTimeId = -1, l_varHId = -1, l_varHuId = -1, l_varHvId = -1, l_varBId = -1;
+  REQUIRE( nc_def_var( l_ncId, "time", NC_FLOAT, 1, &l_dimTimeId, &l_varTimeId ) == NC_NOERR );
+  REQUIRE( nc_def_var( l_ncId, "height", NC_FLOAT, 3, l_dimsTYX, &l_varHId ) == NC_NOERR );
+  REQUIRE( nc_def_var( l_ncId, "momentum_x", NC_FLOAT, 3, l_dimsTYX, &l_varHuId ) == NC_NOERR );
+  REQUIRE( nc_def_var( l_ncId, "momentum_y", NC_FLOAT, 3, l_dimsTYX, &l_varHvId ) == NC_NOERR );
+  REQUIRE( nc_def_var( l_ncId, "bathymetry", NC_FLOAT, 2, l_dimsYX, &l_varBId ) == NC_NOERR );
+  REQUIRE( nc_enddef( l_ncId ) == NC_NOERR );
+
+  std::size_t l_s3[3] = { 0, 0, 0 };
+  std::size_t l_c3[3] = { 1, l_ny / l_k, l_nx / l_k };
+  std::vector<float> l_h = { 10.0f, 20.0f };
+  std::vector<float> l_hu = { 1.0f, 2.0f };
+  std::vector<float> l_hv = { 3.0f, 4.0f };
+  std::vector<float> l_b = { -10.0f, -20.0f };
+  REQUIRE( nc_put_vara_float( l_ncId, l_varHId, l_s3, l_c3, l_h.data() ) == NC_NOERR );
+  REQUIRE( nc_put_vara_float( l_ncId, l_varHuId, l_s3, l_c3, l_hu.data() ) == NC_NOERR );
+  REQUIRE( nc_put_vara_float( l_ncId, l_varHvId, l_s3, l_c3, l_hv.data() ) == NC_NOERR );
+  std::size_t l_s2[2] = { 0, 0 };
+  std::size_t l_c2[2] = { l_ny / l_k, l_nx / l_k };
+  REQUIRE( nc_put_vara_float( l_ncId, l_varBId, l_s2, l_c2, l_b.data() ) == NC_NOERR );
+  float l_t = 1.0f;
+  std::size_t l_s1[1] = { 0 };
+  std::size_t l_c1[1] = { 1 };
+  REQUIRE( nc_put_vara_float( l_ncId, l_varTimeId, l_s1, l_c1, &l_t ) == NC_NOERR );
+  REQUIRE( nc_close( l_ncId ) == NC_NOERR );
+
+  tsunami_lab::setups::Checkpoint l_cp( l_cpFile );
+  REQUIRE( l_cp.getK() == l_k );
+  REQUIRE( l_cp.getSolverMode() == 0 );
+  REQUIRE( l_cp.getPropagation() == "2d" );
+  REQUIRE( l_cp.getSetup() == "circular_dam_break_2d" );
+
+  for( tsunami_lab::t_idx l_iy = 0; l_iy < l_ny; l_iy++ ) {
+    for( tsunami_lab::t_idx l_ix = 0; l_ix < l_nx; l_ix++ ) {
+      tsunami_lab::t_real l_x = ( l_ix + 0.5f ) * 10.0f;
+      tsunami_lab::t_real l_y = ( l_iy + 0.5f ) * 20.0f;
+      tsunami_lab::t_real l_expectedBase = l_ix < 2 ? 10.0f : 20.0f;
+      REQUIRE( l_cp.getHeight( l_x, l_y ) == Approx( l_expectedBase ) );
+      REQUIRE( l_cp.getMomentumX( l_x, l_y ) == Approx( l_expectedBase / 10.0f ) );
+      REQUIRE( l_cp.getMomentumY( l_x, l_y ) == Approx( l_expectedBase / 10.0f + 2.0f ) );
+      REQUIRE( l_cp.getBathymetry( l_x, l_y ) == Approx( -l_expectedBase ) );
+    }
+  }
 
   std::remove( l_cpFile.c_str() );
   std::remove( l_solFile.c_str() );

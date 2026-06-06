@@ -54,6 +54,30 @@ namespace {
 						 			"nc_put_att_text" );
 	}
 
+	bool getOptionalAttText( int i_ncId,
+	                         int i_varId,
+	                         char const * i_attName,
+	                         std::string & o_attValue ) {
+		size_t l_len = 0;
+		int l_status = nc_inq_attlen( i_ncId, i_varId, i_attName, &l_len );
+		if( l_status == NC_ENOTATT ) return false;
+		checkNc( l_status, "nc_inq_attlen" );
+		o_attValue = std::string( l_len, '\0' );
+		checkNc( nc_get_att_text( i_ncId, i_varId, i_attName, o_attValue.data() ), "nc_get_att_text" );
+		return true;
+	}
+
+	void getOptionalAttInt( int i_ncId,
+	                       int i_varId,
+	                       char const * i_attName,
+	                       int & io_attValue ) {
+		int l_value = io_attValue;
+		int l_status = nc_get_att_int( i_ncId, i_varId, i_attName, &l_value );
+		if( l_status == NC_ENOTATT ) return;
+		checkNc( l_status, "nc_get_att_int" );
+		io_attValue = l_value;
+	}
+
 	// helper function to compute and write the coordinates of the cell centers
 	void putCoordinates(int i_ncId,
 						int i_varId,
@@ -112,6 +136,9 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								t_idx i_stride,
 								t_real i_time,
 								t_real i_endTime,
+								int i_solverMode,
+								std::string const & i_propagation,
+								std::string const & i_setup,
 								t_real const * i_h,
 								t_real const * i_b,
 								t_real const * i_hu,
@@ -127,6 +154,9 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_stride( i_stride ),
 		m_time( i_time ),
 		m_endTime( i_endTime ),
+		m_solverMode( i_solverMode ),
+		m_propagation( i_propagation ),
+		m_setup( i_setup ),
 		m_h( i_h ),
 		m_b( i_b ),
 		m_hu( i_hu ),
@@ -334,6 +364,8 @@ void tsunami_lab::io::NetCdf::defineCheckpoint( std::string const & i_filePath )
 
 	int   l_nx      = static_cast<int>( m_nx );
 	int   l_ny      = static_cast<int>( m_ny );
+	int   l_k       = static_cast<int>( m_k );
+	int   l_solverMode = m_solverMode;
 	float l_dx      = static_cast<float>( m_dx );
 	float l_dy      = static_cast<float>( m_dy );
 	float l_originX = static_cast<float>( m_originX );
@@ -344,12 +376,16 @@ void tsunami_lab::io::NetCdf::defineCheckpoint( std::string const & i_filePath )
 
 	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "nx",       NC_INT,   1, &l_nx      ), "nc_put_att_int(nx)"       );
 	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "ny",       NC_INT,   1, &l_ny      ), "nc_put_att_int(ny)"       );
+	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "k",        NC_INT,   1, &l_k       ), "nc_put_att_int(k)"        );
+	checkNc( nc_put_att_int(   l_ncId, NC_GLOBAL, "solver_mode", NC_INT, 1, &l_solverMode ), "nc_put_att_int(solver_mode)" );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "dx",       NC_FLOAT, 1, &l_dx      ), "nc_put_att_float(dx)"     );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "dy",       NC_FLOAT, 1, &l_dy      ), "nc_put_att_float(dy)"     );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_x", NC_FLOAT, 1, &l_originX ), "nc_put_att_float(origin_x)" );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "origin_y", NC_FLOAT, 1, &l_originY ), "nc_put_att_float(origin_y)" );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "end_time", NC_FLOAT, 1, &l_endTime ), "nc_put_att_float(end_time)" );
 	checkNc( nc_put_att_float( l_ncId, NC_GLOBAL, "sim_time", NC_FLOAT, 1, &l_simTime ), "nc_put_att_float(sim_time)" );
+	putAttText( l_ncId, NC_GLOBAL, "propagation", m_propagation );
+	putAttText( l_ncId, NC_GLOBAL, "setup", m_setup );
 
 	checkNc( nc_sync( l_ncId ), "nc_sync(checkpoint)" );
 }
@@ -374,17 +410,23 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	int l_cpId = -1;
 	checkNc( nc_open( i_checkpointFile.c_str(), NC_NOWRITE, &l_cpId ), "nc_open(checkpoint)" );
 
-	int   l_nx = 0, l_ny = 0;
+	int   l_nx = 0, l_ny = 0, l_k = 1, l_solverMode = 1;
 	float l_dx = 0, l_dy = 0, l_originX = 0, l_originY = 0, l_endTime = 0, l_simTime = 0;
 
 	checkNc( nc_get_att_int(   l_cpId, NC_GLOBAL, "nx",       &l_nx      ), "nc_get_att(nx)"       );
 	checkNc( nc_get_att_int(   l_cpId, NC_GLOBAL, "ny",       &l_ny      ), "nc_get_att(ny)"       );
+	getOptionalAttInt( l_cpId, NC_GLOBAL, "k", l_k );
+	getOptionalAttInt( l_cpId, NC_GLOBAL, "solver_mode", l_solverMode );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "dx",       &l_dx      ), "nc_get_att(dx)"       );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "dy",       &l_dy      ), "nc_get_att(dy)"       );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "origin_x", &l_originX ), "nc_get_att(origin_x)" );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "origin_y", &l_originY ), "nc_get_att(origin_y)" );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "end_time", &l_endTime ), "nc_get_att(end_time)" );
 	checkNc( nc_get_att_float( l_cpId, NC_GLOBAL, "sim_time", &l_simTime ), "nc_get_att(sim_time)" );
+	l_cp.propagation = l_ny == 1 ? "1d" : "2d";
+	l_cp.setup       = "checkpoint";
+	getOptionalAttText( l_cpId, NC_GLOBAL, "propagation", l_cp.propagation );
+	getOptionalAttText( l_cpId, NC_GLOBAL, "setup", l_cp.setup );
 
 	nc_close( l_cpId );
 
@@ -396,6 +438,8 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	l_cp.originY = static_cast<t_real>( l_originY );
 	l_cp.endTime = static_cast<t_real>( l_endTime );
 	l_cp.simTime = static_cast<t_real>( l_simTime );
+	l_cp.k          = static_cast<t_idx>( l_k );
+	l_cp.solverMode = l_solverMode;
 
 	// ── 2. Derive solution.nc path (sibling file in the same directory) ────────
 	std::filesystem::path l_solutionFile =
@@ -410,9 +454,17 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	checkNc( nc_open( l_solutionFile.string().c_str(), NC_NOWRITE, &l_ncId ), "nc_open(solution)" );
 
 	int         l_dimTimeId = -1;
+	int         l_dimYId    = -1;
+	int         l_dimXId    = -1;
 	std::size_t l_nSteps    = 0;
+	std::size_t l_solutionNy = 0;
+	std::size_t l_solutionNx = 0;
 	checkNc( nc_inq_dimid(  l_ncId, "time", &l_dimTimeId ), "nc_inq_dimid(time)" );
 	checkNc( nc_inq_dimlen( l_ncId, l_dimTimeId, &l_nSteps ), "nc_inq_dimlen(time)" );
+	checkNc( nc_inq_dimid(  l_ncId, "y", &l_dimYId ), "nc_inq_dimid(y)" );
+	checkNc( nc_inq_dimid(  l_ncId, "x", &l_dimXId ), "nc_inq_dimid(x)" );
+	checkNc( nc_inq_dimlen( l_ncId, l_dimYId, &l_solutionNy ), "nc_inq_dimlen(y)" );
+	checkNc( nc_inq_dimlen( l_ncId, l_dimXId, &l_solutionNx ), "nc_inq_dimlen(x)" );
 
 	if( l_nSteps == 0 ) {
 		nc_close( l_ncId );
@@ -456,25 +508,59 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	}
 
 	// ── 4. Read h, hu, hv, b at the last valid time step ──────────────────────
+	t_idx l_solutionNxIdx = static_cast<t_idx>( l_solutionNx );
+	t_idx l_solutionNyIdx = static_cast<t_idx>( l_solutionNy );
+	bool  l_isFullResolution = l_solutionNxIdx == l_cp.nx && l_solutionNyIdx == l_cp.ny;
+	bool  l_isCoarseResolution = l_cp.k > 1 &&
+	                             l_solutionNxIdx == l_cp.nx / l_cp.k &&
+	                             l_solutionNyIdx == l_cp.ny / l_cp.k;
+	if( !l_isFullResolution && !l_isCoarseResolution ) {
+		nc_close( l_ncId );
+		std::ostringstream l_stream;
+		l_stream << "solution.nc dimensions (" << l_solutionNxIdx << ", " << l_solutionNyIdx
+		         << ") do not match checkpoint grid (" << l_cp.nx << ", " << l_cp.ny
+		         << ") or checkpoint k=" << l_cp.k;
+		throw std::runtime_error( l_stream.str() );
+	}
+
 	t_idx l_size = l_cp.nx * l_cp.ny;
-	l_cp.h.resize(  l_size );
-	l_cp.hu.resize( l_size );
-	l_cp.hv.resize( l_size, 0 );
-	l_cp.b.resize(  l_size );
+	t_idx l_solutionSize = l_solutionNxIdx * l_solutionNyIdx;
+	std::vector<t_real> l_hStored( l_solutionSize );
+	std::vector<t_real> l_huStored( l_solutionSize );
+	std::vector<t_real> l_hvStored( l_solutionSize, 0 );
+	std::vector<t_real> l_bStored( l_solutionSize );
 
 	std::size_t l_startTYX[3] = { l_lastStep, 0, 0 };
-	std::size_t l_countTYX[3] = { 1, l_cp.ny, l_cp.nx };
+	std::size_t l_countTYX[3] = { 1, l_solutionNy, l_solutionNx };
 
-	checkNc( nc_get_vara_float( l_ncId, l_varHId,  l_startTYX, l_countTYX, l_cp.h.data()  ), "nc_get_vara(height)"     );
-	checkNc( nc_get_vara_float( l_ncId, l_varHuId, l_startTYX, l_countTYX, l_cp.hu.data() ), "nc_get_vara(momentum_x)" );
+	checkNc( nc_get_vara_float( l_ncId, l_varHId,  l_startTYX, l_countTYX, l_hStored.data()  ), "nc_get_vara(height)"     );
+	checkNc( nc_get_vara_float( l_ncId, l_varHuId, l_startTYX, l_countTYX, l_huStored.data() ), "nc_get_vara(momentum_x)" );
 
 	if( l_hasHv ) {
-		checkNc( nc_get_vara_float( l_ncId, l_varHvId, l_startTYX, l_countTYX, l_cp.hv.data() ), "nc_get_vara(momentum_y)" );
+		checkNc( nc_get_vara_float( l_ncId, l_varHvId, l_startTYX, l_countTYX, l_hvStored.data() ), "nc_get_vara(momentum_y)" );
 	}
 
 	std::size_t l_startYX[2] = { 0, 0 };
-	std::size_t l_countYX[2] = { l_cp.ny, l_cp.nx };
-	checkNc( nc_get_vara_float( l_ncId, l_varBId, l_startYX, l_countYX, l_cp.b.data() ), "nc_get_vara(bathymetry)" );
+	std::size_t l_countYX[2] = { l_solutionNy, l_solutionNx };
+	checkNc( nc_get_vara_float( l_ncId, l_varBId, l_startYX, l_countYX, l_bStored.data() ), "nc_get_vara(bathymetry)" );
+
+	auto l_expandField = [&]( std::vector<t_real> const & i_stored,
+	                          std::vector<t_real>       & o_full ) {
+		o_full.resize( l_size );
+		t_idx l_factor = l_isFullResolution ? 1 : l_cp.k;
+		for( t_idx l_iy = 0; l_iy < l_cp.ny; l_iy++ ) {
+			t_idx l_srcY = std::min( l_iy / l_factor, l_solutionNyIdx - 1 );
+			for( t_idx l_ix = 0; l_ix < l_cp.nx; l_ix++ ) {
+				t_idx l_srcX = std::min( l_ix / l_factor, l_solutionNxIdx - 1 );
+				o_full[l_iy * l_cp.nx + l_ix] = i_stored[l_srcY * l_solutionNxIdx + l_srcX];
+			}
+		}
+	};
+
+	l_expandField( l_hStored,  l_cp.h  );
+	l_expandField( l_huStored, l_cp.hu );
+	l_expandField( l_hvStored, l_cp.hv );
+	l_expandField( l_bStored,  l_cp.b  );
 
 	nc_close( l_ncId );
 	return l_cp;

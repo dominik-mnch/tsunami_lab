@@ -45,6 +45,9 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 											4,
 											0.0,
 											1.0,
+											1,
+											"2d",
+											"artificial_tsunami_2d",
 											l_h + 5,
 											l_b + 5,
 											l_hu + 5,
@@ -116,6 +119,28 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 	REQUIRE( l_bathy[3] == Approx( 40.0 ) );
 
 	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
+
+	int l_checkpointNcId = -1;
+	REQUIRE( nc_open( "checkpoint.nc", NC_NOWRITE, &l_checkpointNcId ) == NC_NOERR );
+
+	int l_k = 0;
+	int l_solverMode = -1;
+	REQUIRE( nc_get_att_int( l_checkpointNcId, NC_GLOBAL, "k", &l_k ) == NC_NOERR );
+	REQUIRE( nc_get_att_int( l_checkpointNcId, NC_GLOBAL, "solver_mode", &l_solverMode ) == NC_NOERR );
+	REQUIRE( l_k == 1 );
+	REQUIRE( l_solverMode == 1 );
+
+	size_t l_propagationLen = 0;
+	size_t l_setupLen = 0;
+	REQUIRE( nc_inq_attlen( l_checkpointNcId, NC_GLOBAL, "propagation", &l_propagationLen ) == NC_NOERR );
+	REQUIRE( nc_inq_attlen( l_checkpointNcId, NC_GLOBAL, "setup", &l_setupLen ) == NC_NOERR );
+	std::string l_propagation( l_propagationLen, '\0' );
+	std::string l_setup( l_setupLen, '\0' );
+	REQUIRE( nc_get_att_text( l_checkpointNcId, NC_GLOBAL, "propagation", l_propagation.data() ) == NC_NOERR );
+	REQUIRE( nc_get_att_text( l_checkpointNcId, NC_GLOBAL, "setup", l_setup.data() ) == NC_NOERR );
+	REQUIRE( l_propagation == "2d" );
+	REQUIRE( l_setup == "artificial_tsunami_2d" );
+	REQUIRE( nc_close( l_checkpointNcId ) == NC_NOERR );
 	std::remove( l_filePath.c_str() );
 	std::remove( "checkpoint.nc" );
 }

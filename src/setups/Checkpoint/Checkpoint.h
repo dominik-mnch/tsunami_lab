@@ -40,6 +40,14 @@ class tsunami_lab::setups::Checkpoint: public Setup {
     t_real m_simTime = 0;
     //! Simulation end time read from checkpoint.
     t_real m_endTime = 0;
+    //! Coarse output factor read from checkpoint.
+    t_idx m_k = 1;
+    //! Solver mode read from checkpoint.
+    int m_solverMode = 1;
+    //! Propagation mode read from checkpoint.
+    std::string m_propagation;
+    //! Setup name read from checkpoint.
+    std::string m_setup;
     //! Loaded water height values (row-major, ny * nx).
     std::vector<t_real> m_h;
     //! Loaded x-momentum values (row-major, ny * nx).
@@ -103,6 +111,26 @@ class tsunami_lab::setups::Checkpoint: public Setup {
      * Gets the simulation end time read from checkpoint.
      */
     t_real getEndTime() const { return m_endTime; }
+
+    /**
+     * Gets the coarse output factor read from checkpoint.
+     */
+    t_idx getK() const { return m_k; }
+
+    /**
+     * Gets the solver mode read from checkpoint.
+     */
+    int getSolverMode() const { return m_solverMode; }
+
+    /**
+     * Gets the propagation mode read from checkpoint.
+     */
+    std::string const & getPropagation() const { return m_propagation; }
+
+    /**
+     * Gets the setup name read from checkpoint.
+     */
+    std::string const & getSetup() const { return m_setup; }
 
     /**
      * Gets the water height at a given point.

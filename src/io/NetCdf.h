@@ -43,6 +43,12 @@ class tsunami_lab::io::NetCdf {
     t_real m_time;
     //! Stored simulation end time.
     t_real m_endTime;
+    //! Solver mode written to checkpoint (1 for F-Wave, 0 for Roe).
+    int m_solverMode;
+    //! Propagation mode written to checkpoint.
+    std::string m_propagation;
+    //! Setup name written to checkpoint.
+    std::string m_setup;
     //! Pointer to water height values.
     t_real const * m_h;
     //! Pointer to bathymetry values.
@@ -140,6 +146,14 @@ public:
       t_real simTime = 0;
       //! Simulation end time.
       t_real endTime = 0;
+      //! Number of cells that get averaged to reduce output.
+      t_idx k = 1;
+      //! Solver mode (1 for F-Wave, 0 for Roe).
+      int solverMode = 1;
+      //! Propagation mode.
+      std::string propagation;
+      //! Setup name.
+      std::string setup;
       //! Water height at the last valid checkpoint step (row-major, ny * nx).
       std::vector<t_real> h;
       //! x-momentum at the last valid checkpoint step (row-major, ny * nx).
@@ -172,6 +186,9 @@ public:
      * @param i_stride stride of the data arrays in y-direction (x is assumed to be stride-1).
      * @param i_time simulation time of the snapshot.
      * @param i_endTime simulation end time (for checkpoint)
+    * @param i_solverMode solver mode (1 for F-Wave, 0 for Roe)
+    * @param i_propagation propagation mode
+    * @param i_setup setup name
      * @param i_h pointer to water height of the cells
      * @param i_b pointer to bathymetry of the cells
      * @param i_hu pointer to momentum in x-direction of the cells
@@ -188,6 +205,9 @@ public:
             t_idx                i_stride,
             t_real               i_time,
             t_real               i_endTime,
+            int                  i_solverMode,
+            std::string const &  i_propagation,
+            std::string const &  i_setup,
             t_real       const * i_h,
             t_real       const * i_b,
             t_real       const * i_hu,
