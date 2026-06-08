@@ -14,6 +14,9 @@ They could be stationary or moving through the domain. We want to be able to det
 would be able to withstand the tsunami or if it would sink. To do this we would have to come up with a metric
 to determine the damage to the boat. This could be based on the forces acting on the boat, the water height, or other factors.
 
+We want to provide two different kinds of information: whether a boat can take on its planned journey or has to use a different route,
+and whether a boat already traveling on a route can withstand the tsunami or if it will sink. 
+
 To model the vessel itself, we can have it start a single point in the domain and use a regular function to describe its
 movement across the domain. Then, for each time step, we can check whether the boat is in a cell that is affected by the tsunami.
 
@@ -61,4 +64,19 @@ Some problems that could arise are:
   cells in a single iteration of the loop. If we were to parallelize this loop completely, we would have to make sure that no
   conflicting updates are applied to the same cell at the same time. We could use ``atomicAdd`` for this (but this could make the
   code slower) or we could change the structure of the code so every loop iteration is responsible for a single cell update.
+
+
+Configuration file instead of CLI arguments
+-------------------------------------------
+
+Currently, to start a simulation we have to provide a large number of command line arguments.
+This can get very cumbersome and it is easy to make a mistake when providing the arguments.
+To solve this problem, we could use a configuration file instead of CLI arguments.
+This would allow us to provide all the necessary information for the simulation in a single file instead of
+an unreadable command. We can use a format like JSON or YAML for the file itself.
+
+Some problems that could arise are:
+
+- Which file type do we choose for the configuration file? Different file types have different advantages and disadvantages. So, we will have 
+  to analyze which one is best for our use case.
 
