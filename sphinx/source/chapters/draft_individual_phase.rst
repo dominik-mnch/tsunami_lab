@@ -11,7 +11,7 @@ Simulating boats and other vessels in a tsunami
 
 When starting a tsunami simulation, we want to be able to include boats or other vessels in the simulation.
 They could be stationary or moving through the domain. We want to be able to determine whether or not the boat
-would be able to withstand the tsunami or if it would be destroyed. To do this we would have to come up with a metric
+would be able to withstand the tsunami or if it would sink. To do this we would have to come up with a metric
 to determine the damage to the boat. This could be based on the forces acting on the boat, the water height, or other factors.
 
 To model the vessel itself, we can have it start a single point in the domain and use a regular function to describe its
@@ -21,12 +21,16 @@ A potential expansion to this could also be to have the boat react to the tsunam
 generally, if it is even possible to move out of the way. We could potentially calculate the optimal path
 for the boat to take to get away from the tsunami.
 
+Another expansion could be to have a quicker and smaller boat saving the crew of the bigger boat. This way the boat would be destroyed
+but the crew would be saved. We would also have to calculate an optimal route for the smaller boat to take to get to the bigger boat and then get away from the tsunami,
+and calculate, wether it is even possible to do so in time. 
+
 Some problems that could arise are:
 
 - How do we come up with the metric for the damage to the boat? This is a very arbitrary choice and it could be 
   difficult to make our metric reflect reality.
 
-- How do we model the boat itself with its many properties? Boats with different shapes, masses and materials will 
+- How do we model the boat itself with its many properties? Boats with different shapes, masses, velocities and materials will 
   react differently to the tsunami and modelling that can be difficult.
 
 - How difficult would it be to model a potential escape path for the boat? This is a problem that's completely different 
