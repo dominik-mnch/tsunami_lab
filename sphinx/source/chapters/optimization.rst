@@ -25,25 +25,25 @@ Unfortunately, the 500m resolution simulation in the Chile case did not finish w
 We therefore only show it until about 6000s of simulation time when the job was cancelled.
 
 
-** Tohoku with 1000m resolution and outflow boundary conditions: **
+**Tohoku with 1000m resolution and outflow boundary conditions:**
 
 .. video:: ../../../res/optimization/tohoku_1000m_outflow.mp4
    :align: center
    :width: 100%
 
-** Tohoku with 500m resolution and outflow boundary conditions: **
+**Tohoku with 500m resolution and outflow boundary conditions:**
 
 .. video:: ../../../res/optimization/tohoku_500m_outflow.mp4
    :align: center
    :width: 100%
 
-** Chile with 1000m resolution and outflow boundary conditions: **
+**Chile with 1000m resolution and outflow boundary conditions:**
 
 .. video:: ../../../res/optimization/chile_1000m_outflow.mp4
    :align: center
    :width: 100%
 
-** Chile with 500m resolution and outflow boundary conditions: **
+**Chile with 500m resolution and outflow boundary conditions:**
 
 .. video:: ../../../res/optimization/chile_500m_outflow.mp4
    :align: center
@@ -83,12 +83,14 @@ Local runs
 Since we didn't want to run all the simulations again locally as well,
 we only ran the Tohoku 1000m and 500m resolution simulations locally.
 
-** Tohoku 1000m: **
+**Tohoku 1000m:**
+
 - time stepping seconds: :math:`1909.94s = 31.81min`
 - time steps: :math:`8872`
 - time per cell and iteration: :math:`5.31549 \times 10^{-8} = 53.1549ns`
 
-** Tohoku 500m: **
+**Tohoku 500m:**
+
 - time stepping seconds: :math:`14694.1s = 244.9min = 4.08h`
 - time steps: :math:`17744`
 - time per cell and iteration: :math:`5.11182 \times 10^{-8} = 51.1182ns`
@@ -98,17 +100,20 @@ Draco cluster runs
 Since the 500m resolution simulation in the Chile case did not finish within the allocated time of 12h,
 we don't have the final performance metrics for that case.
 
-** Tohoku 1000m: **
+**Tohoku 1000m:**
+
 - time stepping seconds: :math:`1609.1s = 26.82min = 0.45h`
 - time steps: :math:`8872`
 - time per cell and iteration: :math:`4.47822 \times 10^{-8} = 44.7822ns`
 
-** Tohoku 500m: **
+**Tohoku 500m:**
+
 - time stepping seconds: :math:`12989s = 216.48min = 3.61h`
 - time steps: :math:`17744`
 - time per cell and iteration: :math:`4.51864 \times 10^{-8} = 45.1864ns`
 
-** Chile 1000m: **
+**Chile 1000m:**
+
 - time stepping seconds: :math:`3885.37s = 64.76min = 1.08h`
 - time steps: :math:`8206`
 - time per cell and iteration: :math:`4.50933 \times 10^{-8} = 45.0933ns`
