@@ -7,6 +7,7 @@
 #include "WavePropagation1d.h"
 #include "../solvers/Roe.h"
 #include "../solvers/F_wave.h"
+#include <omp.h>
 
 tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells , bool i_useFWaveSolver, BoundaryCondition i_boundaryCondition) {
   m_nCells = i_nCells;
@@ -49,44 +50,42 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling ) {
   t_real * l_hNew =  m_h[m_step];
   t_real * l_huNew = m_hu[m_step];
 
-  // init new cell quantities
-  for( t_idx l_ce = 1; l_ce < m_nCells+1; l_ce++ ) {
-    l_hNew[l_ce] = l_hOld[l_ce];
-    l_huNew[l_ce] = l_huOld[l_ce];
-  }
+  // Temporary storage for net updates per edge (indexed 0..m_nCells).
+  t_real * l_hUpdateL  = new t_real[m_nCells + 1];
+  t_real * l_huUpdateL = new t_real[m_nCells + 1];
+  t_real * l_hUpdateR  = new t_real[m_nCells + 1];
+  t_real * l_huUpdateR = new t_real[m_nCells + 1];
 
-  // iterate over edges and update with Riemann solutions
+  // Phase 1: compute net-updates for every edge in parallel.
+#pragma omp parallel for schedule(static)
   for( t_idx l_ed = 0; l_ed < m_nCells+1; l_ed++ ) {
-    // determine left and right cell-id
     t_idx l_ceL = l_ed;
-    t_idx l_ceR = l_ed+1;
+    t_idx l_ceR = l_ed + 1;
 
-    // compute net-updates
     t_real l_netUpdates[2][2];
 
-    bool l_leftDry = (m_b[l_ceL] > 0);
-    bool l_rightDry = (m_b[l_ceR] > 0);
+    bool l_leftDry      = (m_b[l_ceL] > 0);
+    bool l_rightDry     = (m_b[l_ceR] > 0);
     bool l_reflectAtShore = (l_leftDry != l_rightDry);
 
-    // Default interface states (non-reflective case).
-    t_real l_hL = l_hOld[l_ceL];
-    t_real l_hR = l_hOld[l_ceR];
+    t_real l_hL  = l_hOld[l_ceL];
+    t_real l_hR  = l_hOld[l_ceR];
     t_real l_huL = l_huOld[l_ceL];
     t_real l_huR = l_huOld[l_ceR];
-    t_real l_bL = m_b[l_ceL];
-    t_real l_bR = m_b[l_ceR];
+    t_real l_bL  = m_b[l_ceL];
+    t_real l_bR  = m_b[l_ceR];
 
     if( l_reflectAtShore ) {
       // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
       if( l_leftDry ) {
-        l_hL = l_hR;
+        l_hL  = l_hR;
         l_huL = -l_huR;
-        l_bL = l_bR;
+        l_bL  = l_bR;
       }
       else {
-        l_hR = l_hL;
+        l_hR  = l_hL;
         l_huR = -l_huL;
-        l_bR = l_bL;
+        l_bR  = l_bL;
       }
     }
 
@@ -121,13 +120,23 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling ) {
       }
     }
 
-    // update the cells' quantities
-    l_hNew[l_ceL]  -= i_scaling * l_netUpdates[0][0];
-    l_huNew[l_ceL] -= i_scaling * l_netUpdates[0][1];
-
-    l_hNew[l_ceR]  -= i_scaling * l_netUpdates[1][0];
-    l_huNew[l_ceR] -= i_scaling * l_netUpdates[1][1];
+    l_hUpdateL[l_ed]  = i_scaling * l_netUpdates[0][0];
+    l_huUpdateL[l_ed] = i_scaling * l_netUpdates[0][1];
+    l_hUpdateR[l_ed]  = i_scaling * l_netUpdates[1][0];
+    l_huUpdateR[l_ed] = i_scaling * l_netUpdates[1][1];
   }
+
+  // Phase 2: apply updates per interior cell in parallel.
+#pragma omp parallel for schedule(static)
+  for( t_idx l_ce = 1; l_ce <= m_nCells; l_ce++ ) {
+    l_hNew[l_ce]  = l_hOld[l_ce]  - l_hUpdateR[l_ce-1]  - l_hUpdateL[l_ce];
+    l_huNew[l_ce] = l_huOld[l_ce] - l_huUpdateR[l_ce-1] - l_huUpdateL[l_ce];
+  }
+
+  delete[] l_hUpdateL;
+  delete[] l_huUpdateL;
+  delete[] l_hUpdateR;
+  delete[] l_huUpdateR;
 }
 
 void tsunami_lab::patches::WavePropagation1d::setGhostOutflow() {
