@@ -46,7 +46,9 @@ Help( vars.GenerateHelpText( env ) )
 env.Append( CXXFLAGS = [ '-std=c++17',
                          '-Wall',
                          '-Wextra',
-                         '-Wpedantic' ] )
+                         '-Wpedantic',
+                         '-fopenmp' ] )
+env.Append( LINKFLAGS = [ '-fopenmp' ] )
 
 # add middle_states.csv location environment variable
 env.Append(CPPDEFINES=[
