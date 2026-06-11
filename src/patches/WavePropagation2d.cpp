@@ -73,6 +73,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   t_real * l_hvNew = m_hv[m_step];
 
   // init new cell quantities
+#pragma omp parallel for schedule(static)
   for( t_idx l_cy = 1; l_cy < m_nCellsY + 1; l_cy++ ) {
     for( t_idx l_cx = 1; l_cx < m_nCellsX + 1; l_cx++ ) {
       t_idx l_ce = l_cy * l_stride + l_cx;
@@ -82,146 +83,145 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     }
   }
 
-  // compute net-updates over all edges
-  for( t_idx l_cy = 0; l_cy < m_nCellsY + 1; l_cy++ ) {
-    for( t_idx l_cx = 0; l_cx < m_nCellsX + 1; l_cx++ ) {
-      t_real l_netUpdates[2][2];
+  // X-sweep: net-updates over horizontal edges (between left and right cells).
+#pragma omp parallel for schedule(static)
+  for( t_idx l_cy = 1; l_cy <= m_nCellsY; l_cy++ ) {
+    t_real l_netUpdates[2][2];
+    for( t_idx l_cx = 0; l_cx <= m_nCellsX; l_cx++ ) {
+      t_idx l_ce  = l_cy * l_stride + l_cx;
+      t_idx l_ceR = l_ce + 1;
 
-      // horizontal edge update (between left and right cells)
-      if( l_cy >= 1 && l_cy <= m_nCellsY ) {
-        t_idx l_ce = l_cy * l_stride + l_cx;
-        t_idx l_ceR = l_ce + 1;
+      bool l_leftDry = (m_b[l_ce] > 0);
+      bool l_rightDry = (m_b[l_ceR] > 0);
+      bool l_reflectAtShore = (l_leftDry != l_rightDry);
 
-        bool l_leftDry = (m_b[l_ce] > 0);
-        bool l_rightDry = (m_b[l_ceR] > 0);
-        bool l_reflectAtShore = (l_leftDry != l_rightDry);
+      t_real l_hL  = l_hOld[l_ce];
+      t_real l_hR  = l_hOld[l_ceR];
+      t_real l_huL = l_huOld[l_ce];
+      t_real l_huR = l_huOld[l_ceR];
+      t_real l_bL  = m_b[l_ce];
+      t_real l_bR  = m_b[l_ceR];
 
-        t_real l_hL = l_hOld[l_ce];
-        t_real l_hR = l_hOld[l_ceR];
-        t_real l_huL = l_huOld[l_ce];
-        t_real l_huR = l_huOld[l_ceR];
-        t_real l_bL = m_b[l_ce];
-        t_real l_bR = m_b[l_ceR];
-
-        if( l_reflectAtShore ) {
-          // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
-          if( l_leftDry ) {
-            l_hL = l_hR;
-            l_huL = -l_huR;
-            l_bL = l_bR;
-          }
-          else {
-            l_hR = l_hL;
-            l_huR = -l_huL;
-            l_bR = l_bL;
-          }
-        }
-
-        if( m_useFWaveSolver ) {
-          solvers::F_wave::netUpdates( l_hL,
-                                       l_hR,
-                                       l_huL,
-                                       l_huR,
-                                       l_bL,
-                                       l_bR,
-                                       l_netUpdates[0],
-                                       l_netUpdates[1] );
+      if( l_reflectAtShore ) {
+        // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
+        if( l_leftDry ) {
+          l_hL  = l_hR;
+          l_huL = -l_huR;
+          l_bL  = l_bR;
         }
         else {
-          solvers::Roe::netUpdates( l_hL,
-                                    l_hR,
-                                    l_huL,
-                                    l_huR,
-                                    l_netUpdates[0],
-                                    l_netUpdates[1] );
+          l_hR  = l_hL;
+          l_huR = -l_huL;
+          l_bR  = l_bL;
         }
-
-        if( l_reflectAtShore ) {
-          // Only update the wet cell; keep the dry cell unchanged.
-          if( l_leftDry ) {
-            l_netUpdates[0][0] = 0;
-            l_netUpdates[0][1] = 0;
-          }
-          else {
-            l_netUpdates[1][0] = 0;
-            l_netUpdates[1][1] = 0;
-          }
-        }
-
-        l_hNew[l_ce]  -= i_scaling * l_netUpdates[0][0];
-        l_huNew[l_ce] -= i_scaling * l_netUpdates[0][1];
-
-        l_hNew[l_ceR]  -= i_scaling * l_netUpdates[1][0];
-        l_huNew[l_ceR] -= i_scaling * l_netUpdates[1][1];
       }
 
-      // vertical edge update (between bottom and top cells)
-      if( l_cx >= 1 && l_cx <= m_nCellsX ) {
-        t_idx l_ceB = l_cy * l_stride + l_cx;
-        t_idx l_ceT = (l_cy + 1) * l_stride + l_cx;
+      if( m_useFWaveSolver ) {
+        solvers::F_wave::netUpdates( l_hL,
+                                     l_hR,
+                                     l_huL,
+                                     l_huR,
+                                     l_bL,
+                                     l_bR,
+                                     l_netUpdates[0],
+                                     l_netUpdates[1] );
+      }
+      else {
+        solvers::Roe::netUpdates( l_hL,
+                                  l_hR,
+                                  l_huL,
+                                  l_huR,
+                                  l_netUpdates[0],
+                                  l_netUpdates[1] );
+      }
 
-        bool l_bottomDry = (m_b[l_ceB] > 0);
-        bool l_topDry = (m_b[l_ceT] > 0);
-        bool l_reflectAtShore = (l_bottomDry != l_topDry);
-
-        t_real l_hL = l_hOld[l_ceB];
-        t_real l_hR = l_hOld[l_ceT];
-        t_real l_huL = l_hvOld[l_ceB];
-        t_real l_huR = l_hvOld[l_ceT];
-        t_real l_bL = m_b[l_ceB];
-        t_real l_bR = m_b[l_ceT];
-
-        if( l_reflectAtShore ) {
-          // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
-          if( l_bottomDry ) {
-            l_hL = l_hR;
-            l_huL = -l_huR;
-            l_bL = l_bR;
-          }
-          else {
-            l_hR = l_hL;
-            l_huR = -l_huL;
-            l_bR = l_bL;
-          }
-        }
-
-        if( m_useFWaveSolver ) {
-          solvers::F_wave::netUpdates( l_hL,
-                                       l_hR,
-                                       l_huL,
-                                       l_huR,
-                                       l_bL,
-                                       l_bR,
-                                       l_netUpdates[0],
-                                       l_netUpdates[1] );
+      if( l_reflectAtShore ) {
+        // Only update the wet cell; keep the dry cell unchanged.
+        if( l_leftDry ) {
+          l_netUpdates[0][0] = 0;
+          l_netUpdates[0][1] = 0;
         }
         else {
-          solvers::Roe::netUpdates( l_hL,
-                                    l_hR,
-                                    l_huL,
-                                    l_huR,
-                                    l_netUpdates[0],
-                                    l_netUpdates[1] );
+          l_netUpdates[1][0] = 0;
+          l_netUpdates[1][1] = 0;
         }
-
-        if( l_reflectAtShore ) {
-          // Only update the wet cell; keep the dry cell unchanged.
-          if( l_bottomDry ) {
-            l_netUpdates[0][0] = 0;
-            l_netUpdates[0][1] = 0;
-          }
-          else {
-            l_netUpdates[1][0] = 0;
-            l_netUpdates[1][1] = 0;
-          }
-        }
-
-        l_hNew[l_ceB]  -= i_scaling * l_netUpdates[0][0];
-        l_hvNew[l_ceB] -= i_scaling * l_netUpdates[0][1];
-
-        l_hNew[l_ceT]  -= i_scaling * l_netUpdates[1][0];
-        l_hvNew[l_ceT] -= i_scaling * l_netUpdates[1][1];
       }
+
+      l_hNew[l_ce]   -= i_scaling * l_netUpdates[0][0];
+      l_huNew[l_ce]  -= i_scaling * l_netUpdates[0][1];
+      l_hNew[l_ceR]  -= i_scaling * l_netUpdates[1][0];
+      l_huNew[l_ceR] -= i_scaling * l_netUpdates[1][1];
+    }
+  }
+
+  // Y-sweep: net-updates over vertical edges (between bottom and top cells).
+#pragma omp parallel for schedule(static)
+  for( t_idx l_cx = 1; l_cx <= m_nCellsX; l_cx++ ) {
+    t_real l_netUpdates[2][2];
+    for( t_idx l_cy = 0; l_cy <= m_nCellsY; l_cy++ ) {
+      t_idx l_ceB = l_cy * l_stride + l_cx;
+      t_idx l_ceT = (l_cy + 1) * l_stride + l_cx;
+
+      bool l_bottomDry = (m_b[l_ceB] > 0);
+      bool l_topDry = (m_b[l_ceT] > 0);
+      bool l_reflectAtShore = (l_bottomDry != l_topDry);
+
+      t_real l_hL  = l_hOld[l_ceB];
+      t_real l_hR  = l_hOld[l_ceT];
+      t_real l_huL = l_hvOld[l_ceB];
+      t_real l_huR = l_hvOld[l_ceT];
+      t_real l_bL  = m_b[l_ceB];
+      t_real l_bR  = m_b[l_ceT];
+
+      if( l_reflectAtShore ) {
+        // Mirror wet state at wet/dry interfaces to emulate a reflecting wall.
+        if( l_bottomDry ) {
+          l_hL  = l_hR;
+          l_huL = -l_huR;
+          l_bL  = l_bR;
+        }
+        else {
+          l_hR  = l_hL;
+          l_huR = -l_huL;
+          l_bR  = l_bL;
+        }
+      }
+
+      if( m_useFWaveSolver ) {
+        solvers::F_wave::netUpdates( l_hL,
+                                     l_hR,
+                                     l_huL,
+                                     l_huR,
+                                     l_bL,
+                                     l_bR,
+                                     l_netUpdates[0],
+                                     l_netUpdates[1] );
+      }
+      else {
+        solvers::Roe::netUpdates( l_hL,
+                                  l_hR,
+                                  l_huL,
+                                  l_huR,
+                                  l_netUpdates[0],
+                                  l_netUpdates[1] );
+      }
+
+      if( l_reflectAtShore ) {
+        // Only update the wet cell; keep the dry cell unchanged.
+        if( l_bottomDry ) {
+          l_netUpdates[0][0] = 0;
+          l_netUpdates[0][1] = 0;
+        }
+        else {
+          l_netUpdates[1][0] = 0;
+          l_netUpdates[1][1] = 0;
+        }
+      }
+
+      l_hNew[l_ceB]  -= i_scaling * l_netUpdates[0][0];
+      l_hvNew[l_ceB] -= i_scaling * l_netUpdates[0][1];
+      l_hNew[l_ceT]  -= i_scaling * l_netUpdates[1][0];
+      l_hvNew[l_ceT] -= i_scaling * l_netUpdates[1][1];
     }
   }
 }
