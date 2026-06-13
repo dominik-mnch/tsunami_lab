@@ -40,10 +40,16 @@ jobs:
           ./build/tsunami_lab 100 100 0 100 0 100 1 1 10 2d dam_break_1d 5 0 2 0 50
 
       - name: Valgrind
+        timeout-minutes: 20
         run: |
           scons mode=debug
-          valgrind ./build/tests
-          valgrind ./build/tsunami_lab 100 100 0 100 0 100 1 1 10 1d outflow dam_break_1d 5 0 2 0 50
+          mapfile -t test_names < <(./build/tests --list-test-names-only)
+          for test_name in "${test_names[@]}"; do
+            [ -n "$test_name" ] || continue
+            echo "Running valgrind for Catch2 test: $test_name"
+            timeout 2m valgrind --leak-check=full --error-exitcode=1 ./build/tests "$test_name"
+          done
+          timeout 2m valgrind --leak-check=full --error-exitcode=1 ./build/tsunami_lab 100 100 0 100 0 100 1 1 10 1d outflow dam_break_1d 5 0 2 0 50
 
       - name: Release
         run: |
