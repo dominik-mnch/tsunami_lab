@@ -152,3 +152,34 @@ The simulator is invoked with the following syntax::
 10. Tohoku 2011 at 1 km resolution using resolution mode::
 
    ./build/tsunami_lab 1000m -200000 2500000 -750000 750000 1 1 7200 2d outflow tsunami2d data/output/tohoku_gebco20_ucsb3_250m_bath.nc data/output/tohoku_gebco20_ucsb3_250m_displ.nc
+
+Runtime Benchmark
+-----------------
+
+The benchmark executable is intended for runtime measurements of the 2D Tohoku tsunami setup without writing simulation output. It uses a fixed grid of ``2160 x 1200`` cells, the F-Wave solver, and the same time-step timing as the main executable: only ``setGhostOutflow()`` and ``timeStep()`` are measured inside the simulation loop.
+
+Build the benchmark target with::
+
+   scons build/benchmark
+
+Run it with::
+
+   ./build/benchmark RUNS OMP_NUM_THREADS [END_TIME] [BATHY_NC] [DISPL_NC]
+
+**Arguments:**
+
+- ``RUNS``: Number of repeated benchmark runs.
+- ``OMP_NUM_THREADS``: Number of OpenMP threads used by the solver.
+- ``END_TIME``: Optional simulation end time in seconds. Defaults to ``10800``.
+- ``BATHY_NC``: Optional bathymetry netCDF file. Defaults to ``data/output/tohoku_gebco20_usgs_250m_bath.nc``.
+- ``DISPL_NC``: Optional displacement netCDF file. Defaults to ``data/output/tohoku_gebco20_usgs_250m_displ.nc``.
+
+Example using the default dataset and end time for three repeated runs with four OpenMP threads::
+
+   ./build/benchmark 3 4
+
+Example with a shorter simulation end time and four OpenMP threads::
+
+   ./build/benchmark 3 4 3600
+
+For each run, the benchmark prints ``time stepping seconds``, ``time steps``, ``time per cell and iteration``, and ``time per cell and iteration in ns``. It also prints the average of these values over all runs.

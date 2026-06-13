@@ -105,5 +105,8 @@ Import('env')
 env.Program( target = 'build/tsunami_lab',
              source = env.sources + env.standalone )
 
+env.Program( target = 'build/benchmark',
+             source = env.sources + env.benchmark )
+
 env.Program( target = 'build/tests',
              source = env.sources + env.tests )
