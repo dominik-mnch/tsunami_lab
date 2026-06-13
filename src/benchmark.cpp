@@ -85,6 +85,9 @@ namespace {
     tsunami_lab::t_real l_dy = l_domainSizeY / i_ny;
 
     tsunami_lab::t_real l_hMax = std::numeric_limits<tsunami_lab::t_real>::lowest();
+
+    std::cout << "Starting setup..." << std::endl;
+
     for( tsunami_lab::t_idx l_cy = 0; l_cy < i_ny; l_cy++ ) {
       tsunami_lab::t_real l_y = l_domainStartY + l_cy * l_dy;
 
@@ -134,6 +137,8 @@ namespace {
 
     RunResult l_result;
     tsunami_lab::t_real l_simTime = 0;
+
+    std::cout << "Setup complete. Entering time loop..." << std::endl;
 
     while( l_simTime < i_endTime ) {
       auto const l_stepStart = std::chrono::steady_clock::now();
