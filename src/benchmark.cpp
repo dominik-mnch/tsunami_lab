@@ -64,7 +64,7 @@ namespace {
                           tsunami_lab::t_real i_endTime,
                           std::string const & i_bathymetryPath,
                           std::string const & i_displacementPath ) {
-    std::unique_ptr<tsunami_lab::setups::Setup> l_setup(
+    std::unique_ptr<tsunami_lab::setups::TsunamiEvent2d> l_setup(
       new tsunami_lab::setups::TsunamiEvent2d( i_bathymetryPath,
                                                i_displacementPath )
     );
@@ -75,12 +75,16 @@ namespace {
                                                    true )
     );
 
-    tsunami_lab::t_real l_domainStartX = 0.0;
-    tsunami_lab::t_real l_domainStartY = 0.0;
-    tsunami_lab::t_real l_domainEndX = 50000.0;
-    tsunami_lab::t_real l_domainEndY = 50000.0;
+    tsunami_lab::t_real l_domainStartX = -200000.0;
+    tsunami_lab::t_real l_domainEndX = 2500000.0;
+    tsunami_lab::t_real l_domainStartY = -750000.0;
+    tsunami_lab::t_real l_domainEndY = 750000.0;
     tsunami_lab::t_real l_domainSizeX = l_domainEndX - l_domainStartX;
     tsunami_lab::t_real l_domainSizeY = l_domainEndY - l_domainStartY;
+    if( l_domainSizeX <= 0 || l_domainSizeY <= 0 ) {
+      throw std::runtime_error( "invalid hard-coded benchmark domain" );
+    }
+
     tsunami_lab::t_real l_dx = l_domainSizeX / i_nx;
     tsunami_lab::t_real l_dy = l_domainSizeY / i_ny;
 
@@ -134,11 +138,24 @@ namespace {
     tsunami_lab::t_real l_dt = static_cast<tsunami_lab::t_real>( 0.25 ) *
       l_dMin / l_speedMax;
     tsunami_lab::t_real l_scaling = l_dt / l_dMin;
+    tsunami_lab::t_idx l_estimatedTimeSteps = static_cast<tsunami_lab::t_idx>(
+      std::ceil( static_cast<double>( i_endTime ) / static_cast<double>( l_dt ) )
+    );
+    tsunami_lab::t_idx l_progressInterval = std::max(
+      static_cast<tsunami_lab::t_idx>( 1 ),
+      l_estimatedTimeSteps / static_cast<tsunami_lab::t_idx>( 20 )
+    );
 
     RunResult l_result;
     tsunami_lab::t_real l_simTime = 0;
 
     std::cout << "Setup complete. Entering time loop..." << std::endl;
+    std::cout << "  domain x:           [" << l_domainStartX << ", " << l_domainEndX << "]" << std::endl;
+    std::cout << "  domain y:           [" << l_domainStartY << ", " << l_domainEndY << "]" << std::endl;
+    std::cout << "  cell size x:        " << l_dx << std::endl;
+    std::cout << "  cell size y:        " << l_dy << std::endl;
+    std::cout << "  time step size:     " << l_dt << std::endl;
+    std::cout << "  estimated steps:    " << l_estimatedTimeSteps << std::endl;
 
     while( l_simTime < i_endTime ) {
       auto const l_stepStart = std::chrono::steady_clock::now();
@@ -152,6 +169,12 @@ namespace {
 
       l_result.timeSteps++;
       l_simTime += l_dt;
+
+      if( l_result.timeSteps % l_progressInterval == 0 || l_simTime >= i_endTime ) {
+        std::cout << "  time loop progress: "
+                  << l_simTime << " / " << i_endTime
+                  << " (#time steps: " << l_result.timeSteps << ")" << std::endl;
+      }
     }
 
     return l_result;

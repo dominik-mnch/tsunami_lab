@@ -156,7 +156,7 @@ The simulator is invoked with the following syntax::
 Runtime Benchmark
 -----------------
 
-The benchmark executable is intended for runtime measurements of the 2D Tohoku tsunami setup without writing simulation output. It uses a fixed grid of ``2160 x 1200`` cells, the F-Wave solver, and the same time-step timing as the main executable: only ``setGhostOutflow()`` and ``timeStep()`` are measured inside the simulation loop.
+The benchmark executable is intended for runtime measurements of the 2D Tohoku tsunami setup without writing simulation output. It uses a fixed grid of ``2160 x 1200`` cells, the fixed Tohoku domain ``[-200000, 2500000] x [-750000, 750000]``, the F-Wave solver, and applies the same time-step timing as the main executable: only ``setGhostOutflow()`` and ``timeStep()`` are measured inside the simulation loop.
 
 Build the benchmark target with::
 
@@ -182,4 +182,4 @@ Example with a shorter simulation end time and four OpenMP threads::
 
    ./build/benchmark 3 4 3600
 
-For each run, the benchmark prints ``time stepping seconds``, ``time steps``, ``time per cell and iteration``, and ``time per cell and iteration in ns``. It also prints the average of these values over all runs.
+Before entering the time loop, the benchmark prints the benchmark domain, cell sizes, time-step size, and estimated number of time steps. During the time loop it prints progress updates. For each run, the benchmark prints ``time stepping seconds``, ``time steps``, ``time per cell and iteration``, and ``time per cell and iteration in ns``. It also prints the average of these values over all runs.
