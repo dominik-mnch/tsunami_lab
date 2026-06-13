@@ -78,6 +78,31 @@ namespace {
 		io_attValue = l_value;
 	}
 
+	tsunami_lab::t_idx nearestIndex( std::vector<tsunami_lab::t_real> const & i_coords,
+	                                tsunami_lab::t_real i_value ) {
+		if( i_coords.size() <= 1 ) return 0;
+
+		bool const l_ascending = i_coords.front() <= i_coords.back();
+		tsunami_lab::t_idx l_left = 0;
+		tsunami_lab::t_idx l_right = i_coords.size();
+
+		while( l_left < l_right ) {
+			tsunami_lab::t_idx l_mid = l_left + ( l_right - l_left ) / 2;
+			bool const l_beforeValue = l_ascending ? i_coords[l_mid] < i_value
+			                                      : i_coords[l_mid] > i_value;
+			if( l_beforeValue ) l_left = l_mid + 1;
+			else l_right = l_mid;
+		}
+
+		if( l_left == 0 ) return 0;
+		if( l_left >= i_coords.size() ) return i_coords.size() - 1;
+
+		tsunami_lab::t_idx const l_prev = l_left - 1;
+		tsunami_lab::t_real const l_prevDistance = std::abs( i_value - i_coords[l_prev] );
+		tsunami_lab::t_real const l_nextDistance = std::abs( i_value - i_coords[l_left] );
+		return l_nextDistance < l_prevDistance ? l_left : l_prev;
+	}
+
 	// helper function to compute and write the coordinates of the cell centers
 	void putCoordinates(int i_ncId,
 						int i_varId,
@@ -708,26 +733,8 @@ tsunami_lab::t_real tsunami_lab::io::NetCdf::Data::getBathymetry( t_real i_x, t_
 		return 0;
 	}
 
-	// Find closest grid indices using nearest-neighbor
-	t_idx l_ix = 0;
-	t_real l_minDistX = std::abs( i_x - xCoords[0] );
-	for( t_idx l_i = 1; l_i < gridNx; l_i++ ) {
-		t_real l_dist = std::abs( i_x - xCoords[l_i] );
-		if( l_dist < l_minDistX ) {
-			l_minDistX = l_dist;
-			l_ix = l_i;
-		}
-	}
-
-	t_idx l_iy = 0;
-	t_real l_minDistY = std::abs( i_y - yCoords[0] );
-	for( t_idx l_i = 1; l_i < gridNy; l_i++ ) {
-		t_real l_dist = std::abs( i_y - yCoords[l_i] );
-		if( l_dist < l_minDistY ) {
-			l_minDistY = l_dist;
-			l_iy = l_i;
-		}
-	}
+	t_idx const l_ix = nearestIndex( xCoords, i_x );
+	t_idx const l_iy = nearestIndex( yCoords, i_y );
 
 	// Return value from grid
 	return bathymetryData[l_iy * gridNx + l_ix];
@@ -747,26 +754,8 @@ tsunami_lab::t_real tsunami_lab::io::NetCdf::Data::getDisplacement( t_real i_x, 
 		return 0;
 	}
 
-	// Find closest grid indices using nearest-neighbor in the displacement grid
-	t_idx l_ix = 0;
-	t_real l_minDistX = std::abs( i_x - dispXCoords[0] );
-	for( t_idx l_i = 1; l_i < dispNx; l_i++ ) {
-		t_real l_dist = std::abs( i_x - dispXCoords[l_i] );
-		if( l_dist < l_minDistX ) {
-			l_minDistX = l_dist;
-			l_ix = l_i;
-		}
-	}
-
-	t_idx l_iy = 0;
-	t_real l_minDistY = std::abs( i_y - dispYCoords[0] );
-	for( t_idx l_i = 1; l_i < dispNy; l_i++ ) {
-		t_real l_dist = std::abs( i_y - dispYCoords[l_i] );
-		if( l_dist < l_minDistY ) {
-			l_minDistY = l_dist;
-			l_iy = l_i;
-		}
-	}
+	t_idx const l_ix = nearestIndex( dispXCoords, i_x );
+	t_idx const l_iy = nearestIndex( dispYCoords, i_y );
 
 	// Return value from displacement grid (row-major y, x)
 	return displacementData[l_iy * dispNx + l_ix];
