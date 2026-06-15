@@ -148,7 +148,8 @@ namespace {
         l_waveProp->getMomentumX(),
         l_waveProp->getMomentumY(),
         i_outputPath,
-        false
+        false,
+        0
       )
     );
 

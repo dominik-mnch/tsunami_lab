@@ -77,6 +77,8 @@ class tsunami_lab::io::NetCdf {
     t_idx m_checkpointNcId;
     //! Whether checkpoint metadata should be written and updated.
     bool m_enableCheckpoints;
+    //! Compression level used for deflated netCDF variables (0 disables compression).
+    int m_deflateLevel;
     //! Simulation time of the last written time step (used by overwriteCheckpointEndTime).
     t_real m_lastSimTime;
 
@@ -202,6 +204,7 @@ public:
      * @param i_hv pointer to momentum in y-direction of the cells
     * @param i_filePath output path of the netCDF file.
     * @param i_enableCheckpoints if true, checkpoint metadata is written next to the output file.
+    * @param i_deflateLevel compression level for deflated variables (0 disables compression, 1-9 enable it).
      **/
     NetCdf( t_real               i_dx,
             t_real               i_dy,
@@ -222,7 +225,8 @@ public:
             t_real       const * i_hu,
             t_real       const * i_hv,
             std::string const & i_filePath = "solutions/solution.nc",
-            bool                 i_enableCheckpoints = true );
+            bool                 i_enableCheckpoints = true,
+            int                  i_deflateLevel = 7 );
 
     /**
      * Closes the netCDF file.

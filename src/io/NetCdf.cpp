@@ -18,7 +18,6 @@
 
 namespace {
 	constexpr tsunami_lab::t_idx c_invalidId = std::numeric_limits<tsunami_lab::t_idx>::max();
-	constexpr int c_deflateLevel = 7;
 
 	// convert from t_idx to regular int for id
 	int toNcId( tsunami_lab::t_idx i_id ) {
@@ -39,6 +38,14 @@ namespace {
 			l_stream << i_context << ": " << nc_strerror( i_status );
 			throw std::runtime_error( l_stream.str() );
 		}
+	}
+
+	void setDeflateIfEnabled( int i_ncId,
+	                          int i_varId,
+	                          int i_deflateLevel,
+	                          std::string const & i_context ) {
+		if( i_deflateLevel == 0 ) return;
+		checkNc( nc_def_var_deflate( i_ncId, i_varId, 1, 1, i_deflateLevel ), i_context );
 	}
 
 	tsunami_lab::t_idx divCeil( tsunami_lab::t_idx i_lhs,
@@ -199,7 +206,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								t_real const * i_hu,
 								t_real const * i_hv,
 								std::string const & i_filePath,
-								bool i_enableCheckpoints )
+								bool i_enableCheckpoints,
+								int i_deflateLevel )
 	: m_dx( i_dx ),
 		m_dy( i_dy ),
 		m_originX( i_originX ),
@@ -227,7 +235,12 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_varMomentumYId( c_invalidId ),
 		m_checkpointNcId( c_invalidId ),
 		m_enableCheckpoints( i_enableCheckpoints ),
+		m_deflateLevel( i_deflateLevel ),
 		m_lastSimTime( 0 ) {
+	if( m_deflateLevel < 0 || m_deflateLevel > 9 ) {
+		throw std::invalid_argument( "netCDF deflate level must be between 0 and 9" );
+	}
+
 	std::filesystem::path l_path( i_filePath );
 	if( l_path.has_parent_path() ) {
 		std::filesystem::create_directories( l_path.parent_path() );
@@ -274,8 +287,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		checkNc( nc_def_var( toNcId( m_ncId ), "y", NC_FLOAT, 1, &l_dimYId, &l_varYId ), "nc_def_var(y)" );
 		checkNc( nc_def_var( toNcId( m_ncId ), "x", NC_FLOAT, 1, &l_dimXId, &l_varXId ), "nc_def_var(x)" );
 
-		// enable compression on time variable
-		checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varTimeId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(time)" );
+		// optionally enable compression on time variable
+		setDeflateIfEnabled( toNcId( m_ncId ), l_varTimeId, m_deflateLevel, "nc_def_var_deflate(time)" );
 
 		// add text attributes to time and coordinate variables for paraview
 		putAttText( toNcId( m_ncId ), l_varTimeId, "long_name", "time" );
@@ -300,8 +313,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			int l_varHeightId = -1;
 			checkNc( nc_def_var( toNcId( m_ncId ), "height", NC_FLOAT, 3, l_dimsTYX, &l_varHeightId ), "nc_def_var(height)" );
 			m_varHeightId = fromNcId( l_varHeightId );
-			// enable compression on height variable
-			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varHeightId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(height)" );
+			// optionally enable compression on height variable
+			setDeflateIfEnabled( toNcId( m_ncId ), l_varHeightId, m_deflateLevel, "nc_def_var_deflate(height)" );
 			putAttText( toNcId( m_ncId ), l_varHeightId, "long_name", "water height" );
 			putAttText( toNcId( m_ncId ), l_varHeightId, "units", "m" );
 		}
@@ -311,8 +324,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			int l_varMomentumXId = -1;
 			checkNc( nc_def_var( toNcId( m_ncId ), "momentum_x", NC_FLOAT, 3, l_dimsTYX, &l_varMomentumXId ), "nc_def_var(momentum_x)" );
 			m_varMomentumXId = fromNcId( l_varMomentumXId );
-			// enable compression on momentum_x variable
-			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varMomentumXId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(momentum_x)" );
+			// optionally enable compression on momentum_x variable
+			setDeflateIfEnabled( toNcId( m_ncId ), l_varMomentumXId, m_deflateLevel, "nc_def_var_deflate(momentum_x)" );
 			putAttText( toNcId( m_ncId ), l_varMomentumXId, "long_name", "x momentum" );
 			putAttText( toNcId( m_ncId ), l_varMomentumXId, "units", "m^2 s^-1" );
 		}
@@ -322,8 +335,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			int l_varMomentumYId = -1;
 			checkNc( nc_def_var( toNcId( m_ncId ), "momentum_y", NC_FLOAT, 3, l_dimsTYX, &l_varMomentumYId ), "nc_def_var(momentum_y)" );
 			m_varMomentumYId = fromNcId( l_varMomentumYId );
-			// enable compression on momentum_y variable
-			checkNc( nc_def_var_deflate( toNcId( m_ncId ), l_varMomentumYId, 1, 1, c_deflateLevel ), "nc_def_var_deflate(momentum_y)" );
+			// optionally enable compression on momentum_y variable
+			setDeflateIfEnabled( toNcId( m_ncId ), l_varMomentumYId, m_deflateLevel, "nc_def_var_deflate(momentum_y)" );
 			putAttText( toNcId( m_ncId ), l_varMomentumYId, "long_name", "y momentum" );
 			putAttText( toNcId( m_ncId ), l_varMomentumYId, "units", "m^2 s^-1" );
 		}

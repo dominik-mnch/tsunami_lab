@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include "NetCdf.h"
 #include <cstdio>
+#include <filesystem>
 #include <netcdf.h>
 #include <string>
 #include <vector>
@@ -54,7 +55,8 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 											l_hu + 5,
 											l_hv + 5,
 											l_filePath,
-											true );
+											true,
+											7 );
 
 	// Write first timestep
 	l_writer.writeTimeStep( 0.0 );
@@ -94,6 +96,18 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 	REQUIRE( nc_inq_varid( l_ncId, "time", &l_varTimeId ) == NC_NOERR );
 	REQUIRE( nc_inq_varid( l_ncId, "height", &l_varHeightId ) == NC_NOERR );
 	REQUIRE( nc_inq_varid( l_ncId, "bathymetry", &l_varBathyId ) == NC_NOERR );
+
+	int l_shuffle = 0;
+	int l_deflate = 0;
+	int l_deflateLevel = 0;
+	REQUIRE( nc_inq_var_deflate( l_ncId,
+	                             l_varHeightId,
+	                             &l_shuffle,
+	                             &l_deflate,
+	                             &l_deflateLevel ) == NC_NOERR );
+	REQUIRE( l_shuffle == 1 );
+	REQUIRE( l_deflate == 1 );
+	REQUIRE( l_deflateLevel == 7 );
 
 	std::vector<tsunami_lab::t_real> l_times( 2 );
 	REQUIRE( nc_get_var_float( l_ncId, l_varTimeId, l_times.data() ) == NC_NOERR );
@@ -184,9 +198,10 @@ TEST_CASE( "NetCDF writer keeps partial downsample blocks at domain edges.", "[N
 		                                      l_h,
 		                                      l_b,
 		                                      l_hu,
-		                                      l_hv,
-			                                      l_filePath,
-			                                      false );
+			                                  l_hv,
+			                                  l_filePath,
+			                                  false,
+			                                  7 );
 		l_writer.writeTimeStep( 0.0 );
 	}
 
@@ -263,16 +278,76 @@ TEST_CASE( "NetCDF writer can disable checkpoint metadata.", "[NetCdf]" ) {
 		                                      l_h,
 		                                      l_b,
 		                                      l_hu,
-		                                      l_hv,
-		                                      l_filePath,
-		                                      false );
+			                                      l_hv,
+			                                      l_filePath,
+			                                      false,
+			                                      7 );
 		l_writer.writeTimeStep( 0.0 );
 	}
 
 	int l_ncId = -1;
 	REQUIRE( nc_open( l_filePath.c_str(), NC_NOWRITE, &l_ncId ) == NC_NOERR );
 	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
-	REQUIRE( nc_open( "checkpoint.nc", NC_NOWRITE, &l_ncId ) == NC_ENOTFOUND );
+	REQUIRE_FALSE( std::filesystem::exists( "checkpoint.nc" ) );
+
+	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
+}
+
+TEST_CASE( "NetCDF writer leaves variables uncompressed at deflate level zero.", "[NetCdf]" ) {
+	std::string l_filePath = "test_solution_no_deflate.nc";
+	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
+
+	tsunami_lab::t_real l_h[1] = { 1 };
+	tsunami_lab::t_real l_b[1] = { -10 };
+	tsunami_lab::t_real l_hu[1] = { 0 };
+	tsunami_lab::t_real l_hv[1] = { 0 };
+
+	{
+		tsunami_lab::io::NetCdf l_writer( 1.0,
+		                                      1.0,
+		                                      0.0,
+		                                      0.0,
+		                                      1,
+		                                      1,
+		                                      1,
+		                                      1,
+		                                      0.0,
+		                                      1.0,
+		                                      1,
+		                                      "2d",
+		                                      "artificial_tsunami_2d",
+		                                      "nx=1;ny=1;k=1",
+		                                      l_h,
+		                                      l_b,
+		                                      l_hu,
+		                                      l_hv,
+		                                      l_filePath,
+		                                      false,
+		                                      0 );
+		l_writer.writeTimeStep( 0.0 );
+	}
+
+	int l_ncId = -1;
+	REQUIRE( nc_open( l_filePath.c_str(), NC_NOWRITE, &l_ncId ) == NC_NOERR );
+
+	int l_varHeightId = -1;
+	REQUIRE( nc_inq_varid( l_ncId, "height", &l_varHeightId ) == NC_NOERR );
+
+	int l_shuffle = 0;
+	int l_deflate = 0;
+	int l_deflateLevel = 0;
+	REQUIRE( nc_inq_var_deflate( l_ncId,
+	                             l_varHeightId,
+	                             &l_shuffle,
+	                             &l_deflate,
+	                             &l_deflateLevel ) == NC_NOERR );
+	REQUIRE( l_shuffle == 0 );
+	REQUIRE( l_deflate == 0 );
+
+	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
+	REQUIRE_FALSE( std::filesystem::exists( "checkpoint.nc" ) );
 
 	std::remove( l_filePath.c_str() );
 	std::remove( "checkpoint.nc" );

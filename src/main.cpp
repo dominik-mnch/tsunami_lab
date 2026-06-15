@@ -742,7 +742,8 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_waveProp->getMomentumX(),
                                     l_useWavePropagation1d ? nullptr : l_waveProp->getMomentumY(),
                                     l_solutionPath,
-                                    true );
+                                    true,
+                                    7 );
 
   // iterate over time
   while( l_simTime < l_endTime ){
