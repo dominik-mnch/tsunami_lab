@@ -148,6 +148,9 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
       }
     }
 
+// ensure X-sweep is complete before starting Y-sweep
+#pragma omp barrier
+
     // Y-sweep: net-updates over vertical edges (between bottom and top cells).
 #pragma omp for schedule(static)
     for( t_idx l_cx = 1; l_cx <= m_nCellsX; l_cx++ ) {
