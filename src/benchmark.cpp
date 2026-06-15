@@ -92,6 +92,7 @@ namespace {
 
     std::cout << "Starting setup..." << std::endl;
 
+    //#pragma omp parallel for schedule(static)
     for( tsunami_lab::t_idx l_cy = 0; l_cy < i_ny; l_cy++ ) {
       tsunami_lab::t_real l_y = l_domainStartY + l_cy * l_dy;
 
