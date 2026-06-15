@@ -21,6 +21,7 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    chapters/tsunami_simulations
    chapters/checkpointing_and_coarse_output
    chapters/optimization
+   chapters/parallelization
    chapters/draft_individual_phase
 
 You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.

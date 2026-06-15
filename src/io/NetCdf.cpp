@@ -82,25 +82,42 @@ namespace {
 	                                tsunami_lab::t_real i_value ) {
 		if( i_coords.size() <= 1 ) return 0;
 
-		bool const l_ascending = i_coords.front() <= i_coords.back();
 		tsunami_lab::t_idx l_left = 0;
-		tsunami_lab::t_idx l_right = i_coords.size();
+		tsunami_lab::t_idx l_right = i_coords.size() - 1;
 
-		while( l_left < l_right ) {
-			tsunami_lab::t_idx l_mid = l_left + ( l_right - l_left ) / 2;
-			bool const l_beforeValue = l_ascending ? i_coords[l_mid] < i_value
-			                                      : i_coords[l_mid] > i_value;
-			if( l_beforeValue ) l_left = l_mid + 1;
-			else l_right = l_mid;
+		tsunami_lab::t_real l_leftVal = i_coords[0];
+		tsunami_lab::t_real l_rightVal = i_coords[i_coords.size() - 1];
+
+		bool const l_increasing = l_rightVal > l_leftVal;
+
+		if( l_increasing ? (i_value < l_leftVal || i_value > l_rightVal)
+		                  : (i_value > l_leftVal || i_value < l_rightVal) ) {
+			// Value is outside range, return nearest endpoint
+			return std::abs(i_value - l_leftVal) <= std::abs(l_rightVal - i_value) ? l_left
+			                                                                       : l_right;
 		}
 
-		if( l_left == 0 ) return 0;
-		if( l_left >= i_coords.size() ) return i_coords.size() - 1;
+		while( l_right - l_left > 1 ) {
+			if( l_leftVal == l_rightVal ) {
+				break;
+			}
 
-		tsunami_lab::t_idx const l_prev = l_left - 1;
-		tsunami_lab::t_real const l_prevDistance = std::abs( i_value - i_coords[l_prev] );
-		tsunami_lab::t_real const l_nextDistance = std::abs( i_value - i_coords[l_left] );
-		return l_nextDistance < l_prevDistance ? l_left : l_prev;
+			tsunami_lab::t_real l_ratio = (i_value - l_leftVal) / (l_rightVal - l_leftVal);
+			tsunami_lab::t_idx l_guess = l_left + (l_right - l_left) * l_ratio;
+			l_guess = std::clamp(l_guess, l_left + 1, l_right - 1);
+			tsunami_lab::t_real l_guessVal = i_coords[l_guess];
+
+			if( l_increasing ? l_guessVal < i_value : l_guessVal > i_value ) {
+				l_left = l_guess;
+				l_leftVal = l_guessVal;
+			} else {
+				l_right = l_guess;
+				l_rightVal = l_guessVal;
+			}
+		}
+
+		return std::abs(i_value - l_leftVal) <= std::abs(l_rightVal - i_value) ? l_left
+		                                                                       : l_right;
 	}
 
 	// helper function to compute and write the coordinates of the cell centers
