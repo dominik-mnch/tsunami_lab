@@ -183,3 +183,45 @@ Example with a shorter simulation end time and four OpenMP threads::
    ./build/benchmark 3 4 3600
 
 Before entering the time loop, the benchmark prints the benchmark domain, cell sizes, time-step size, and estimated number of time steps. During the time loop it prints progress updates. For each run, the benchmark prints ``time stepping seconds``, ``time steps``, ``time per cell and iteration``, and ``time per cell and iteration in ns``. It also prints the average of these values over all runs.
+
+Grace System Benchmark
+----------------------
+
+The Grace benchmark is designed for performance evaluation on high-performance computing systems. It benchmarks the Tohoku 2011 M 9.1 tsunami event at 250 meter resolution with periodic file I/O.
+
+**Benchmark Configuration:**
+
+- **Event:** Tohoku 2011 M 9.1
+- **Resolution:** 250 meters
+- **Grid:** 10,800 × 6,000 cells
+- **Domain:** [-200000, 2500000] × [-750000, 750000] meters
+- **Time Steps:** Fixed at 10,000 steps
+- **File I/O:** NetCDF output written every 100 time steps
+- **Solver:** F-Wave with OpenMP parallelization
+
+Build the Grace benchmark with::
+
+   scons build/benchmark_grace
+
+Run it with::
+
+   ./build/benchmark_grace [BATHY_NC] [DISPL_NC] [OUTPUT_NC]
+
+**Optional Arguments:**
+
+- ``BATHY_NC``: Bathymetry netCDF file. Defaults to ``data/output/tohoku_gebco20_usgs_250m_bath.nc``.
+- ``DISPL_NC``: Displacement netCDF file. Defaults to ``data/output/tohoku_gebco20_usgs_250m_displ.nc``.
+- ``OUTPUT_NC``: Output netCDF file. Defaults to ``solutions/grace_benchmark.nc``.
+
+Example using default settings::
+
+   ./build/benchmark_grace
+
+The benchmark outputs:
+
+- **Total Elapsed Time:** Total wall-clock time for the entire benchmark
+- **Computation Time:** Time spent in solver computations (setGhostOutflow and timeStep)
+- **I/O Time:** Time spent writing NetCDF output
+- **Total Cell Updates:** Grid size × time steps = 648,000,000 updates
+- **Cell Updates per Second:** Performance metric in cell updates per second (CUps)
+- **Mega Cell Updates per Second:** Performance metric in MCUps (millions of cell updates per second)

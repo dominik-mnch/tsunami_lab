@@ -31,6 +31,7 @@ for l_so in l_sources:
 
 env.standalone = env.Object( "main.cpp" )
 env.benchmark = env.Object( "benchmark.cpp" )
+env.benchmark_grace = env.Object( "benchmark_grace.cpp" )
 
 # gather unit tests
 l_tests = [ 'tests.cpp',
