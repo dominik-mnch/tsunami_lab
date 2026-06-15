@@ -151,6 +151,88 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 	std::remove( "checkpoint.nc" );
 }
 
+TEST_CASE( "NetCDF writer keeps partial downsample blocks at domain edges.", "[NetCdf]" ) {
+	std::string l_filePath = "test_solution_coarse_edges.nc";
+	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
+
+	tsunami_lab::t_real l_h[6]  = { 1, 2, 3,
+	                               4, 5, 6 };
+	tsunami_lab::t_real l_b[6]  = { 10, 20, 30,
+	                               40, 50, 60 };
+	tsunami_lab::t_real l_hu[6] = { 0, 0, 0,
+	                               0, 0, 0 };
+	tsunami_lab::t_real l_hv[6] = { 0, 0, 0,
+	                               0, 0, 0 };
+
+	{
+		tsunami_lab::io::NetCdf l_writer( 1.0,
+		                                      1.0,
+		                                      0.0,
+		                                      0.0,
+		                                      3,
+		                                      2,
+		                                      2,
+		                                      3,
+		                                      0.0,
+		                                      1.0,
+		                                      1,
+		                                      "2d",
+		                                      "artificial_tsunami_2d",
+		                                      "nx=3;ny=2;k=2",
+		                                      l_h,
+		                                      l_b,
+		                                      l_hu,
+		                                      l_hv,
+		                                      l_filePath );
+		l_writer.writeTimeStep( 0.0 );
+	}
+
+	int l_ncId = -1;
+	REQUIRE( nc_open( l_filePath.c_str(), NC_NOWRITE, &l_ncId ) == NC_NOERR );
+
+	int l_dimXId = -1;
+	int l_dimYId = -1;
+	std::size_t l_dimX = 0;
+	std::size_t l_dimY = 0;
+	REQUIRE( nc_inq_dimid( l_ncId, "x", &l_dimXId ) == NC_NOERR );
+	REQUIRE( nc_inq_dimid( l_ncId, "y", &l_dimYId ) == NC_NOERR );
+	REQUIRE( nc_inq_dimlen( l_ncId, l_dimXId, &l_dimX ) == NC_NOERR );
+	REQUIRE( nc_inq_dimlen( l_ncId, l_dimYId, &l_dimY ) == NC_NOERR );
+	REQUIRE( l_dimX == 2 );
+	REQUIRE( l_dimY == 1 );
+
+	int l_varXId = -1;
+	int l_varYId = -1;
+	int l_varHeightId = -1;
+	int l_varBathyId = -1;
+	REQUIRE( nc_inq_varid( l_ncId, "x", &l_varXId ) == NC_NOERR );
+	REQUIRE( nc_inq_varid( l_ncId, "y", &l_varYId ) == NC_NOERR );
+	REQUIRE( nc_inq_varid( l_ncId, "height", &l_varHeightId ) == NC_NOERR );
+	REQUIRE( nc_inq_varid( l_ncId, "bathymetry", &l_varBathyId ) == NC_NOERR );
+
+	std::vector<tsunami_lab::t_real> l_x( 2 );
+	std::vector<tsunami_lab::t_real> l_y( 1 );
+	REQUIRE( nc_get_var_float( l_ncId, l_varXId, l_x.data() ) == NC_NOERR );
+	REQUIRE( nc_get_var_float( l_ncId, l_varYId, l_y.data() ) == NC_NOERR );
+	REQUIRE( l_x[0] == Approx( 1.0 ) );
+	REQUIRE( l_x[1] == Approx( 2.5 ) );
+	REQUIRE( l_y[0] == Approx( 1.0 ) );
+
+	std::vector<tsunami_lab::t_real> l_height( 2 );
+	std::vector<tsunami_lab::t_real> l_bathy( 2 );
+	REQUIRE( nc_get_var_float( l_ncId, l_varHeightId, l_height.data() ) == NC_NOERR );
+	REQUIRE( nc_get_var_float( l_ncId, l_varBathyId, l_bathy.data() ) == NC_NOERR );
+	REQUIRE( l_height[0] == Approx( 3.0 ) );
+	REQUIRE( l_height[1] == Approx( 4.5 ) );
+	REQUIRE( l_bathy[0] == Approx( 30.0 ) );
+	REQUIRE( l_bathy[1] == Approx( 45.0 ) );
+
+	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
+	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
+}
+
 TEST_CASE( "NetCDF reader reads bathymetry and displacement data.", "[NetCdf]" ) {
 	std::string l_bathyFile = "test_reader_bathymetry.nc";
 	std::string l_dispFile = "test_reader_displacement.nc";

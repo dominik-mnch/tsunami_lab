@@ -41,6 +41,11 @@ namespace {
 		}
 	}
 
+	tsunami_lab::t_idx divCeil( tsunami_lab::t_idx i_lhs,
+	                          tsunami_lab::t_idx i_rhs ) {
+		return ( i_lhs + i_rhs - 1 ) / i_rhs;
+	}
+
 	// helper function to add text to a variable
 	void putAttText(int i_ncId,
 					int i_varId,
@@ -120,30 +125,37 @@ namespace {
 		                                                                       : l_right;
 	}
 
-	// helper function to compute and write the coordinates of the cell centers
-	void putCoordinates(int i_ncId,
-						int i_varId,
-						tsunami_lab::t_idx i_n,
-						tsunami_lab::t_real i_origin,
-						tsunami_lab::t_real i_delta) {
+	void putCoarsenedCoordinates(int i_ncId,
+								int i_varId,
+								tsunami_lab::t_idx i_n,
+								tsunami_lab::t_idx i_k,
+								tsunami_lab::t_real i_origin,
+								tsunami_lab::t_real i_delta) {
 
-		std::vector<tsunami_lab::t_real> l_coords( i_n );
-		for( tsunami_lab::t_idx l_id = 0; l_id < i_n; l_id++ ) {
+		tsunami_lab::t_idx l_nCoarse = divCeil( i_n, i_k );
+		std::vector<tsunami_lab::t_real> l_coords( l_nCoarse );
+		for( tsunami_lab::t_idx l_id = 0; l_id < l_nCoarse; l_id++ ) {
+			tsunami_lab::t_idx l_start = l_id * i_k;
+			tsunami_lab::t_idx l_block = std::min( i_k, i_n - l_start );
 			l_coords[l_id] = i_origin +
-											 ( static_cast<tsunami_lab::t_real>( l_id ) +
-												 static_cast<tsunami_lab::t_real>( 0.5 ) ) * i_delta;
+			                 ( static_cast<tsunami_lab::t_real>( l_start ) +
+			                   static_cast<tsunami_lab::t_real>( l_block ) *
+			                   static_cast<tsunami_lab::t_real>( 0.5 ) ) * i_delta;
 		}
 		checkNc( nc_put_var_float( i_ncId, i_varId, l_coords.data() ), "nc_put_var_float" );
 	}
 }
 
 void tsunami_lab::io::NetCdf::helperWritingData(t_real const * i_data, t_idx i_varId) const {
+	t_idx l_nxOut = divCeil( m_nx, m_k );
+	t_idx l_nyOut = divCeil( m_ny, m_k );
+
 	// begin at current time step and write a block of size nx*ny
 	std::size_t l_startData[3] = { m_timeStep, 0, 0 };
-	std::size_t l_countData[3] = { 1, m_ny/m_k, m_nx/m_k };
+	std::size_t l_countData[3] = { 1, l_nyOut, l_nxOut };
 
 	// buffer for data to be written to the netCDF file
-	std::vector<t_real> l_buffer( (m_nx + m_k - 1) / m_k * (m_ny + m_k - 1) / m_k );
+	std::vector<t_real> l_buffer( l_nxOut * l_nyOut );
 	
 	if( i_data != nullptr && i_varId != c_invalidId ) {
 		for( t_idx l_iy = 0; l_iy < m_ny; l_iy+= m_k ) {
@@ -161,7 +173,7 @@ void tsunami_lab::io::NetCdf::helperWritingData(t_real const * i_data, t_idx i_v
 				}
 				t_idx l_oy = l_iy / m_k;
 				t_idx l_ox = l_ix / m_k;
-				l_buffer[l_oy * (m_nx/m_k) + l_ox] = l_avg / (blockHeight * blockWidth);
+				l_buffer[l_oy * l_nxOut + l_ox] = l_avg / (blockHeight * blockWidth);
 			}
 		}
 		checkNc( nc_put_vara_float( toNcId( m_ncId ), toNcId( i_varId ), l_startData, l_countData, l_buffer.data() ), "nc_put_vara_float" );
@@ -225,6 +237,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		int l_ncId = -1;
 		checkNc( nc_create( i_filePath.c_str(), NC_NETCDF4 | NC_CLOBBER, &l_ncId ), "nc_create" );
 		m_ncId = fromNcId( l_ncId );
+		t_idx l_nxOut = divCeil( m_nx, m_k );
+		t_idx l_nyOut = divCeil( m_ny, m_k );
 
 		// index of time dimension
 		int l_dimTimeId = -1;
@@ -239,8 +253,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 
 		// define dimensions (time (unlimited), y (size of y-direction), x (size of x-direction))
 		checkNc( nc_def_dim( m_ncId, "time", NC_UNLIMITED, &l_dimTimeId ), "nc_def_dim(time)" );
-		checkNc( nc_def_dim( m_ncId, "y", m_ny/m_k, &l_dimYId ), "nc_def_dim(y)" );
-		checkNc( nc_def_dim( m_ncId, "x", m_nx/m_k, &l_dimXId ), "nc_def_dim(x)" );
+		checkNc( nc_def_dim( m_ncId, "y", l_nyOut, &l_dimYId ), "nc_def_dim(y)" );
+		checkNc( nc_def_dim( m_ncId, "x", l_nxOut, &l_dimXId ), "nc_def_dim(x)" );
 
 		l_dimsYX[0] = l_dimYId;
 		l_dimsYX[1] = l_dimXId;
@@ -316,12 +330,12 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		checkNc( nc_enddef( toNcId( m_ncId ) ), "nc_enddef" );
 
 		// write cell positions for x and y dimensions
-		putCoordinates( toNcId( m_ncId ), l_varXId, m_nx/m_k, m_originX, m_dx );
-		putCoordinates( toNcId( m_ncId ), l_varYId, m_ny/m_k, m_originY, m_dy );
+		putCoarsenedCoordinates( toNcId( m_ncId ), l_varXId, m_nx, m_k, m_originX, m_dx );
+		putCoarsenedCoordinates( toNcId( m_ncId ), l_varYId, m_ny, m_k, m_originY, m_dy );
 
 		// write bathymetry data once as it does not change over time
 		if( m_b != nullptr && m_varBathyId != c_invalidId ) {
-			std::vector<t_real> l_buffer( m_nx/m_k * m_ny/m_k );
+			std::vector<t_real> l_buffer( l_nxOut * l_nyOut );
 			for( t_idx l_iy = 0; l_iy < m_ny; l_iy += m_k ) {
 				for( t_idx l_ix = 0; l_ix < m_nx; l_ix += m_k ) {
 					t_real l_avg = 0;
@@ -330,7 +344,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 					for( t_idx l_j = 0; l_j < blockHeight; l_j++ )
 						for( t_idx l_i = 0; l_i < blockWidth; l_i++ )
 							l_avg += m_b[(l_iy+l_j) * m_stride + (l_ix+l_i)];
-					l_buffer[(l_iy/m_k) * (m_nx/m_k) + (l_ix/m_k)] = l_avg / (blockHeight * blockWidth);
+					l_buffer[(l_iy/m_k) * l_nxOut + (l_ix/m_k)] = l_avg / (blockHeight * blockWidth);
 				}
 			}
 			checkNc( nc_put_var_float( toNcId( m_ncId ), toNcId( m_varBathyId ), l_buffer.data() ), "nc_put_var_float(bathymetry)" );
@@ -558,8 +572,8 @@ tsunami_lab::io::NetCdf::CheckpointData tsunami_lab::io::NetCdf::readCheckpoint(
 	t_idx l_solutionNyIdx = static_cast<t_idx>( l_solutionNy );
 	bool  l_isFullResolution = l_solutionNxIdx == l_cp.nx && l_solutionNyIdx == l_cp.ny;
 	bool  l_isCoarseResolution = l_cp.k > 1 &&
-	                             l_solutionNxIdx == l_cp.nx / l_cp.k &&
-	                             l_solutionNyIdx == l_cp.ny / l_cp.k;
+	                             l_solutionNxIdx == divCeil( l_cp.nx, l_cp.k ) &&
+	                             l_solutionNyIdx == divCeil( l_cp.ny, l_cp.k );
 	if( !l_isFullResolution && !l_isCoarseResolution ) {
 		nc_close( l_ncId );
 		std::ostringstream l_stream;
