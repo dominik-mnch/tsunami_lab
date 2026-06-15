@@ -72,6 +72,9 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
       l_hvNew[l_ce] = l_hvOld[l_ce];
     }
 
+// ensure all threads have finished initializing new cell quantities before starting to update them
+#pragma omp barrier
+
     // X-sweep: net-updates over horizontal edges (between left and right cells).
 #pragma omp for schedule(static)
     for( t_idx l_cy = 1; l_cy <= m_nCellsY; l_cy++ ) {
