@@ -198,7 +198,8 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 								t_real const * i_b,
 								t_real const * i_hu,
 								t_real const * i_hv,
-								std::string const & i_filePath )
+								std::string const & i_filePath,
+								bool i_enableCheckpoints )
 	: m_dx( i_dx ),
 		m_dy( i_dy ),
 		m_originX( i_originX ),
@@ -225,6 +226,7 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 		m_varMomentumXId( c_invalidId ),
 		m_varMomentumYId( c_invalidId ),
 		m_checkpointNcId( c_invalidId ),
+		m_enableCheckpoints( i_enableCheckpoints ),
 		m_lastSimTime( 0 ) {
 	std::filesystem::path l_path( i_filePath );
 	if( l_path.has_parent_path() ) {
@@ -383,7 +385,9 @@ tsunami_lab::io::NetCdf::NetCdf(t_real i_dx,
 			nc_inq_dimlen( l_ncId, l_dimTimeId, &l_nSteps );
 		m_timeStep = static_cast<t_idx>( l_nSteps );
 	}
-	defineCheckpoint( (l_path.parent_path() / "checkpoint.nc").string() );
+	if( m_enableCheckpoints ) {
+		defineCheckpoint( (l_path.parent_path() / "checkpoint.nc").string() );
+	}
 }
 
 void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
@@ -405,7 +409,9 @@ void tsunami_lab::io::NetCdf::writeTimeStep(t_real simTime) {
 	helperWritingData(m_hv, m_varMomentumYId);
 
 	m_lastSimTime = simTime;
-	overwriteCheckpointSimTime();
+	if( m_enableCheckpoints ) {
+		overwriteCheckpointSimTime();
+	}
 	checkNc( nc_sync( toNcId( m_ncId ) ), "nc_sync(solution)" );
 	m_timeStep++;
 }

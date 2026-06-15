@@ -53,7 +53,8 @@ TEST_CASE( "NetCDF writer appends timesteps and ignores ghost cells.", "[NetCdf]
 											l_b + 5,
 											l_hu + 5,
 											l_hv + 5,
-											l_filePath );
+											l_filePath,
+											true );
 
 	// Write first timestep
 	l_writer.writeTimeStep( 0.0 );
@@ -184,7 +185,8 @@ TEST_CASE( "NetCDF writer keeps partial downsample blocks at domain edges.", "[N
 		                                      l_b,
 		                                      l_hu,
 		                                      l_hv,
-		                                      l_filePath );
+			                                      l_filePath,
+			                                      false );
 		l_writer.writeTimeStep( 0.0 );
 	}
 
@@ -229,6 +231,49 @@ TEST_CASE( "NetCDF writer keeps partial downsample blocks at domain edges.", "[N
 	REQUIRE( l_bathy[1] == Approx( 45.0 ) );
 
 	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
+	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
+}
+
+TEST_CASE( "NetCDF writer can disable checkpoint metadata.", "[NetCdf]" ) {
+	std::string l_filePath = "test_solution_no_checkpoint.nc";
+	std::remove( l_filePath.c_str() );
+	std::remove( "checkpoint.nc" );
+
+	tsunami_lab::t_real l_h[1] = { 1 };
+	tsunami_lab::t_real l_b[1] = { -10 };
+	tsunami_lab::t_real l_hu[1] = { 0 };
+	tsunami_lab::t_real l_hv[1] = { 0 };
+
+	{
+		tsunami_lab::io::NetCdf l_writer( 1.0,
+		                                      1.0,
+		                                      0.0,
+		                                      0.0,
+		                                      1,
+		                                      1,
+		                                      1,
+		                                      1,
+		                                      0.0,
+		                                      1.0,
+		                                      1,
+		                                      "2d",
+		                                      "artificial_tsunami_2d",
+		                                      "nx=1;ny=1;k=1",
+		                                      l_h,
+		                                      l_b,
+		                                      l_hu,
+		                                      l_hv,
+		                                      l_filePath,
+		                                      false );
+		l_writer.writeTimeStep( 0.0 );
+	}
+
+	int l_ncId = -1;
+	REQUIRE( nc_open( l_filePath.c_str(), NC_NOWRITE, &l_ncId ) == NC_NOERR );
+	REQUIRE( nc_close( l_ncId ) == NC_NOERR );
+	REQUIRE( nc_open( "checkpoint.nc", NC_NOWRITE, &l_ncId ) == NC_ENOTFOUND );
+
 	std::remove( l_filePath.c_str() );
 	std::remove( "checkpoint.nc" );
 }

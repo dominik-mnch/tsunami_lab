@@ -741,7 +741,8 @@ int main( int i_argc, char *i_argv[] ) {
                                     l_waveProp->getBathymetry(),
                                     l_waveProp->getMomentumX(),
                                     l_useWavePropagation1d ? nullptr : l_waveProp->getMomentumY(),
-                                    l_solutionPath );
+                                    l_solutionPath,
+                                    true );
 
   // iterate over time
   while( l_simTime < l_endTime ){

@@ -147,7 +147,8 @@ namespace {
         l_waveProp->getBathymetry(),
         l_waveProp->getMomentumX(),
         l_waveProp->getMomentumY(),
-        i_outputPath
+        i_outputPath,
+        false
       )
     );
 
@@ -256,6 +257,8 @@ int main( int i_argc,
                                 static_cast<double>( l_result.timeSteps );
     double l_cellUpdatesPerSecond = l_totalCellUpdates / l_result.totalSeconds;
     double l_megaCellUpdatesPerSecond = l_cellUpdatesPerSecond / 1e6;
+    double l_averageTimePerCellIteration = l_result.computationSeconds / l_totalCellUpdates;
+    double l_averageTimePerCellIterationNs = l_averageTimePerCellIteration * 1.0e9;
 
     std::cout << std::endl;
     std::cout << "=====================================" << std::endl;
@@ -278,6 +281,8 @@ int main( int i_argc,
     std::cout << std::endl;
     std::cout << "  Cell Updates per Second:    " << static_cast<long long>( l_cellUpdatesPerSecond ) << std::endl;
     std::cout << "  Mega Cell Updates/Second:   " << l_megaCellUpdatesPerSecond << " MCUps" << std::endl;
+    std::cout << "  Time per Cell and Iteration: " << l_averageTimePerCellIteration << std::endl;
+    std::cout << "  Time per Cell and Iteration in ns: " << l_averageTimePerCellIterationNs << std::endl;
     std::cout << std::endl;
     std::cout << "=====================================" << std::endl;
     std::cout << "Benchmark completed successfully!" << std::endl;

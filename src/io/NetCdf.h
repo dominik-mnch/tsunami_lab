@@ -75,6 +75,8 @@ class tsunami_lab::io::NetCdf {
     t_idx m_varMomentumYId;
     //! netCDF file handle for the checkpoint file (c_invalidId if no checkpoint).
     t_idx m_checkpointNcId;
+    //! Whether checkpoint metadata should be written and updated.
+    bool m_enableCheckpoints;
     //! Simulation time of the last written time step (used by overwriteCheckpointEndTime).
     t_real m_lastSimTime;
 
@@ -198,7 +200,8 @@ public:
      * @param i_b pointer to bathymetry of the cells
      * @param i_hu pointer to momentum in x-direction of the cells
      * @param i_hv pointer to momentum in y-direction of the cells
-     * @param i_filePath output path of the netCDF file.
+    * @param i_filePath output path of the netCDF file.
+    * @param i_enableCheckpoints if true, checkpoint metadata is written next to the output file.
      **/
     NetCdf( t_real               i_dx,
             t_real               i_dy,
@@ -218,7 +221,8 @@ public:
             t_real       const * i_b,
             t_real       const * i_hu,
             t_real       const * i_hv,
-            std::string const & i_filePath = "solutions/solution.nc" );
+            std::string const & i_filePath = "solutions/solution.nc",
+            bool                 i_enableCheckpoints = true );
 
     /**
      * Closes the netCDF file.
