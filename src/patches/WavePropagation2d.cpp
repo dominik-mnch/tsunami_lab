@@ -73,7 +73,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     }
 
     // X-sweep: net-updates over horizontal edges (between left and right cells).
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
     for( t_idx l_cy = 1; l_cy <= m_nCellsY; l_cy++ ) {
       t_real l_netUpdates[2][2];
       for( t_idx l_cx = 0; l_cx <= m_nCellsX; l_cx++ ) {
@@ -149,7 +149,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     }
 
     // Y-sweep: net-updates over vertical edges (between bottom and top cells).
-#pragma omp for schedule(static)
+    #pragma omp for schedule(static)
     for( t_idx l_cx = 1; l_cx <= m_nCellsX; l_cx++ ) {
       t_real l_netUpdates[2][2];
       for( t_idx l_cy = 0; l_cy <= m_nCellsY; l_cy++ ) {
