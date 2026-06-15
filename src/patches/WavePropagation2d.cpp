@@ -65,7 +65,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
 #pragma omp parallel
   {
     // init new cell quantities
-#pragma omp for schedule(static)
+#pragma omp for schedule(dynamic)
     for( t_idx l_ce = 0; l_ce < l_nValues; l_ce++ ) {
       l_hNew[l_ce] = l_hOld[l_ce];
       l_huNew[l_ce] = l_huOld[l_ce];
@@ -76,10 +76,10 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
 #pragma omp barrier
 
     // X-sweep: net-updates over horizontal edges (between left and right cells).
-
+    #pragma omp for schedule(dynamic)
     for( t_idx l_cy = 1; l_cy <= m_nCellsY; l_cy++ ) {
       t_real l_netUpdates[2][2];
-      #pragma omp for schedule(static)
+
       for( t_idx l_cx = 0; l_cx <= m_nCellsX; l_cx++ ) {
         t_idx l_ce  = l_cy * l_stride + l_cx;
         t_idx l_ceR = l_ce + 1;
@@ -156,10 +156,10 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
 #pragma omp barrier
 
     // Y-sweep: net-updates over vertical edges (between bottom and top cells).
-
+    #pragma omp for schedule(dynamic)
     for( t_idx l_cx = 1; l_cx <= m_nCellsX; l_cx++ ) {
       t_real l_netUpdates[2][2];
-      #pragma omp for schedule(static)
+      
       for( t_idx l_cy = 0; l_cy <= m_nCellsY; l_cy++ ) {
         t_idx l_ceB = l_cy * l_stride + l_cx;
         t_idx l_ceT = (l_cy + 1) * l_stride + l_cx;
