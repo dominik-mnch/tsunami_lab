@@ -108,5 +108,8 @@ env.Program( target = 'build/tsunami_lab',
 env.Program( target = 'build/benchmark',
              source = env.sources + env.benchmark )
 
+env.Program( target = 'build/benchmark_grace',
+             source = env.sources + env.benchmark_grace )
+
 env.Program( target = 'build/tests',
              source = env.sources + env.tests )
