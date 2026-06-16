@@ -93,3 +93,30 @@ The NVIDIA Grace cluster we ran this on is a dual socket system with 72 cores pe
 because staying on one socket is more efficient than using both sockets.
 
 The drop at 72 threads could be due to a cache limit or a NUMA effect.
+
+Grace Benchmark
+~~~~~~~~~~~~~~~~~~~
+
+The Grace benchmark (``build/benchmark_grace``) is designed to meet all the requirements for the optional task 5. It uses the 2011 Tohoku input data with 250m resolution.
+It uses 10800 x 6000 cells which means a 250m resolution for the cells as well. It runs 10000 time steps with netCDF output every 100 steps.
+
+=====================================
+Grace Benchmark Results
+=====================================
+
+Team: TBD
+
+Performance Metrics:
+  - Total Elapsed Time:         464.941 seconds
+  - Computation Time:           405.035 seconds (87.1154%)
+  - I/O Time:                   59.8984 seconds (12.883%)
+
+  - Grid Resolution:            10800 x 6000 cells
+  - Total Cells:                6.48e+07
+  - Time Steps:                 10000
+  - Total Cell Updates:         648000000000
+
+  - Cell Updates per Second:    1393726589
+  - Mega Cell Updates/Second:   1393.73 MCUps
+  - Time per Cell and Iteration: 6.25054e-10
+  - Time per Cell and Iteration in ns: 0.625054
