@@ -7,7 +7,7 @@ Week 1: CUDA - Setup and Infrastructure
 **Task 1:** Set up CUDA project with infrastructure
   - Install CUDA toolkit and profiling tools (nsys, nvprof)
   - Create regression testing framework (GPU vs CPU comparison)
-  - Implement baseline kernel for x-sweep flux computation
+  - Implement baseline kernel for x-sweep wave propagation calculation
   - Set up SCons CUDA tool integration with existing build system
   - Document setup process and environment
 
@@ -18,7 +18,7 @@ Week 1: CUDA - Setup and Infrastructure
   - Document test procedures and acceptance criteria
 
 **Task 3:** Implement baseline kernel
-  - Implement baseline x-sweep flux kernel using "one thread per edge" approach
+  - Implement baseline x-sweep kernel using "one thread per edge" approach for wave propagation
   - Ensure numerical correctness with simple algorithm first
   - Create minimal host code for kernel launching
   - Verify kernel compiles and runs without errors
@@ -40,7 +40,7 @@ Week 2: CUDA - Thread Benchmarking and Memory Layouts
   - Document tradeoffs and identify best layout
 
 **Task 6:** Compare atomic vs lock-free strategies
-  - Implement atomic-based flux accumulation
+  - Implement atomic-based wave propagation accumulation
   - Implement alternative lock-free or other synchronization approach
   - Compare execution time on same block sizes from Task 4
   - Measure atomic contention rates
