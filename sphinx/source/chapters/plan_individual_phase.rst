@@ -1,8 +1,8 @@
-GPU Parallelization: 3-Week Timeline
-=====================================================
+GPU Parallelization: Bullet Point Plan
+=======================================
 
 Week 1: CUDA - Setup and Baseline Implementation
-====================================================
+--------------------------------------------------
 
 **Task 1:** Set up CUDA project with infrastructure
   - Install CUDA toolkit and profiling tools (nsys, nvprof)
@@ -15,7 +15,7 @@ Week 1: CUDA - Setup and Baseline Implementation
   - Measure atomic contention and compare performance
 
 Week 2: CUDA - Benchmark and memory layouts
-=================================================
+-------------------------------------------
 
 **Task 3:** Benchmark different thread counts
   - Test block sizes: 64, 128, 256, 512, 1024 threads
@@ -30,7 +30,7 @@ Week 2: CUDA - Benchmark and memory layouts
   - Document tradeoffs
 
 Week 3: Apple GPU - Metal Framework Evaluation
-===============================================
+----------------------------------------------
 
 **Task 7:** Prototype Metal Performance Shaders (MPS)
   - Set up Xcode Metal project
