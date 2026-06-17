@@ -1,117 +1,179 @@
-GPU Parallelization: Formalized Plan
-=====================================
+GPU Parallelization: CUDA Implementation Plan
+=====================================================
 
-Each week focuses on a distinct goal: establishing a working baseline on CUDA hardware, refining performance through benchmarking and memory-layout experiments, and finally evaluating an equivalent implementation on Apple GPUs using Metal. 
+Overview
+--------
 
-Week 1 — CUDA: Project Setup and Baseline Implementation
---------------------------------------------------------
+Week 1 establishes infrastructure and baseline performance. Week 2 explores memory layouts and optimization strategies. Week 3 implements advanced techniques and completes the y-sweep kernel. The emphasis throughout is on systematic experimentation with different configurations to understand performance tradeoffs.
 
-Goal
-~~~~
-Establish a reliable CUDA-based development environment and provide a working baseline kernel for the wave propagation computations. The baseline will enable fair comparisons with later optimizations and with CPU results.
-
-Planned activities
-~~~~~~~~~~~~~~~~~~
-1. Tooling and environment: Install a suitable CUDA toolkit and profiling utilities. At minimum, install and verify a CUDA SDK that matches the target GPU drivers. Add profiling tools such as NVIDIA Nsight Systems and Nsight Compute (or legacy `nvprof` where appropriate) so that kernel execution and memory behavior can be measured precisely.
-
-2. Regression testing: Create an automated test harness that runs selected solver work units on both CPU and GPU, compares numerical outputs, and reports deviations. The harness should be runnable from the project root and produce deterministic results for the configured input cases.
-
-3. Baseline kernel: Implement a straightforward GPU kernel that computes the x-sweep flux updates. The goal is correctness first; performance tuning follows in Week 2. Document the kernel launch configuration and any simplifying assumptions.
-
-Validation criteria
-~~~~~~~~~~~~~~~~~~~
-- The regression harness runs GPU vs CPU and reports identical or acceptably close floating-point results for representative grids.
-- The baseline kernel compiles and executes on the target GPU and is integrated into the project build and test flow.
-
-Deliverables
-~~~~~~~~~~~~
-- Installation notes for CUDA and profilers.
-- A repeatable test script that validates GPU results against CPU outputs.
-- Source file(s) containing the baseline wave propagation kernel and the minimal host-side driver code for running it.
-
-Week 2 — CUDA: Benchmarking and Memory-Layout Experiments
----------------------------------------------------------
+Week 1 — CUDA: Setup and Infrastructure
+---------------------------------------
 
 Goal
 ~~~~
-Explore configuration space and memory layouts to identify kernel launch parameters and data arrangements that maximize throughput and resource utilization on CUDA hardware.
+Establish a working CUDA development environment with infrastructure, build system, and regression testing framework. This week focuses on setup and preparation for subsequent weeks of optimization work.
 
 Planned activities
 ~~~~~~~~~~~~~~~~~~
-1. Thread-block sizing: Benchmark a range of block sizes (for example 64, 128, 256, 512, 1024 threads per block, respecting hardware limits) on representative grid sizes, initially using a 1000×1000 test grid. Record raw execution time and secondary metrics such as SM occupancy, register usage per thread, and achieved memory bandwidth.
 
-2. Memory-layout experiments: Evaluate row-major, column-major, and tiled (blocked) memory layouts to determine which arrangement provides the best coalesced memory access patterns and cache behavior for the sweep kernels. Run these layouts on multiple grid sizes such as 500×500, 1000×1000, and 4000×4000 to reveal scaling trends.
+1. **Task 1: CUDA Infrastructure Setup**
+   - Install CUDA toolkit matching target GPU drivers
+   - Install profiling tools (NVIDIA Nsys, nvprof/Nsight Compute)
+   - Set up SCons CUDA tool support in SConstruct/SConscript files
+   - Create baseline CUDA kernel that compiles and runs with existing build system
+   - Document installation process and environment variables
+   - Verify CUDA installation with simple test kernel
 
-3. Measurement and reporting: For each configuration record time-to-solution, achieved occupancy, registers per thread, and measured bandwidth. Aggregate the results into comparison tables and include a short analysis explaining why the top configurations performed best.
+1. **Task 2: Regression Testing Framework**
+   - Create automated test harness that compares GPU vs CPU outputs
+   - Implement tolerance checking for floating-point differences
+   - Set up test infrastructure for multiple grid sizes (500×500, 1000×1000, 4000×4000)
+   - Create benchmark logging framework (CSV output for results tracking)
+   - Document test procedures and acceptance criteria
+
+3. **Task 3: Baseline Implementation**
+   - Implement baseline x-sweep flux kernel using "one thread per edge" approach
+   - Ensure numerical correctness with simple algorithm first
+   - Create minimal host code for kernel launching
+   - Verify kernel compiles and runs without errors
+   - Document baseline kernel design and assumptions
 
 Validation criteria
 ~~~~~~~~~~~~~~~~~~~
-- A clear best-performing block size or small set of block sizes is identified for each kernel variant.
-- Memory-layout tradeoffs are documented, showing which layout is preferred for small, medium, and large grids.
-- Benchmark scripts and data tables are stored with the project for reproducibility.
+- CUDA toolkit and profilers successfully installed and verified
+- CMake build system compiles CUDA code without errors
+- Regression test framework runs and compares GPU vs CPU outputs within tolerance
+- Baseline kernel executes and produces correct results
+- All infrastructure documented and reproducible
 
 Deliverables
 ~~~~~~~~~~~~
-- Benchmark scripts for running block-size sweeps and memory-layout comparisons.
-- A comparison table summarizing performance across configurations.
-- Notes explaining the observed behavior and recommended defaults.
+- Installation guide with version information and environment setup
+- SConstruct/SConscript modifications with CUDA tool integration
+- Regression test harness with test cases for multiple grid sizes
+- Baseline x-sweep kernel implementation
+- Documentation of test procedures and tolerance thresholds
 
-Week 3 — Apple GPU: Metal Framework Evaluation
-----------------------------------------------
+Week 2 — CUDA: Performance Benchmarking and Strategy Comparison
+---------------------------------------------------------------
 
 Goal
 ~~~~
-Assess the feasibility and performance characteristics of porting the wave propagation computation to Apple GPUs using Metal. This week focuses on producing a prototype, exploring threadgroup sizing, and comparing raw Metal kernels with higher-level Metal Performance Shaders (MPS) where applicable.
+Systematically benchmark different thread configurations and memory layouts. Evaluate atomic versus alternative synchronization strategies. Identify which parameters have the largest impact on performance.
 
 Planned activities
 ~~~~~~~~~~~~~~~~~~
-1. Metal prototype: Create an Xcode Metal project that implements the wave propagation computation either via MPS primitives or a custom Metal shading language kernel. Ensure the same numerical algorithm is used so results remain comparable to CUDA and CPU versions.
 
-2. Threadgroup experiments: Test a set of threadgroup (workgroup) sizes such as 16, 32, 64, 128, and 256 to determine which sizing provides the best execution time and occupancy on Apple hardware. Track kernel execution time and any available occupancy or pipeline metrics.
+1. **Task 4: Thread Count Benchmarking**
+   - Test block sizes: 64, 128, 256, 512, 1024 threads/block
+   - Run each configuration on a 1000×1000 grid for consistency
+   - For each configuration measure: kernel time (ms), SM occupancy (%), registers/thread, memory bandwidth (GB/s)
+   - Use nsys profiler to identify register pressure and memory bottlenecks at each block size
+   - Create comparison table identifying optimal thread count
+   - Document when register pressure or occupancy becomes limiting factor
+   - Analyze warp efficiency and identify stall reasons
 
-3. Atomic vs lock-free strategies: As with the CUDA experiments, implement both atomic-based accumulation and a lock-free alternative (if feasible) and measure contention and throughput for the same block/threadgroup sizes.
+2. **Task 5: Memory Layout Experimentation**
+   - Implement three data layouts: row-major (natural), column-major, blocked/tiled
+   - Benchmark each layout on 500×500, 1000×1000, 4000×4000 grids
+   - For each configuration measure: kernel time, memory bandwidth, L1/L2 cache hit rates
+   - Analyze which layout has best memory coalescing for different grid sizes
+   - Account for any data layout overhead (transpose, padding, etc.)
+   - Create visualization showing performance vs grid size for each layout
+   - Identify preferred layout for small, medium, and large grids
 
-4. Comparative analysis: Produce a final table that juxtaposes CUDA and Metal results across the same grid sizes and configurations. Summarize which strategies and parameters appear to be hardware-dependent and which are algorithmic.
+3. **Task 6: Atomic vs Non-Atomic Synchronization Comparison**
+   - Implement atomic-based flux accumulation (atomicAdd to neighboring cells)
+   - Implement alternative: each thread computes to local buffer, then merged
+   - Compare execution time on all block sizes identified in Task 4
+   - Measure atomic operation frequency and contention rate
+   - Profile memory stalls caused by atomic serialization
+   - Identify grid size threshold where atomics become bottleneck
+   - Document which approach is faster for different scenarios
 
 Validation criteria
 ~~~~~~~~~~~~~~~~~~~
-- A working Metal prototype that produces results consistent with the CPU baseline.
-- Threadgroup size recommendations and measured kernel times for the tested Apple GPU.
-- A comparative report that highlights key differences between CUDA and Metal implementations.
+- All 5 thread count configurations successfully benchmarked
+- Clear best-performing block size identified based on occupancy and bandwidth
+- All 3 memory layouts tested and documented with performance data
+- Atomic contention is quantified and compared to alternatives
+- Clear recommendations for which configuration to use
 
 Deliverables
 ~~~~~~~~~~~~
-- Xcode project or standalone Metal kernel source implementing the wave propagation computations.
-- Benchmark data and a short report comparing CUDA vs Metal performance.
-- Recommendations for a production-quality implementation or a decision to favor one platform for further investment.
+- Benchmark table: Block Size | Time | Occupancy (%) | Registers | Bandwidth (GB/s)
+- Memory layout comparison: Layout | Grid Size | Time | Bandwidth | Cache Hit Rate (%)
+- Synchronization strategy comparison: Strategy | Contention | Performance Impact
+- Profiler output and analysis documents
+- Recommendation document for best Week 2 configuration
 
-Cross-cutting concerns and measurement guidance
-----------------------------------------------
+Week 3 — CUDA: Advanced Strategies and Complete Implementation
+--------------------------------------------------------------
 
-Reproducibility and test inputs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Use the same deterministic input datasets across all runs so that timing results are comparable. Document the exact input files, grid sizes, and any pre-processing steps required to generate the test cases.
+Goal
+~~~~
+Implement advanced parallelization strategies, complete the y-sweep kernel, and finalize optimizations. Deliver a fully optimized GPU solver ready for cluster deployment.
 
-Metrics to capture
+Planned activities
 ~~~~~~~~~~~~~~~~~~
-- Wall-clock kernel execution time (mean and standard deviation over multiple runs).
-- Achieved memory bandwidth (where measurable) and SM or GPU occupancy.
-- Register usage per thread and any notable spill to local memory.
-- Any profiler-reported hotspots or memory-bound markers.
 
-Performance reporting
-~~~~~~~~~~~~~~~~~~~~~
-Generate concise tables that highlight the best configurations. Include short commentary that explains tradeoffs and anomalies (for example, reductions in performance due to register pressure or poor memory coalescing).
+1. **Task 7: Red-Black Ordering Strategy**
+   - Implement red-black checkerboard partitioning (cells split into two non-conflicting sets)
+   - Phase 1 kernel: update all red cells in parallel (no conflicts)
+   - Phase 2 kernel: update all black cells in parallel (no conflicts)
+   - Compare execution time vs atomic version from Task 6
+   - Measure synchronization overhead of two kernel launches
+   - Test on multiple grid sizes: 1000×1000, 2000×2000, 4000×4000
+   - Determine if synchronization overhead or atomic contention is the limiting factor
 
-Risks and mitigations
-~~~~~~~~~~~~~~~~~~~~~
-- Numerical drift: Floating-point results on GPU may differ slightly from CPU due to different reduction orders. Establish acceptable tolerance thresholds and verify correctness via unit/regression tests.
-- Platform differences: Hardware limits (maximum threads per block, register file size) differ between GPU vendors. Keep configuration code modular so platform-specific launch parameters can be tuned easily.
-- Contention costs: Atomic operations may create contention; where contention is high, assess lock-free reductions or hierarchical accumulation techniques.
+2. **Task 8: Final Benchmarking and Optimization Report**
+   - Run complete simulation (x-sweep + y-sweep) on multiple grid sizes
+   - Profile full kernel pipeline to identify remaining bottlenecks
+   - Create comprehensive comparison table of all tested configurations
+   - Summarize which parameters had biggest performance impact
+   - Document best overall configuration (thread count, memory layout, synchronization)
+   - Identify opportunities for future optimization (Y-sweep fusion, boundary condition fusion, etc.)
+   - Write summary report for cluster deployment
 
-Timeline and acceptance
------------------------
-- End of Week 1: Baseline CUDA kernel and working regression tests.
-- End of Week 2: Benchmark results and a recommended CUDA configuration.
-- End of Week 3: Metal prototype and a comparative report.
+Validation criteria
+~~~~~~~~~~~~~~~~~~~
+- Red-black and atomic strategies are quantitatively compared
+- Full simulation timesteps execute efficiently on GPU
+- Complete configuration tested documented with reasoning
+
+Deliverables
+~~~~~~~~~~~~
+- Red-black ordering kernel implementation with comparison analysis
+- Complete benchmark data across all tested configurations
+- Final performance report: Strategy | Grid Size | Time | Speedup vs CPU
+- Recommendations for best configuration and deployment strategy
+- Documentation for cluster submission and integration
+
+Timeline and Success Criteria
+-----------------------------
+
++--------+----------------------------+---------------------------------------------+
+| Week   | Milestone                  | Acceptance Criteria                         |
++========+============================+=============================================+
+| 1      | Setup and infrastructure   | - CUDA toolkit installed and verified       |
+|        | complete                   | - Build system configured                   |
+|        |                            | - Regression tests implemented              |
++--------+----------------------------+---------------------------------------------+
+| 2      | Memory and synchronization | - 5 thread sizes benchmarked                |
+|        | strategies documented      | - 3 memory layouts tested                   |
+|        |                            | - Atomic vs alternatives quantified         |
++--------+----------------------------+---------------------------------------------+
+| 3      | Complete GPU solver        | - Red-black strategy evaluated              |
+|        | ready for production       | - 15+ configurations documented             |
+|        |                            | - Final report delivered                    |
++--------+----------------------------+---------------------------------------------+
+
+Expected Outcomes
+~~~~~~~~~~~~~~~~~
+- **Performance gain:** 5-50x speedup depending on grid size (small grids: 5-10x, large grids: 20-50x)
+- **Identified bottleneck:** Memory bandwidth for most grids, register pressure for very small grids
+- **Best configuration:** Likely 256-512 threads/block with row-major or tiled layout and red-black or atomic ordering
+- **Deployment ready:** Fully integrated CUDA kernels with CPU fallback and testing harness
+- **Configurations tested:** 15+ different thread count, memory layout, and synchronization combinations
+
 

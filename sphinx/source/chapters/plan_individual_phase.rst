@@ -1,56 +1,63 @@
 GPU Parallelization: Bullet Point Plan
 =======================================
 
-Week 1: CUDA - Setup and Baseline Implementation
---------------------------------------------------
+Week 1: CUDA - Setup and Infrastructure
+-----------------------------------------
 
 **Task 1:** Set up CUDA project with infrastructure
   - Install CUDA toolkit and profiling tools (nsys, nvprof)
   - Create regression testing framework (GPU vs CPU comparison)
   - Implement baseline kernel for x-sweep flux computation
+  - Set up SCons CUDA tool integration with existing build system
+  - Document setup process and environment
 
-**Task 2:** Compare atomic vs lock-free strategies
-  - Implement atomic-based flux accumulation
-  - Test on same block sizes as Task 2
-  - Measure atomic contention and compare performance
+**Task 2:** Create regression testing framework
+  - Create automated test harness (GPU vs CPU comparison)
+  - Implement tolerance checking for floating-point differences
+  - Set up test infrastructure for multiple grid sizes
+  - Document test procedures and acceptance criteria
 
-Week 2: CUDA - Benchmark and memory layouts
--------------------------------------------
+**Task 3:** Implement baseline kernel
+  - Implement baseline x-sweep flux kernel using "one thread per edge" approach
+  - Ensure numerical correctness with simple algorithm first
+  - Create minimal host code for kernel launching
+  - Verify kernel compiles and runs without errors
 
-**Task 3:** Benchmark different thread counts
+Week 2: CUDA - Thread Benchmarking and Memory Layouts
+----------------------------------------------------
+
+**Task 4:** Benchmark different thread counts
   - Test block sizes: 64, 128, 256, 512, 1024 threads
   - Run on 1000×1000 grid for each configuration
   - Measure: execution time, SM occupancy, register usage, memory bandwidth
   - Create comparison table and identify best configuration
+  - Use nsys profiler to analyze register pressure and memory bottlenecks
 
-**Task 4:** Experiment with memory layouts
+**Task 5:** Experiment with memory layouts
   - Test row-major, column-major, and tiled data arrangements
   - Benchmark each on 500×500, 1000×1000, 4000×4000 grids
   - Measure memory bandwidth and cache hit rates
-  - Document tradeoffs
+  - Document tradeoffs and identify best layout
 
-Week 3: Apple GPU - Metal Framework Evaluation
+**Task 6:** Compare atomic vs lock-free strategies
+  - Implement atomic-based flux accumulation
+  - Implement alternative lock-free or other synchronization approach
+  - Compare execution time on same block sizes from Task 4
+  - Measure atomic contention rates
+  - Document performance tradeoffs
+
+Week 3: CUDA - Advanced Strategies and Final Report
 ----------------------------------------------
 
-**Task 7:** Prototype Metal Performance Shaders (MPS)
-  - Set up Xcode Metal project
-  - Implement flux computation using MPS or custom Metal shader
-  - Test on 1000×1000 grid
-  - Measure GPU utilization, bandwidth, kernel time
+**Task 7:** Evaluate red-black ordering
+  - Implement red-black checkerboard synchronization strategy
+  - Compare execution time and SM stalls vs atomic version from Task 6
+  - Test on multiple grid sizes (1000x1000, 2000x2000, 4000x4000)
+  - Determine which strategy is faster and why
 
-**Task 8:** Test Metal compute kernels with threadgroup experimentation
-  - Write raw Metal shading language kernel
-  - Test threadgroup sizes: 16, 32, 64, 128, 256
-  - Measure execution time and occupancy for each size
-  - Compare with MPS results
+**Task 8:** Final report and optimization
+  - Run complete simulation on various grid sizes
+  - Profile full pipeline and identify remaining bottlenecks
+  - Create final performance report comparing all tested configurations
+  - Document best practices and recommendations for cluster deployment
 
-**Task 9:** Compare atomic vs lock-free strategies
-  - Implement atomic-based flux accumulation
-  - Test on same block sizes as Task 2
-  - Measure atomic contention and compare performance
-
-**Task 10:** Comparative analysis and documentation
-  - Create final performance comparison table (CUDA vs Apple across grid sizes)
-  - Document which configurations/strategies performed best
-  - Summarize key findings: which parameters matter most, unexpected results
-  - Finalize code with CPU fallback and profiler data
