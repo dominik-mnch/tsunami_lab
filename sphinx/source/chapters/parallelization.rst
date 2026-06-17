@@ -236,13 +236,16 @@ Pinning Strategies
 ------------------
 
 Thread pinning was tested with ``schedule(static)`` on the outer loop so that
-differences reflect placement alone. The Grace cluster has 2 CPU sockets.
+differences reflect placement alone. The Grace cluster has 2 CPU sockets. We changed the 
+OMP_PLACES={0:16} to OMP_PLACES={0:32}, allowing Grace to use both sockets, otherwise comparing
+pinning strategies would not make sense, because the threads could only "spread" across the
+same socket. 
 
 .. code-block:: bash
 
-   OMP_PLACES={0:16} OMP_PROC_BIND=close  ./build/benchmark 3 16 
-   OMP_PLACES={0:16} OMP_PROC_BIND=spread ./build/benchmark 3 16
-   OMP_PLACES={0:16} OMP_PROC_BIND=master ./build/benchmark 3 16
+   OMP_PLACES={0:32} OMP_PROC_BIND=close  ./build/benchmark 3 16 
+   OMP_PLACES={0:32} OMP_PROC_BIND=spread ./build/benchmark 3 16
+   OMP_PLACES={0:32} OMP_PROC_BIND=master ./build/benchmark 3 16
 
 ``close`` packs threads on one socket (shared cache, one memory controller);
 ``spread`` distributes across both sockets (doubled bandwidth, cross-socket
@@ -266,11 +269,6 @@ results. Enabling parallalelization of the init loop fixes this:
        // first write → OS places page on this thread's local NUMA node
      }
    }
-
-Thread 0 first-touches rows ``0…N/p``, thread 1 rows ``N/p…2N/p``, etc.,
-matching the static decomposition used at compute time. With this change, 
-run 0 drops to ~1.55 ns — nearly equal to run 2. ``dynamic`` must not be
-used here as random chunk assignment destroys the locality guarantee.
 
 Results Summary
 ---------------
@@ -317,24 +315,24 @@ All runs: 16 threads, ``OMP_PLACES={0:16}``, 2160×1200 cells, 3 repetitions.
      - 1.29
      - 1.37
    * - ``static`` + ``close``
-     - 1.58
-     - 1.32
-     - 1.33
-     - 1.41
-   * - ``static`` + ``spread``
-     - 1.57
-     - 1.33
+     - 1.78
      - 1.31
-     - 1.40
+     - 1.33
+     - 1.47
+   * - ``static`` + ``spread``
+     - 2.88
+     - 2.36
+     - 2.36
+     - 2.53
    * - ``static`` + ``master``
      - 1.62
      - 1.32
      - 1.33
-     - 1.42
+     - 1.41
    * - First-touch init, ``static``
-     - 1.55
-     - 1.32
-     - 1.34  
+     - 1.60
+     - 1.30
+     - 1.31  
      - 1.40
 
 Conclusions
@@ -345,6 +343,7 @@ which can be seen when comparing the inner loop's 2.97 ns average to the outer l
 The guided scheduling performs best because it balances the load while keeping scheduling overhead low. Balancing the
 load does not seem important at first when looking at our code, but because of the 
 .. code-block:: cpp
+
         if( l_leftDry && l_rightDry ) {
           continue;
         }
@@ -357,11 +356,18 @@ work from a shared queue on every iteration of a tight numerical loop —
 the work load is equally distributed.  ``guided`` wins: large initial chunks minimise 
 scheduling overhead while shrinking tail chunks improve load balance.        
 
-The different splitting strategies (close, spread, master) yield similar performance, 
-indicating that at 16 threads the NUMA effects are not significant enough to cause a noticeable difference. 
-The bandwidth gain from spreading is offset by NUMA penalties. //CALCULATE THIS AGAIN with OMP_PLACES={0:32}
+The close and master splitter strategies yield similar performance, yet the spread strategie is significantly slower.
+The close and master strategies both pack all 16 threads onto the same socket, so they are euqally fast.
+With the spread strategie, the threads are being distributed across both sockets, but the init loop runs on socket 0, the 8 threads 
+on socket 1 have to fetch all their data across the socket interconnect on every single time step.
 
-The best configuration is **outer loop with** ``guided`` **scheduling** (1.37 ns avg).  //kay
+With NUMA's first touch policy thread 0 first-touches rows ``0…N/p``, thread 1 rows ``N/p…2N/p``, etc.,
+matching the static decomposition used at compute time. With this change, 
+run 0 drops to ~1.55 ns — nearly equal to run 2. (``dynamic`` must not be
+used here as random chunk assignment destroys the locality guarantee.) Initialization with and without first touch policy
+is being compared with the static schedule. 
+
+The best configuration is **outer loop with** ``guided`` **scheduling** (1.37 ns avg).  
 Enabling NUMA-aware initialization closes the run-0 warmup gap from 7.15 ns in the same conditions(static scheduling, outer loop) except the 
 NUMA-aware initialization to 1.55 ns, demonstrating that the serial init is the main source of variance
 between runs.
