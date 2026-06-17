@@ -145,3 +145,223 @@ Grace Benchmark Results
 .. math::
 
    \text{Latency per Cell/Iteration} = 6.25054 \times 10^{-10}\,\text{s} = 0.625054\,\text{ns}
+
+
+Outer vs. Inner Loop
+--------------------
+
+The 2D solver uses a single ``#pragma omp parallel`` region per time step. 
+The question is whether to place the ``#pragma omp for`` directive on the inner loop (over X) or the outer loop (over Y). 
+
+this is what the code looks like with the inner loop parallelized:
+.. code-block:: cpp
+
+   // current implementation — directive on inner loop
+   #pragma omp parallel
+   {
+     for( t_idx l_cy = 1; l_cy <= m_nCellsY; l_cy++ ) {
+       #pragma omp for schedule(static)
+       for( t_idx l_cx = 0; l_cx <= m_nCellsX; l_cx++ ) { ... }
+     }
+   }
+
+and this is what the code looks like with the outer loop parallelized:
+
+.. code-block:: cpp
+
+   // outer loop variant
+   #pragma omp parallel
+   {
+     #pragma omp for schedule(static)
+     for( t_idx l_cy = 1; l_cy <= m_nCellsY; l_cy++ ) {
+       for( t_idx l_cx = 0; l_cx <= m_nCellsX; l_cx++ ) { ... }
+     }
+   }
+
+Every #pragma omp for has an implicit barrier at the end - all threads must finish
+their chunk of the inner loop before any thread can proceed to the next iteration.
+So with the outer parallelization, there is one barrier per nested loop - threads wait
+once at the end, when all threads have finished all their assigned rows. 
+With the inner loop parallelization, there is 1 barrier per outer iteration per nested loop -
+threads wait after every single row, because the #pragma omp for and it's implicit barrier
+are inside the outer loop. For the X-sweep that is 1200 waits, for the Y-sweep 2160, so it
+is way more overhead then the single barrier in the outer loop variant.
+
+Furthermore, parallelizing the inner loop leads to race conditions between adjacent columns
+assigned to differen threads. l_ceR of thread 0 may be the l_ce of thread 1, and both threads
+could silmutaneously write to the same cell. 
+
+The inner loop results lower average (2.97 ns vs 4.79 ns for outer ``static``)
+is misleading: the outer-loop results are skewed by the NUMA warmup penalty
+in run 0 (7.15 ns), a consequence of the serial initialization in
+``benchmark.cpp``. Once pages are warm, outer ``static`` reaches 2.59 ns by
+run 2 — already faster than the inner-loop average.
+The init loop is serial when comparing inner and outer loop, so one thread touches
+all pages, placing everything on one NUMA node. During the time loop all other threads 
+access remote memory, which is slow. This leads to initialisation overhead which slows
+down the first run of the outer loop. The inner loop's barrier granularity limits 
+how much remote memory any thread accesses at once, accidentally softening the NUMA penalty in run 0.
+
+Scheduling Strategies
+---------------------
+
+The ``schedule()`` clause on ``#pragma omp for`` was varied on the outer-loop
+variant. Schedules tested on the outer loop:
+
+``static``: iterations are divided into equal-sized chunks and assigned to threads
+before the loop starts, therefore no runtime coordinaton is needed. 
+
+``dynamic``: threads grab one iteration at a time from a shared work queue at runtime.
+When a thread finishes its iteration it immediatly grabs the next available one. This 
+leads to good load balancing (which we do not need in this part of code), but shared 
+queue requires atomic operations on every grab.
+
+``guided``: Early on threads grab large chunks, towards the end chunks shrink so that 
+faster threads can steal remaining work from slower ones.
+
+``adding the argument 4``: divides iterations into chunks of 4, thread 0 gets rows 0-3,
+thread 1 gets rows 4-7, etc. This interleaves work across threads more finely.
+
+
+.. code-block:: cpp
+
+   #pragma omp for schedule(static)      // equal chunks, assigned upfront 
+   #pragma omp for schedule(static, 4)   // chunks of 4 rows, round-robin
+   #pragma omp for schedule(dynamic)     // threads claim 1 chunk on-demand
+   #pragma omp for schedule(guided)      // decreasing chunk sizes on-demand
+   #pragma omp for schedule(guided, 4)   // guided, minimum chunk size 4
+
+
+Pinning Strategies
+------------------
+
+Thread pinning was tested with ``schedule(static)`` on the outer loop so that
+differences reflect placement alone. The Grace cluster has 2 CPU sockets.
+
+.. code-block:: bash
+
+   OMP_PLACES={0:16} OMP_PROC_BIND=close  ./build/benchmark 3 16 
+   OMP_PLACES={0:16} OMP_PROC_BIND=spread ./build/benchmark 3 16
+   OMP_PLACES={0:16} OMP_PROC_BIND=master ./build/benchmark 3 16
+
+``close`` packs threads on one socket (shared cache, one memory controller);
+``spread`` distributes across both sockets (doubled bandwidth, cross-socket
+traffic, threads on different sockets accessing the same data pay a NUMA penalty).  
+``master`` all threads are placed as close as possible to the master thread, thread 0
+
+NUMA and First-Touch Initialization
+------------------------------------
+
+Because the benchmark's init loop is serial, all pages are allocated on one
+socket. Remote threads pay a NUMA penalty on every time step — visible as
+run 0 being ~2.8× slower than run 2 (7.15 vs 2.59 ns) in the ``static``
+results. Enabling parallalelization of the init loop fixes this:
+
+.. code-block:: cpp
+
+   // benchmark.cpp — enable for NUMA-aware init
+   #pragma omp parallel for schedule(static)   // must match compute schedule
+   for( t_idx l_cy = 0; l_cy < i_ny; l_cy++ ) {
+     for( t_idx l_cx = 0; l_cx < i_nx; l_cx++ ) {
+       // first write → OS places page on this thread's local NUMA node
+     }
+   }
+
+Thread 0 first-touches rows ``0…N/p``, thread 1 rows ``N/p…2N/p``, etc.,
+matching the static decomposition used at compute time. With this change, 
+run 0 drops to ~1.55 ns — nearly equal to run 2. ``dynamic`` must not be
+used here as random chunk assignment destroys the locality guarantee.
+
+Results Summary
+---------------
+
+All runs: 16 threads, ``OMP_PLACES={0:16}``, 2160×1200 cells, 3 repetitions.
+
+.. list-table:: Benchmark Results (ns per cell per iteration)
+   :header-rows: 1
+   :widths: 36 11 11 11 11
+
+   * - Configuration
+     - Run 0
+     - Run 1
+     - Run 2
+     - Avg
+   * - Inner loop, ``static`` (as implemented)
+     - 3.12
+     - 2.89
+     - 2.89
+     - 2.97
+   * - Outer loop, ``static``
+     - 7.15
+     - 4.62
+     - 2.59
+     - 4.79
+   * - Outer loop, ``dynamic``
+     - 81.80
+     - 90.89
+     - 90.92
+     - 87.87
+   * - Outer loop, ``guided``
+     - 1.53
+     - 1.30
+     - 1.28
+     - **1.37**
+   * - Outer loop, ``static,4``
+     - 2.08
+     - 1.66
+     - 1.67
+     - 1.80
+   * - Outer loop, ``guided,4``
+     - 1.54
+     - 1.29
+     - 1.29
+     - 1.37
+   * - ``static`` + ``close``
+     - 1.58
+     - 1.32
+     - 1.33
+     - 1.41
+   * - ``static`` + ``spread``
+     - 1.57
+     - 1.33
+     - 1.31
+     - 1.40
+   * - ``static`` + ``master``
+     - 1.62
+     - 1.32
+     - 1.33
+     - 1.42
+   * - First-touch init, ``static``
+     - 1.55
+     - 1.32
+     - 1.34  
+     - 1.40
+
+Conclusions
+-----------
+
+The outer loop parallelization is actually faster than the inner loop once the NUMA warmup penalty is mitigated,
+which can be seen when comparing the inner loop's 2.97 ns average to the outer loop's 2.59 ns in run 2. 
+The guided scheduling performs best because it balances the load while keeping scheduling overhead low. Balancing the
+load does not seem important at first when looking at our code, but because of the 
+.. code-block:: cpp
+        if( l_leftDry && l_rightDry ) {
+          continue;
+        }
+the work loaded is actually not perfectly balanced, since some iterations can skip part of the code. 
+The static schedule with small chunks (``static,4``) also performs well, but not as good as guided.     
+The dynamic schedule performs very poorly due to high scheduling overhead and lack of locality. 
+The scheduling ``dynamic`` is catastrophic here (~88 ns avg): threads must atomically claim
+work from a shared queue on every iteration of a tight numerical loop —
+~18× slower than ``static``. The advantage of a dynamic schedule can not be used here, since
+the work load is equally distributed.  ``guided`` wins: large initial chunks minimise 
+scheduling overhead while shrinking tail chunks improve load balance.        
+
+The different splitting strategies (close, spread, master) yield similar performance, 
+indicating that at 16 threads the NUMA effects are not significant enough to cause a noticeable difference. 
+The bandwidth gain from spreading is offset by NUMA penalties. //CALCULATE THIS AGAIN with OMP_PLACES={0:32}
+
+The best configuration is **outer loop with** ``guided`` **scheduling** (1.37 ns avg).  //kay
+Enabling NUMA-aware initialization closes the run-0 warmup gap from 7.15 ns in the same conditions(static scheduling, outer loop) except the 
+NUMA-aware initialization to 1.55 ns, demonstrating that the serial init is the main source of variance
+between runs.
