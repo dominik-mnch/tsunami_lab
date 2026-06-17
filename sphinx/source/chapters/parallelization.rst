@@ -154,6 +154,7 @@ The 2D solver uses a single ``#pragma omp parallel`` region per time step.
 The question is whether to place the ``#pragma omp for`` directive on the inner loop (over X) or the outer loop (over Y). 
 
 this is what the code looks like with the inner loop parallelized:
+
 .. code-block:: cpp
 
    // current implementation — directive on inner loop
@@ -342,6 +343,7 @@ The outer loop parallelization is actually faster than the inner loop once the N
 which can be seen when comparing the inner loop's 2.97 ns average to the outer loop's 2.59 ns in run 2. 
 The guided scheduling performs best because it balances the load while keeping scheduling overhead low. Balancing the
 load does not seem important at first when looking at our code, but because of the 
+
 .. code-block:: cpp
 
         if( l_leftDry && l_rightDry ) {
