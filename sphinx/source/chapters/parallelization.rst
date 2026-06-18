@@ -296,20 +296,20 @@ Conclusions
 The outer loop parallelization is actually faster than the inner loop once the NUMA warmup penalty is mitigated,
 which can be seen when comparing the inner loop's 2.97 ns average to the outer loop's 2.59 ns in run 2. 
 The guided scheduling performs best because it balances the load while keeping scheduling overhead low. Balancing the
-load does not seem important at first when looking at our code, but because of the 
+load does not seem important at first when looking at our code, but because of the if-clause containing the continue statement,
+the work load is actually not perfectly balanced, since some iterations can skip part of the code.
 
 .. code-block:: cpp
 
         if( l_leftDry && l_rightDry ) {
           continue;
         }
-the work loaded is actually not perfectly balanced, since some iterations can skip part of the code. 
-The static schedule with small chunks (``static,4``) also performs well, but not as good as guided.     
-The dynamic schedule performs very poorly due to high scheduling overhead and lack of locality. 
-The scheduling ``dynamic`` is catastrophic here (~88 ns avg): threads must atomically claim
+ 
+Therefore guided performs slightly better than the static scheduling.       
+The scheduling ``dynamic`` performs very poorly (~88 ns avg): threads must atomically claim
 work from a shared queue on every iteration of a tight numerical loop —
-~18× slower than ``static``. The advantage of a dynamic schedule can not be used here, since
-the work load is equally distributed.  ``guided`` wins: large initial chunks minimise 
+making this schedule 18× slower than ``static``. The advantage of a dynamic schedule can not be used here, since
+the work load is equally distributed.  Overall ``guided`` performs best: large initial chunks minimise 
 scheduling overhead while shrinking tail chunks improve load balance.        
 
 The close and master splitter strategies yield similar performance, yet the spread strategie is significantly slower.
@@ -329,7 +329,7 @@ NUMA-aware initialization to 1.55 ns, demonstrating that the serial init is the 
 between runs.
 
 Grace Benchmark
-~~~~~~~~~~~~~~~
+---------------
 
 The Grace benchmark (``build/benchmark_grace``) is designed to meet all the requirements for the optional task 5. It uses the 2011 Tohoku input data with 250m resolution.
 It uses 10800 x 6000 cells which means a 250m resolution for the cells as well. It runs 10000 time steps with netCDF output every 100 steps.
@@ -373,3 +373,8 @@ Grace Benchmark Results
 
    \text{Latency per Cell/Iteration} = 6.25054 \times 10^{-10}\,\text{s} = 0.625054\,\text{ns}
 
+Individual Contributions
+------------------------
+This week Dominik Münch compared the different block sizes and the build a benchmark to isolate the computational core of the tsunami simulation—specifically the time-stepping loop where most of the computation occurs. 
+Magdalena Schwarzkopf compared the inner- vs. outer-loop parallelization, the different scheduling and pinning strategiges and the effect of NUMA-aware initialization.
+Dominik Münch also wrote the Grace benchmark.  
