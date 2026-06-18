@@ -6,8 +6,6 @@ Week 1: CUDA - Setup and Infrastructure
 
 **Task 1:** Set up CUDA project with infrastructure
   - Install CUDA toolkit and profiling tools (nsys, nvprof)
-  - Create regression testing framework (GPU vs CPU comparison)
-  - Implement baseline kernel for x-sweep wave propagation calculation
   - Set up SCons CUDA tool integration with existing build system
   - Document setup process and environment
 
@@ -59,5 +57,4 @@ Week 3: CUDA - Advanced Strategies and Final Report
   - Run complete simulation on various grid sizes
   - Profile full pipeline and identify remaining bottlenecks
   - Create final performance report comparing all tested configurations
-  - Document best practices and recommendations for cluster deployment
 

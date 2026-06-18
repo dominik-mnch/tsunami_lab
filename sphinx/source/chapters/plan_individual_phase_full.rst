@@ -30,7 +30,6 @@ Planned activities
    - Create automated test harness that compares GPU vs CPU outputs
    - Implement tolerance checking for floating-point differences
    - Set up test infrastructure for multiple grid sizes (500×500, 1000×1000, 4000×4000)
-   - Create benchmark logging framework (CSV output for results tracking)
    - Document test procedures and acceptance criteria
 
 **Task 3: Baseline Implementation**
@@ -140,8 +139,6 @@ Planned activities
    - Create comprehensive comparison table of all tested configurations
    - Summarize which parameters had biggest performance impact
    - Document best overall configuration (thread count, memory layout, synchronization)
-   - Identify opportunities for future optimization (Y-sweep fusion, boundary condition fusion, etc.)
-   - Write summary report for cluster deployment
 
 Validation criteria
 ~~~~~~~~~~~~~~~~~~~
@@ -154,8 +151,6 @@ Deliverables
 - Red-black ordering kernel implementation with comparison analysis
 - Complete benchmark data across all tested configurations
 - Final performance report: Strategy | Grid Size | Time | Speedup vs CPU
-- Recommendations for best configuration and deployment strategy
-- Documentation for cluster submission and integration
 
 Timeline and Success Criteria
 -----------------------------
@@ -181,7 +176,6 @@ Expected Outcomes
 - **Performance gain:** 5-50x speedup depending on grid size (small grids: 5-10x, large grids: 20-50x)
 - **Identified bottleneck:** Memory bandwidth for most grids, register pressure for very small grids
 - **Best configuration:** Likely 256-512 threads/block with row-major or tiled layout and red-black or atomic ordering
-- **Deployment ready:** Fully integrated CUDA kernels with CPU fallback and testing harness
 - **Configurations tested:** 15+ different thread count, memory layout, and synchronization combinations
 
 
