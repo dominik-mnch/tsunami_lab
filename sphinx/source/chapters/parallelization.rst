@@ -101,52 +101,6 @@ because staying on one socket is more efficient than using both sockets.
 
 The drop at 72 threads could be due to a cache limit or a NUMA effect.
 
-Grace Benchmark
-~~~~~~~~~~~~~~~
-
-The Grace benchmark (``build/benchmark_grace``) is designed to meet all the requirements for the optional task 5. It uses the 2011 Tohoku input data with 250m resolution.
-It uses 10800 x 6000 cells which means a 250m resolution for the cells as well. It runs 10000 time steps with netCDF output every 100 steps.
-
-Grace Benchmark Results
-^^^^^^^^^^^^^^^^^^^^^^^
-
-**Team:** TBD
-
-.. rubric:: Run Configurations
-
-:Grid Resolution: :math:`10800 \times 6000 \text{ cells}`
-:Total Cells: :math:`6.48 \times 10^7`
-:Time Steps: :math:`10000`
-
-.. rubric:: Time Allocation
-
-.. math::
-
-   T_{\text{total}} = 464.941\,\text{s}
-
-.. math::
-
-   T_{\text{comp}} = 405.035\,\text{s} \quad (87.12\%)
-
-.. math::
-
-   T_{\text{io}} = 59.8984\,\text{s} \quad (12.88\%)
-
-.. rubric:: Core Performance Metrics
-
-.. math::
-
-   \text{Total Cell Updates} = 10800 \times 6000 \times 10000 = 6.48 \times 10^{11}
-
-.. math::
-
-   \text{Throughput} = 1,393,726,589\,\text{Updates/s} \approx 1393.73\,\text{MCUps}
-
-.. math::
-
-   \text{Latency per Cell/Iteration} = 6.25054 \times 10^{-10}\,\text{s} = 0.625054\,\text{ns}
-
-
 Outer vs. Inner Loop
 --------------------
 
@@ -373,3 +327,49 @@ The best configuration is **outer loop with** ``guided`` **scheduling** (1.37 ns
 Enabling NUMA-aware initialization closes the run-0 warmup gap from 7.15 ns in the same conditions(static scheduling, outer loop) except the 
 NUMA-aware initialization to 1.55 ns, demonstrating that the serial init is the main source of variance
 between runs.
+
+Grace Benchmark
+~~~~~~~~~~~~~~~
+
+The Grace benchmark (``build/benchmark_grace``) is designed to meet all the requirements for the optional task 5. It uses the 2011 Tohoku input data with 250m resolution.
+It uses 10800 x 6000 cells which means a 250m resolution for the cells as well. It runs 10000 time steps with netCDF output every 100 steps.
+
+Grace Benchmark Results
+^^^^^^^^^^^^^^^^^^^^^^^
+
+**Team:** DM
+
+.. rubric:: Run Configurations
+
+:Grid Resolution: :math:`10800 \times 6000 \text{ cells}`
+:Total Cells: :math:`6.48 \times 10^7`
+:Time Steps: :math:`10000`
+
+.. rubric:: Time Allocation
+
+.. math::
+
+   T_{\text{total}} = 464.941\,\text{s}
+
+.. math::
+
+   T_{\text{comp}} = 405.035\,\text{s} \quad (87.12\%)
+
+.. math::
+
+   T_{\text{io}} = 59.8984\,\text{s} \quad (12.88\%)
+
+.. rubric:: Core Performance Metrics
+
+.. math::
+
+   \text{Total Cell Updates} = 10800 \times 6000 \times 10000 = 6.48 \times 10^{11}
+
+.. math::
+
+   \text{Throughput} = 1,393,726,589\,\text{Updates/s} \approx 1393.73\,\text{MCUps}
+
+.. math::
+
+   \text{Latency per Cell/Iteration} = 6.25054 \times 10^{-10}\,\text{s} = 0.625054\,\text{ns}
+
