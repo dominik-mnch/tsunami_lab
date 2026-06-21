@@ -18,27 +18,14 @@
   - [ ] Add CUDA compiler variables (NVCC, CUDA_ARCH)
   - [ ] Add NVCC flags (C++17 standard, optimization, compute capability)
   - [ ] Test SCons can find and use nvcc
-- [ ] Create baseline CUDA kernel
-  - [ ] Create `src/cuda/CudaUtils.h` with error checking macros
-  - [ ] Create `src/cuda/CudaTestKernel.cu` (simple vector addition)
-  - [ ] Create `src/cuda/CudaTestKernel.h` with declarations
-  - [ ] Verify kernel compiles without errors
 - [ ] Integrate with build system
   - [ ] Modify `src/SConscript` to compile .cu files
   - [ ] Create CUDA object file linking
   - [ ] Build succeeds: `scons mode=release`
-- [ ] Documentation
-  - [ ] Write `docs/CUDA_SETUP.md` (installation steps)
-  - [ ] Write `docs/CUDA_BUILD_INSTRUCTIONS.md` (build with CUDA)
-  - [ ] Document environment variables needed
-  - [ ] Document target compute capabilities
 
 **Validation Checklist:**
 - [ ] `nvcc --version` returns valid version
 - [ ] `scons mode=release` builds without CUDA errors
-- [ ] Test kernel compiles and runs
-- [ ] Simple baseline kernel produces correct output
-- [ ] Documentation is clear and reproducible
 
 ---
 
