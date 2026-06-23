@@ -58,7 +58,6 @@ for l_te in l_tests:
   env.tests.append( env.Object( l_te ) )
 
 #use in week three, as soon as .cu files exist
-gather CUDA sources
 l_cuda_sources = []  
 
 for l_cu in l_cuda_sources:
