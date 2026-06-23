@@ -24,7 +24,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
               'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
-              'CudaRegressionTest.cpp'
+              'cuda/CudaRegressionTest.cpp'
                ]
 
 for l_so in l_sources:
@@ -52,7 +52,8 @@ l_tests = [ 'tests.cpp',
             'io/Stations.test.cpp',
             'io/Csv.test.cpp',
             'io/NetCdf.test.cpp',
-            'setups/ArtificialTsunami2d/ArtificialTsunami2d.test.cpp'
+            'setups/ArtificialTsunami2d/ArtificialTsunami2d.test.cpp',
+            'cuda/CudaRegressionTest.test.cpp'
             ]
 
 for l_te in l_tests:
