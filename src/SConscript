@@ -23,8 +23,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/Csv.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
-              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp',
-              'cuda/CudaRegressionTest.cpp'
+              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
                ]
 
 l_cuda_sources = [ 'cuda/CudaRegressionTest.cu']
