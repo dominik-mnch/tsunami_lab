@@ -9,6 +9,7 @@
 #include <catch2/catch.hpp>
 #include "../constants.h"
 #include "CudaRegressionTest.h"
+#include "../patches/WavePropagation2d.h"
 #include "../setups/CircularDamBreak2d/CircularDamBreak2d.h"
 
 /**

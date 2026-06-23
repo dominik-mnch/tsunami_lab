@@ -108,37 +108,22 @@ public:
                               t_real        i_tolerance = TOLERANCE );
 
     /**
-     * @brief Compare one value of a single cell between CPU and GPU results.
+     * @brief Compare one cell between CPU and GPU arrays.
      *
      * @param i_x X index of the cell.
      * @param i_y Y index of the cell.
-     * @param i_stride Number of cells in the x direction.
+     * @param i_nCellsX Number of cells in the x direction.
      * @param i_cpu Reference CPU array.
      * @param i_gpu Observed GPU array.
      * @param i_tolerance Maximum allowed absolute difference.
      * @return true if the cell values match within tolerance, false otherwise.
      */
-    static bool compareSingleCellsHelper( t_idx         i_x,
+    static bool compareSingleCells( t_idx         i_x,
                                     t_idx         i_y,
-                                    t_idx         i_stride,
+                                    t_idx         i_nCellsX,
                                     t_real const* i_cpu,
                                     t_real const* i_gpu,
                                     t_real        i_tolerance = TOLERANCE );
-    /**
-     * @brief Compare all value of a single cell between CPU and GPU results.
-     *
-bool CudaRegressionTest::compareSingleCells( t_idx         i_x,
-                                             t_idx         i_y,
-                                             t_idx         i_stride,
-                                             t_real const* i_h_cpu,
-                                             t_real const* i_hu_cpu,
-                                             t_real const* i_hv_cpu,
-                                             t_real const* i_b_cpu,
-                                             t_real const* i_h_gpu,
-                                             t_real const* i_hu_gpu,
-                                             t_real const* i_hv_gpu,
-                                             t_real const* i_b_gpu,
-                                             t_real        i_tolerance );
 
     /**
      * @brief Free device memory allocated for regression test arrays.
