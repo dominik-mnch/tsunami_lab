@@ -6,64 +6,93 @@
 namespace tsunami_lab {
 namespace cuda {
 
-void CudaRegressionTest::allocateGPUMemory( int    i_nCellsX,
-                                            int    i_nCellsY,
-                                            float** o_h,
-                                            float** o_hu,
-                                            float** o_hv,
-                                            float** o_b ) {
-    int l_size = i_nCellsX * i_nCellsY * sizeof(float);
+/**
+ * @brief Allocate device memory for regression test arrays.
+ *
+ * Allocates four device buffers for height, x-momentum, y-momentum, and bathymetry.
+ *
+ * @param i_nCellsX Number of cells in the x direction.
+ * @param i_nCellsY Number of cells in the y direction.
+ * @param o_h Output pointer for device height array.
+ * @param o_hu Output pointer for device x-momentum array.
+ * @param o_hv Output pointer for device y-momentum array.
+ * @param o_b Output pointer for device bathymetry array.
+ */
+void CudaRegressionTest::allocateGPUMemory( t_idx    i_nCellsX,
+                                            t_idx    i_nCellsY,
+                                            t_real** o_h,
+                                            t_real** o_hu,
+                                            t_real** o_hv,
+                                            t_real** o_b ) {
+    std::size_t l_size = i_nCellsX * i_nCellsY * sizeof(t_real);
     cudaMalloc( (void**)o_h,  l_size );
     cudaMalloc( (void**)o_hu, l_size );
     cudaMalloc( (void**)o_hv, l_size );
     cudaMalloc( (void**)o_b,  l_size );
 }
 
-void CudaRegressionTest::copyToGPU( int          i_nCellsX,
-                                    int          i_nCellsY,
-                                    float const* i_h,
-                                    float const* i_hu,
-                                    float const* i_hv,
-                                    float const* i_b,
-                                    float*       o_h_gpu,
-                                    float*       o_hu_gpu,
-                                    float*       o_hv_gpu,
-                                    float*       o_b_gpu ) {
-    int l_size = i_nCellsX * i_nCellsY * sizeof(float);
+/**
+ * @brief Copy host arrays to device memory.
+ *
+ * Copies height, momentum, and bathymetry data from host arrays to their
+ * corresponding device buffers.
+ */
+void CudaRegressionTest::copyToGPU( t_idx          i_nCellsX,
+                                    t_idx          i_nCellsY,
+                                    t_real const* i_h,
+                                    t_real const* i_hu,
+                                    t_real const* i_hv,
+                                    t_real const* i_b,
+                                    t_real*       o_h_gpu,
+                                    t_real*       o_hu_gpu,
+                                    t_real*       o_hv_gpu,
+                                    t_real*       o_b_gpu ) {
+    std::size_t l_size = i_nCellsX * i_nCellsY * sizeof(t_real);
     cudaMemcpy( o_h_gpu,  i_h,  l_size, cudaMemcpyHostToDevice );
     cudaMemcpy( o_hu_gpu, i_hu, l_size, cudaMemcpyHostToDevice );
     cudaMemcpy( o_hv_gpu, i_hv, l_size, cudaMemcpyHostToDevice );
     cudaMemcpy( o_b_gpu,  i_b,  l_size, cudaMemcpyHostToDevice );
 }
 
-void CudaRegressionTest::copyFromGPU( int          i_nCellsX,
-                                      int          i_nCellsY,
-                                      float const* i_h_gpu,
-                                      float const* i_hu_gpu,
-                                      float const* i_hv_gpu,
-                                      float const* i_b_gpu,
-                                      float*       o_h,
-                                      float*       o_hu,
-                                      float*       o_hv,
-                                      float*       o_b ) {
-    int l_size = i_nCellsX * i_nCellsY * sizeof(float);
+/**
+ * @brief Copy device arrays back to host memory.
+ *
+ * Retrieves the computed height, momentum, and bathymetry values from device
+ * memory and stores them into host arrays.
+ */
+void CudaRegressionTest::copyFromGPU( t_idx          i_nCellsX,
+                                      t_idx          i_nCellsY,
+                                      t_real const* i_h_gpu,
+                                      t_real const* i_hu_gpu,
+                                      t_real const* i_hv_gpu,
+                                      t_real const* i_b_gpu,
+                                      t_real*       o_h,
+                                      t_real*       o_hu,
+                                      t_real*       o_hv,
+                                      t_real*       o_b ) {
+    std::size_t l_size = i_nCellsX * i_nCellsY * sizeof(t_real);
     cudaMemcpy( o_h,  i_h_gpu,  l_size, cudaMemcpyDeviceToHost );
     cudaMemcpy( o_hu, i_hu_gpu, l_size, cudaMemcpyDeviceToHost );
     cudaMemcpy( o_hv, i_hv_gpu, l_size, cudaMemcpyDeviceToHost );
     cudaMemcpy( o_b,  i_b_gpu,  l_size, cudaMemcpyDeviceToHost );
 }
 
-//generic: h, hu, hv, b
-bool CudaRegressionTest::compareGrids( int          i_nCellsX,
-                                       int          i_nCellsY,
-                                       float const* i_cpu,
-                                       float const* i_gpu,
-                                       float        i_tolerance ) {
+/**
+ * @brief Compare CPU and GPU grids element-wise within a tolerance.
+ *
+ * Iterates over the 2D grid in row-major order and logs any mismatches that
+ * exceed the given tolerance.
+ */
+bool CudaRegressionTest::compareGrids( t_idx          i_nCellsX,
+                                       t_idx          i_nCellsY,
+                                       t_real const* i_cpu,
+                                       t_real const* i_gpu,
+                                       t_real        i_tolerance ) {
     bool l_match = true;
-    for( int l_y = 0; l_y < i_nCellsY; l_y++ ) {
-        for( int l_x = 0; l_x < i_nCellsX; l_x++ ) {
-            int   l_idx  = l_y * i_nCellsX + l_x;
-            float l_diff = std::fabs( i_cpu[l_idx] - i_gpu[l_idx] );
+    for( t_idx l_y = 0; l_y < i_nCellsY; l_y++ ) {
+        for( t_idx l_x = 0; l_x < i_nCellsX; l_x++ ) {
+            t_idx   l_idx  = l_y * i_nCellsX + l_x;
+            t_real l_diff = std::fabs( i_cpu[l_idx] - i_gpu[l_idx] );
             if( l_diff > i_tolerance ) {
                 std::cerr << "MISMATCH at ("
                           << l_x << ", " << l_y << "): "
@@ -78,10 +107,52 @@ bool CudaRegressionTest::compareGrids( int          i_nCellsX,
     return l_match;
 }
 
-void CudaRegressionTest::freeGPUMemory( float* i_h,
-                                        float* i_hu,
-                                        float* i_hv,
-                                        float* i_b ) {
+bool CudaRegressionTest::compareSingleCellsHelper( t_idx         i_x,
+                                             t_idx         i_y,
+                                             t_idx         i_stride,
+                                             t_real const* i_cpu,
+                                             t_real const* i_gpu,
+                                             t_real        i_tolerance ) {
+    t_idx l_idx = i_y * i_stride + i_x;
+    t_real l_diff = std::fabs( i_cpu[l_idx] - i_gpu[l_idx] );
+    if(l_diff > i_tolerance){
+        std::cer << "MISMATCH at ("
+                 << i_x << ", " << i_y << "): "
+                 << "CPU = " << i_cpu[l_idx]
+                 << "GPU = " << i_gpu[l_idx]
+                 << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool CudaRegressionTest::compareSingleCells( t_idx         i_x,
+                                             t_idx         i_y,
+                                             t_idx         i_stride,
+                                             t_real const* i_h_cpu,
+                                             t_real const* i_hu_cpu,
+                                             t_real const* i_hv_cpu,
+                                             t_real const* i_b_cpu,
+                                             t_real const* i_h_gpu,
+                                             t_real const* i_hu_gpu,
+                                             t_real const* i_hv_gpu,
+                                             t_real const* i_b_gpu,
+                                             t_real        i_tolerance ) {
+    return compareSingleCellHelper( i_x, i_y, i_stride, i_h_cpu,  i_h_gpu,  i_tolerance ) &&
+           compareSingleCellHelper( i_x, i_y, i_stride, i_hu_cpu, i_hu_gpu, i_tolerance ) &&
+           compareSingleCellHelper( i_x, i_y, i_stride, i_hv_cpu, i_hv_gpu, i_tolerance ) &&
+           compareSingleCellHelper( i_x, i_y, i_stride, i_b_cpu,  i_b_gpu,  i_tolerance );
+}
+
+/**
+ * @brief Release device memory allocated for regression test arrays.
+ *
+ * Frees the device buffers allocated for height, x-momentum, y-momentum, and bathymetry.
+ */
+void CudaRegressionTest::freeGPUMemory( t_real* i_h,
+                                        t_real* i_hu,
+                                        t_real* i_hv,
+                                        t_real* i_b ) {
     cudaFree( i_h  );
     cudaFree( i_hu );
     cudaFree( i_hv );

@@ -24,6 +24,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
               'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
+              'CudaRegressionTest.cpp'
                ]
 
 for l_so in l_sources:
