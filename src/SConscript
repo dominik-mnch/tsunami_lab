@@ -23,9 +23,11 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/Csv.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
-              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp',
+              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
               'cuda/CudaRegressionTest.cpp'
                ]
+
+l_cuda_sources = [ 'cuda/CudaRegressionTest.cu'']
 
 for l_so in l_sources:
   env.sources.append( env.Object( l_so ) )

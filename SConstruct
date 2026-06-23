@@ -62,6 +62,7 @@ if vars.UnknownVariables():
 # create environment
 env = Environment( variables = vars )
 env.Append(CPPPATH=['src'])
+env.Append(CPPPATH=[os.path.join(cuda_path, 'include')])
 
 # Create an SCons Environment with CUDA settings
 env['NVCC'] = nvcc
