@@ -70,10 +70,17 @@ env['CUDA_PATH'] = cuda_path
 
 # Tell SCons how to compile .cu files using nvcc
 env['BUILDERS']['CUDAObject'] = Builder(
-        action=f'{nvcc} -arch={cuda_arch} -c $SOURCE -o $TAR>
+        action=f'{nvcc} $NVCCFLAGS -c $SOURCE -o $TAR>
     suffix='.o',
     src_suffix='.cu'
 )
+# NVCC flags
+env['NVCCFLAGS'] = [
+  '-std=c++17',
+  '-02',
+  f'-arch={cuda_arch}'
+]
+
 # env.CUDAObject('my_kernel.cu')
 
 # The final programs are assembled from object files. Make the linker explicit so
