@@ -74,6 +74,14 @@ env['BUILDERS']['CUDAObject'] = Builder(
     suffix='.o',
     src_suffix='.cu'
 )
+
+# CUDA runtime library linking      ← ADD HERE
+env.Append( LIBS     = ['cudart'] )
+env.Append( LIBPATH  = [os.path.join(cuda_path, 'lib64')] )
+
+# The final programs are assembled...
+env.Replace( LINK = '$CXX' )
+
 # NVCC flags
 env['NVCCFLAGS'] = [
   '-std=c++17',
@@ -81,7 +89,7 @@ env['NVCCFLAGS'] = [
   f'-arch={cuda_arch}'
 ]
 
-env.CUDAObject('test_kernel.cu')
+# env.CUDAObject('test_kernel.cu')
 
 # The final programs are assembled from object files. Make the linker explicit so
 # SCons uses the C++ compiler driver and links the C++ standard library reliably.
