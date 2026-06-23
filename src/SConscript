@@ -27,7 +27,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'cuda/CudaRegressionTest.cpp'
                ]
 
-l_cuda_sources = [ 'cuda/CudaRegressionTest.cu'']
+l_cuda_sources = [ 'cuda/CudaRegressionTest.cu']
 
 for l_so in l_sources:
   env.sources.append( env.Object( l_so ) )
