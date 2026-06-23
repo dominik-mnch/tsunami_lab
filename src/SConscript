@@ -1,9 +1,3 @@
-##
-# @author Alexander Breuer (alex.breuer AT uni-jena.de)
-#
-# @section DESCRIPTION
-# Collects sources for a build.
-##
 Import('env')
 
 # gather sources
@@ -24,16 +18,20 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
               'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
-               ]
-
-l_cuda_sources = [ 'cuda/CudaRegressionTest.cu']
+            ]
 
 for l_so in l_sources:
-  env.sources.append( env.Object( l_so ) )
+    env.sources.append( env.Object( l_so ) )
 
-env.standalone = env.Object( "main.cpp" )
-env.benchmark = env.Object( "benchmark.cpp" )
-env.benchmark_grace = env.Object( "benchmark_grace.cpp" )
+# gather CUDA sources
+l_cuda_sources = [ 'cuda/CudaRegressionTest.cu' ]
+
+for l_cu in l_cuda_sources:
+    env.sources.append( env.CUDAObject( l_cu ) )
+
+env.standalone      = env.Object( 'main.cpp' )
+env.benchmark       = env.Object( 'benchmark.cpp' )
+env.benchmark_grace = env.Object( 'benchmark_grace.cpp' )
 
 # gather unit tests
 l_tests = [ 'tests.cpp',
@@ -55,18 +53,9 @@ l_tests = [ 'tests.cpp',
             'io/NetCdf.test.cpp',
             'setups/ArtificialTsunami2d/ArtificialTsunami2d.test.cpp',
             'cuda/CudaRegressionTest.test.cpp'
-            ]
+          ]
 
 for l_te in l_tests:
-  env.tests.append( env.Object( l_te ) )
-
-#use in week three, as soon as .cu files exist
-l_cuda_sources = []  
-
-for l_cu in l_cuda_sources:
-  env.sources.append(env.CUDAObject(l_cu))
-
-env.Program( target = 'build/tsunami_lab',
-             source = env.sources + env.standalone )
+    env.tests.append( env.Object( l_te ) )
 
 Export('env')
