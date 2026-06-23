@@ -80,16 +80,14 @@ public:
      * @param o_hv Destination host y-momentum array.
      * @param o_b Destination host bathymetry array.
      */
-    static void copyFromGPU( t_idx          i_nCellsX,
-                             t_idx          i_nCellsY,
-                             t_real const* i_h_gpu,
-                             t_real const* i_hu_gpu,
-                             t_real const* i_hv_gpu,
-                             t_real const* i_b_gpu,
-                             t_real*       o_h,
-                             t_real*       o_hu,
-                             t_real*       o_hv,
-                             t_real*       o_b );
+static void copyFromGPU( t_idx          i_nCellsX,
+                         t_idx          i_nCellsY,
+                         t_real const*  i_h_gpu,
+                         t_real const*  i_hu_gpu,
+                         t_real const*  i_hv_gpu,
+                         t_real*        o_h,
+                         t_real*        o_hu,
+                         t_real*        o_hv );
 
     /**
      * @brief Compare two 2D real grids with a tolerance.
