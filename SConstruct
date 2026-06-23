@@ -4,6 +4,7 @@
 # @section DESCRIPTION
 # Entry-point for builds.
 ##
+import os
 import SCons
 
 print( '####################################' )
@@ -13,6 +14,33 @@ print( '### https://scalable.uni-jena.de ###' )
 print( '####################################' )
 print()
 print('runnning build script')
+
+# --- CUDA Detection ---
+
+# 1. Try CUDA_PATH env variable
+cuda_path = os.environ.get('CUDA_PATH','')
+
+# 2. Fall back to common default location if not set 
+if not cuda_path:
+        candidates = ['/usr/local/cuda', '/usr/cuda']
+        for path in candidates:
+                if os.path.isdir(path):
+                        cuda_path = path
+                        break
+# 3. Fail clearly if CUDA is nowhere to be found
+if not cuda_path:
+        print("ERROR: CUDA not found. Set CUDA_PATH.")
+        Exit(1)
+
+print(f"CUDA found at: {cuda_path}")
+
+# --- CUDA Compiler Setup ---
+
+# Path to nvcc binary
+nvcc = os.path.join(cuda_path, 'bin', 'nvcc')
+
+# GPU architecture 
+cuda_arch = 'sm_89'
 
 # configuration
 vars = Variables()
@@ -34,6 +62,19 @@ if vars.UnknownVariables():
 # create environment
 env = Environment( variables = vars )
 env.Append(CPPPATH=['src'])
+
+# Create an SCons Environment with CUDA settings
+env['NVCC'] = nvcc
+env['CUDA_ARCH'] = cuda_arch
+env['CUDA_PATH'] = cuda_path
+
+# Tell SCons how to compile .cu files using nvcc
+env['BUILDERS']['CUDAObject'] = Builder(
+        action=f'{nvcc} -arch={cuda_arch} -c $SOURCE -o $TAR>
+    suffix='.o',
+    src_suffix='.cu'
+)
+# env.CUDAObject('my_kernel.cu')
 
 # The final programs are assembled from object files. Make the linker explicit so
 # SCons uses the C++ compiler driver and links the C++ standard library reliably.
