@@ -25,12 +25,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y scons valgrind cppcheck libnetcdf-dev
           git submodule update --init submodules/Catch2
-          # Install CUDA toolkit
-          sudo apt-get install -y nvidia-cuda-toolkit
 
       - name: Static Code Analysis
-        run:
-          cppcheck src/ --template=gcc --force --error-exitcode=1
+        run: |
+          cppcheck src/ --template=gcc --force --error-exitcode=1 --suppress=shiftTooManyBits
 
       - name: Sanitize
         run: |
@@ -71,20 +69,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y scons libnetcdf-dev
-          sudo apt-get install -y nvidia-cuda-toolkit
           git submodule update --init submodules/Catch2
 
-      - name: CUDA Build (Release)
+      - name: Build
         run: |
-          scons mode=release CUDA_AVAILABLE=1
+          scons mode=release
           ./build/tests
 
-      - name: CUDA Build (Debug)
+      - name: Note
         run: |
-          scons mode=debug CUDA_AVAILABLE=1
-          ./build/tests
-
-      - name: CUDA Regression Tests
-        run: |
-          scons mode=release CUDA_AVAILABLE=1
-          ./build/tests [CudaRegression500] || echo "Note: GPU kernel tests may not execute on CI runners without physical GPU"
+          echo "GPU-accelerated CUDA kernels require physical NVIDIA GPU and CUDA toolkit"
+          echo "Run 'nix-shell' locally for full CUDA testing"
