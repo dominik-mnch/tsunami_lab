@@ -14,43 +14,43 @@
   - [x] Install Nsight Compute
   - [x] Verify tools are in PATH
 - [x] Set up SCons CUDA tool support
-  - [ ] Modify `SConstruct` to detect CUDA installation
-  - [ ] Add CUDA compiler variables (NVCC, CUDA_ARCH)
-  - [ ] Add NVCC flags (C++17 standard, optimization, compute capability)
-  - [ ] Test SCons can find and use nvcc
-- [ ] Integrate with build system
-  - [ ] Modify `src/SConscript` to compile .cu files
-  - [ ] Create CUDA object file linking
-  - [ ] Build succeeds: `scons mode=release`
+  - [x] Modify `SConstruct` to detect CUDA installation
+  - [x] Add CUDA compiler variables (NVCC, CUDA_ARCH)
+  - [x] Add NVCC flags (C++17 standard, optimization, compute capability)
+  - [x] Test SCons can find and use nvcc
+- [x] Integrate with build system
+  - [x] Modify `src/SConscript` to compile .cu files
+  - [x] Create CUDA object file linking
+  - [x] Build succeeds: `scons mode=release`
 
 **Validation Checklist:**
-- [ ] `nvcc --version` returns valid version
-- [ ] `scons mode=release` builds without CUDA errors
+- [x] `nvcc --version` returns valid version
+- [x] `scons mode=release` builds without CUDA errors
 
 ---
 
 ### Task 2: Regression Testing Framework
-- [ ] Create GPU vs CPU comparison harness
-  - [ ] Create `src/cuda/CudaRegressionTest.h/cpp`
-  - [ ] Implement GPU memory allocation for solver arrays (h, hu, hv, b)
-  - [ ] Copy data from CPU to GPU
-  - [ ] Copy results back from GPU to CPU
-  - [ ] Create comparison function with tolerance
-- [ ] Implement tolerance checking
-  - [ ] Define floating-point tolerance constant (e.g., 1e-5 relative error)
-  - [ ] Create tolerance checking function for single cells
-  - [ ] Create comparison function for entire grids
-  - [ ] Log mismatches with cell coordinates and values
-- [ ] Test infrastructure setup
-  - [ ] Create test cases for 500×500 grid
-  - [ ] Create test cases for 1000×1000 grid
-  - [ ] Create test cases for 4000×4000 grid
-  - [ ] Ensure tests run on all grid sizes
-- [ ] Create benchmark logging
-  - [ ] Create CSV output format: `timestamp, grid_size, kernel_name, time_ms, occupancy, memory_bw`
-  - [ ] Create `scripts/log_benchmark.py` or logging class
-  - [ ] Implement append-to-CSV functionality
-  - [ ] Create `data/benchmark_results/` directory for outputs
+- [x] Create GPU vs CPU comparison harness
+  - [x] Create `src/cuda/CudaRegressionTest.h/cpp`
+  - [x] Implement GPU memory allocation for solver arrays (h, hu, hv, b)
+  - [x] Copy data from CPU to GPU
+  - [x] Copy results back from GPU to CPU
+  - [x] Create comparison function with tolerance
+- [x] Implement tolerance checking
+  - [x] Define floating-point tolerance constant (e.g., 1e-5 relative error)
+  - [x] Create tolerance checking function for single cells
+  - [x] Create comparison function for entire grids
+  - [x] Log mismatches with cell coordinates and values
+- [x] Test infrastructure setup
+  - [x] Create test cases for 500×500 grid
+  - [x] Create test cases for 1000×1000 grid
+  - [x] Create test cases for 4000×4000 grid
+  - [x] Ensure tests run on all grid sizes
+- [x] Create benchmark logging
+  - [x] Create CSV output format: `timestamp, grid_size, kernel_name, time_ms, occupancy, memory_bw`
+  - [x] Create `scripts/log_benchmark.py` or logging class
+  - [x] Implement append-to-CSV functionality
+  - [x] Create `data/benchmark_results/` directory for outputs
 - [ ] Unit tests
   - [ ] Create `src/cuda/CudaRegressionTest.test.cpp`
   - [ ] Test memory allocation/deallocation
