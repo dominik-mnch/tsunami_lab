@@ -509,8 +509,10 @@ int main( int i_argc, char *i_argv[] ) {
       l_setupName  = l_cpSetup->getSetup();
 
       delete l_waveProp;
+#ifdef CUDA_ENABLED
       delete l_wavePropGpu;
       l_wavePropGpu = nullptr;
+#endif
       if( l_useWavePropagation1d ) {
         tsunami_lab::patches::WavePropagation1d::BoundaryCondition l_bc =
           tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
@@ -659,7 +661,9 @@ int main( int i_argc, char *i_argv[] ) {
     l_printUsage();
     delete l_setup;
     delete l_waveProp;
+#ifdef CUDA_ENABLED
     delete l_wavePropGpu;
+#endif
     return EXIT_FAILURE;
   }
 
@@ -667,7 +671,9 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "internal error: setup or propagation was not created" << std::endl;
     delete l_setup;
     delete l_waveProp;
+#ifdef CUDA_ENABLED
     delete l_wavePropGpu;
+#endif
     return EXIT_FAILURE;
   }
 
@@ -675,7 +681,9 @@ int main( int i_argc, char *i_argv[] ) {
       std::cerr << "invalid configuration: check cell counts, domain size, and end time" << std::endl;
       delete l_setup;
       delete l_waveProp;
+#ifdef CUDA_ENABLED
       delete l_wavePropGpu;
+#endif
       return EXIT_FAILURE;
   }
 
@@ -744,7 +752,9 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "invalid setup state: maximum wave speed is zero" << std::endl;
     delete l_setup;
     delete l_waveProp;
+#ifdef CUDA_ENABLED
     delete l_wavePropGpu;
+#endif
     return EXIT_FAILURE;
   }
 
@@ -849,11 +859,13 @@ int main( int i_argc, char *i_argv[] ) {
   // iterate over time
   while( l_simTime < l_endTime ){
     if( l_timeStep % 25 == 0 ) {
+#ifdef CUDA_ENABLED
       if (l_wavePropGpu != nullptr) {
         l_wavePropGpu->copyToHost( const_cast<tsunami_lab::t_real*>( l_waveProp->getHeight() ),
                                  const_cast<tsunami_lab::t_real*>( l_waveProp->getMomentumX() ),
                                  const_cast<tsunami_lab::t_real*>( l_waveProp->getMomentumY() ) );
       } 
+#endif
 
       std::cout << "  simulation time / #time steps: "
                 << l_simTime << " / " << l_timeStep << std::endl;
@@ -876,6 +888,7 @@ int main( int i_argc, char *i_argv[] ) {
 
     auto const l_stepStart = std::chrono::steady_clock::now();
     
+#ifdef CUDA_ENABLED
     if( l_wavePropGpu != nullptr ) {
       // GPU time step (no copy after - only copy before output)
       l_wavePropGpu->initNewCells();
@@ -883,7 +896,9 @@ int main( int i_argc, char *i_argv[] ) {
       l_wavePropGpu->ySweep( l_scaling );
       l_wavePropGpu->swapBuffers();
     }
-    else {
+    else
+#endif
+    {
       // CPU time step (original code)
       l_waveProp->setGhostOutflow();
       l_waveProp->timeStep( l_scaling );
