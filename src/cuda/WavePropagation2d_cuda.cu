@@ -18,7 +18,7 @@ namespace tsunami_lab {
   namespace patches {
     namespace cuda {
       __global__
-      void xSweep( const t_real *i_h_old,
+      void xSweepKernel( const t_real *i_h_old,
                    const t_real *i_hu_old,
                    const t_real *i_hv_old,
                    const t_real *i_b,
@@ -31,7 +31,7 @@ namespace tsunami_lab {
                    bool i_useFWave );
 
       __global__
-      void ySweep( const t_real *i_h_old,
+      void ySweepKernel( const t_real *i_h_old,
                    const t_real *i_hu_old,
                    const t_real *i_hv_old,
                    const t_real *i_b,
@@ -44,7 +44,7 @@ namespace tsunami_lab {
                    bool i_useFWave );
 
       __global__
-      void initNewCells( const t_real *i_h_old,
+      void initNewCellsKernel( const t_real *i_h_old,
                         const t_real *i_hu_old,
                         const t_real *i_hv_old,
                         t_real *o_h_new,
@@ -173,7 +173,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::initNewCells() {
   int l_threadsPerBlock = 256;
   int l_blocksPerGrid = (m_nValues + l_threadsPerBlock - 1) / l_threadsPerBlock;
 
-  initNewCells<<<l_blocksPerGrid, l_threadsPerBlock>>>(
+  initNewCellsKernel<<<l_blocksPerGrid, l_threadsPerBlock>>>(
       l_h_old, l_hu_old, l_hv_old,
       l_h_new, l_hu_new, l_hv_new,
       m_nValues );
@@ -201,7 +201,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::xSweep( t_real i_scaling
       (m_nCellsY + l_blockDim.y - 1) / l_blockDim.y
   );
 
-  xSweep<<<l_gridDim, l_blockDim>>>(
+  xSweepKernel<<<l_gridDim, l_blockDim>>>(
       l_h_old, l_hu_old, l_hv_old, m_d_b,
       l_h_new, l_hu_new,
       m_nCellsX, m_nCellsY, m_stride,
@@ -230,7 +230,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::ySweep( t_real i_scaling
       (m_nCellsY + 1 + l_blockDim.y - 1) / l_blockDim.y
   );
 
-  ySweep<<<l_gridDim, l_blockDim>>>(
+  ySweepKernel<<<l_gridDim, l_blockDim>>>(
       l_h_old, l_hu_old, l_hv_old, m_d_b,
       l_h_new, l_hv_new,
       m_nCellsX, m_nCellsY, m_stride,

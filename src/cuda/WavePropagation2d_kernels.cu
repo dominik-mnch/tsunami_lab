@@ -38,7 +38,7 @@ namespace tsunami_lab {
        * @param i_useFWave if true, use F-Wave solver; otherwise Roe solver
        **/
       TSUNAMI_CUDA_GLOBAL
-      void xSweep( const t_real *i_h_old,
+      void xSweepKernel( const t_real *i_h_old,
                    const t_real *i_hu_old,
                    const t_real *i_hv_old,
                    const t_real *i_b,
@@ -163,7 +163,7 @@ namespace tsunami_lab {
        * @param i_useFWave if true, use F-Wave solver; otherwise Roe solver
        **/
       TSUNAMI_CUDA_GLOBAL
-      void ySweep( const t_real *i_h_old,
+      void ySweepKernel( const t_real *i_h_old,
                    const t_real *i_hu_old,
                    const t_real *i_hv_old,
                    const t_real *i_b,
@@ -281,7 +281,7 @@ namespace tsunami_lab {
        * @param i_nValues total number of values to initialize
        **/
       TSUNAMI_CUDA_GLOBAL
-      void initNewCells( const t_real *i_h_old,
+      void initNewCellsKernel( const t_real *i_h_old,
                         const t_real *i_hu_old,
                         const t_real *i_hv_old,
                         t_real *o_h_new,

@@ -1,9 +1,10 @@
 #include "CudaRegressionTest.h"
 #include <cuda_runtime.h>
 #include <cmath>
+#include <algorithm>
 #include <iostream>
 #include "../patches/WavePropagation2d.h"
-#include "../patches/WavePropagation2d_cuda.h"
+#include "WavePropagation2d_cuda.h"
 #include "../setups/CircularDamBreak2d/CircularDamBreak2d.h"
 
 namespace tsunami_lab {
@@ -38,7 +39,7 @@ bool CudaRegressionTest::compareKernelResults( t_idx i_nCellsX,
                                                t_real* o_maxError ) {
     // --- Setup ---
     patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
-    patches::WavePropagation2dCuda l_wavePropGpu( i_nCellsX, i_nCellsY, i_useFWave );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpu( i_nCellsX, i_nCellsY, i_useFWave );
 
     setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
 
@@ -81,7 +82,7 @@ bool CudaRegressionTest::compareKernelResults( t_idx i_nCellsX,
 
     // CPU step (equivalent operations)
     l_wavePropCpu.setGhostOutflow();
-    l_wavePropCpu.computeNetUpdates( l_scaling );
+    l_wavePropCpu.timeStep( l_scaling );
 
     // Copy GPU results back to host
     t_real* l_h_gpu_result = new t_real[i_nCellsX * i_nCellsY];
@@ -129,7 +130,7 @@ bool CudaRegressionTest::compareMultipleTimesteps( t_idx i_nCellsX,
                                                    t_real* o_maxError ) {
     // --- Setup ---
     patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
-    patches::WavePropagation2dCuda l_wavePropGpu( i_nCellsX, i_nCellsY, i_useFWave );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpu( i_nCellsX, i_nCellsY, i_useFWave );
 
     setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
 
@@ -178,7 +179,7 @@ bool CudaRegressionTest::compareMultipleTimesteps( t_idx i_nCellsX,
 
         // CPU step
         l_wavePropCpu.setGhostOutflow();
-        l_wavePropCpu.computeNetUpdates( l_scaling );
+        l_wavePropCpu.timeStep( l_scaling );
 
         // Check at intervals
         if( (l_step + 1) % i_checkInterval == 0 ) {
@@ -224,21 +225,6 @@ bool CudaRegressionTest::compareMultipleTimesteps( t_idx i_nCellsX,
     delete[] l_hv_gpu_result;
 
     return l_allMatch;
-}
-
-/**
- * @brief Release device memory allocated for regression test arrays.
- *
- * Frees the device buffers allocated for height, x-momentum, y-momentum, and bathymetry.
- */
-void CudaRegressionTest::freeGPUMemory( t_real* i_h,
-                                        t_real* i_hu,
-                                        t_real* i_hv,
-                                        t_real* i_b ) {
-    cudaFree( i_h  );
-    cudaFree( i_hu );
-    cudaFree( i_hv );
-    cudaFree( i_b  );
 }
 
 } // namespace cuda
