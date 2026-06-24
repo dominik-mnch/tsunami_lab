@@ -8,6 +8,10 @@
 #include "WavePropagation2d_cuda.h"
 #include <cuda_runtime.h>
 #include <cstring>
+#include <cstdio>
+
+// Static variable to track initialization
+static bool g_cuda_initialized = false;
 
 // Forward declarations of kernel functions
 namespace tsunami_lab {
@@ -48,6 +52,25 @@ namespace tsunami_lab {
                         t_real *o_hv_new,
                         t_idx i_nValues );
     }
+  }
+}
+
+bool tsunami_lab::patches::cuda::WavePropagation2dCuda::initialize( int i_deviceId ) {
+  // Set device
+  cudaError_t l_error = cudaSetDevice( i_deviceId );
+  if( l_error != cudaSuccess ) {
+    fprintf( stderr, "Error setting CUDA device: %s\n", cudaGetErrorString( l_error ) );
+    return false;
+  }
+
+  g_cuda_initialized = true;
+  return true;
+}
+
+void tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize() {
+  if( g_cuda_initialized ) {
+    cudaDeviceReset();
+    g_cuda_initialized = false;
   }
 }
 

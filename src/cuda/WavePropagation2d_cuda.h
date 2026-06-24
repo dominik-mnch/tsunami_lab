@@ -57,6 +57,19 @@ class tsunami_lab::patches::cuda::WavePropagation2dCuda {
 
   public:
     /**
+     * Initialize CUDA device and query capabilities.
+     * 
+     * @param i_deviceId GPU device ID to use (default: 0)
+     * @return true if initialization successful, false otherwise
+     **/
+    static bool initialize( int i_deviceId = 0 );
+
+    /**
+     * Finalize CUDA device (cleanup).
+     **/
+    static void finalize();
+
+    /**
      * Constructor: allocates GPU memory for rectangular domain.
      *
      * @param i_nCellsX number of cells in x-direction

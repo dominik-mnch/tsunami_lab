@@ -7,7 +7,6 @@
 #include "patches/WavePropagation1d.h"
 #include "patches/WavePropagation2d.h"
 #include "patches/WavePropagation2d_cuda.h"
-#include "cuda/cuda_driver.h"
 #include "setups/ArtificialTsunami2d/ArtificialTsunami2d.h"
 #include "setups/CircularDamBreak2d/CircularDamBreak2d.h"
 #include "setups/DamBreak1d/DamBreak1d.h"
@@ -398,7 +397,7 @@ int main( int i_argc, char *i_argv[] ) {
 
       // Check for GPU support (2D only)
       if( l_useCuda ) {
-        if( !tsunami_lab::cuda::CudaDriver::initialize( 0 ) ) {
+        if( !tsunami_lab::patches::cuda::WavePropagation2dCuda::initialize( 0 ) ) {
           std::cerr << "warning: CUDA initialization failed, falling back to CPU" << std::endl;
           l_useCuda = false;
         }
@@ -900,7 +899,7 @@ int main( int i_argc, char *i_argv[] ) {
   delete l_wavePropGpu;
 
   if( l_useCuda ) {
-    tsunami_lab::cuda::CudaDriver::finalize();
+    tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize();
   }
 
   std::cout << "finished, exiting" << std::endl;
