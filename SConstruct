@@ -71,24 +71,21 @@ env['CUDA_PATH'] = cuda_path
 
 # Tell SCons how to compile .cu files using nvcc
 env['BUILDERS']['CUDAObject'] = Builder(
-    action=f'{nvcc} $NVCCFLAGS -c $SOURCE -o $TARGET',
+    action='$NVCC $NVCCFLAGS -c $SOURCE -o $TARGET',
     suffix='.o',
     src_suffix='.cu'
 )
 
-# CUDA runtime library linking      ← ADD HERE
-env.Append( LIBS     = ['cudart'] )
-env.Append( LIBPATH  = [os.path.join(cuda_path, 'lib64')] )
-
-# The final programs are assembled...
-env.Replace( LINK = '$CXX' )
-
-# NVCC flags
+# CUDA compiler flags
 env['NVCCFLAGS'] = [
   '-std=c++17',
   '-O2',
   f'-arch={cuda_arch}'
 ]
+
+# CUDA runtime library linking
+env.Append( LIBS     = ['cudart'] )
+env.Append( LIBPATH  = [os.path.join(cuda_path, 'lib64')] )
 
 # env.CUDAObject('test_kernel.cu')
 

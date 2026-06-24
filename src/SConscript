@@ -1,10 +1,11 @@
 Import('env')
 
-# gather sources
+# gather sources (both .cpp and .cu files)
 l_sources = [ 'solvers/Roe.cpp',
               'solvers/F_wave.cpp',
               'patches/WavePropagation1d.cpp',
               'patches/WavePropagation2d.cpp',
+              'patches/WavePropagation2d_cuda.cpp',
               'setups/DamBreak1d/DamBreak1d.cpp',
               'setups/RareRare1d/RareRare1d.cpp',
               'setups/ShockShock1d/ShockShock1d.cpp',
@@ -17,17 +18,17 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/Csv.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
-              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
+              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp',
+              'cuda/cuda_driver.cpp',
+              'cuda/CudaRegressionTest.cu',
+              'cuda/WavePropagation2d_kernels.cu'
             ]
 
 for l_so in l_sources:
-    env.sources.append( env.Object( l_so ) )
-
-# gather CUDA sources
-l_cuda_sources = [ 'cuda/CudaRegressionTest.cu' ]
-
-for l_cu in l_cuda_sources:
-    env.sources.append( env.CUDAObject( l_cu ) )
+    if l_so.endswith('.cu'):
+        env.sources.append( env.CUDAObject( l_so ) )
+    else:
+        env.sources.append( env.Object( l_so ) )
 
 env.standalone      = env.Object( 'main.cpp' )
 env.benchmark       = env.Object( 'benchmark.cpp' )
