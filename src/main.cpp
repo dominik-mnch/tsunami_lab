@@ -6,6 +6,8 @@
  **/
 #include "patches/WavePropagation1d.h"
 #include "patches/WavePropagation2d.h"
+#include "patches/WavePropagation2d_cuda.h"
+#include "cuda/cuda_driver.h"
 #include "setups/ArtificialTsunami2d/ArtificialTsunami2d.h"
 #include "setups/CircularDamBreak2d/CircularDamBreak2d.h"
 #include "setups/DamBreak1d/DamBreak1d.h"
@@ -53,6 +55,7 @@ int main( int i_argc, char *i_argv[] ) {
   tsunami_lab::t_real l_endTime = 1.25;
   bool l_useFWaveSolver = true;
   bool l_useWavePropagation1d = false;
+  bool l_useCuda = false;
   std::string l_setupName;
 
   std::cout << "####################################" << std::endl;
@@ -63,8 +66,8 @@ int main( int i_argc, char *i_argv[] ) {
 
   auto l_printUsage = []() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
-    std::cerr << "  ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
+    std::cerr << "  ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME [USE_CUDA] PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
+    std::cerr << "  ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME [USE_CUDA] PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]" << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "general arguments:" << std::endl;
     std::cerr << "  NX, NY       number of cells in x- and y-direction." << std::endl;
@@ -76,6 +79,7 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "  K            for a coarse output, k*k cells get averaged." << std::endl;
     std::cerr << "  SOLVER_MODE  1 for FWaveSolver, 0 for RoeSolver." << std::endl;
     std::cerr << "  END_TIME     simulation end time in seconds." << std::endl;
+    std::cerr << "  USE_CUDA     (optional) 1 or true to use GPU acceleration, 0 or false for CPU (default: 0)." << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "propagation modes:" << std::endl;
     std::cerr << "  1d <boundary_mode>" << std::endl;
@@ -221,6 +225,7 @@ int main( int i_argc, char *i_argv[] ) {
 
   tsunami_lab::setups::Setup *l_setup = nullptr;
   tsunami_lab::patches::WavePropagation *l_waveProp = nullptr;
+  tsunami_lab::patches::cuda::WavePropagation2dCuda *l_wavePropGpu = nullptr;
 
   // Check whether a checkpoint exists. The actual resume decision is made after
   // parsing the current command so we can compare the full input signature.
@@ -307,6 +312,25 @@ int main( int i_argc, char *i_argv[] ) {
     }
 
     int l_propArgIdx = l_argBase + 2;
+    
+    // Check if USE_CUDA flag is provided (optional)
+    if( l_propArgIdx < i_argc ) {
+      std::string l_nextArg = i_argv[l_propArgIdx];
+      // Check if it looks like a boolean (0, 1, true, false) rather than a propagation mode
+      if( l_nextArg == "0" || l_nextArg == "1" || 
+          l_nextArg == "true" || l_nextArg == "false" ||
+          l_nextArg == "True" || l_nextArg == "False" ||
+          l_nextArg == "TRUE" || l_nextArg == "FALSE" ) {
+        try {
+          l_useCuda = l_parseBool( l_nextArg, "USE_CUDA" );
+          l_propArgIdx++;
+          std::cout << "GPU acceleration: " << (l_useCuda ? "ENABLED" : "DISABLED") << std::endl;
+        }
+        catch( const std::exception & ) {
+          // If parsing fails, assume it's not a CUDA flag and leave as is
+        }
+      }
+    }
     std::string l_propagationMode = i_argv[l_propArgIdx];
     for( char & l_ch: l_propagationMode ) l_ch = static_cast<char>( std::tolower( static_cast<unsigned char>( l_ch ) ) );
 
@@ -372,10 +396,21 @@ int main( int i_argc, char *i_argv[] ) {
         l_setupArgStart = l_propArgIdx + 2;
       }
 
-      l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
-                                                                 l_ny,
-                                                                 l_useFWaveSolver,
-                                                                 l_boundaryCondition2d );
+      // Check for GPU support (2D only)
+      if( l_useCuda ) {
+        if( !tsunami_lab::cuda::CudaDriver::initialize( 0 ) ) {
+          std::cerr << "warning: CUDA initialization failed, falling back to CPU" << std::endl;
+          l_useCuda = false;
+        }
+      }
+
+      if( !l_useCuda ) {
+        l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
+                                                                   l_ny,
+                                                                   l_useFWaveSolver,
+                                                                   l_boundaryCondition2d );
+      }
+      // For GPU, l_waveProp remains nullptr and we'll handle it separately below
     }
     else {
       throw std::invalid_argument( "unknown propagation mode: " + l_propagationMode );
@@ -459,6 +494,8 @@ int main( int i_argc, char *i_argv[] ) {
       l_setupName  = l_cpSetup->getSetup();
 
       delete l_waveProp;
+      delete l_wavePropGpu;
+      l_wavePropGpu = nullptr;
       if( l_useWavePropagation1d ) {
         tsunami_lab::patches::WavePropagation1d::BoundaryCondition l_bc =
           tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
@@ -607,13 +644,15 @@ int main( int i_argc, char *i_argv[] ) {
     l_printUsage();
     delete l_setup;
     delete l_waveProp;
+    delete l_wavePropGpu;
     return EXIT_FAILURE;
   }
 
-  if( l_setup == nullptr || l_waveProp == nullptr ) {
+  if( l_setup == nullptr || (l_waveProp == nullptr && l_wavePropGpu == nullptr) ) {
     std::cerr << "internal error: setup or propagation was not created" << std::endl;
     delete l_setup;
     delete l_waveProp;
+    delete l_wavePropGpu;
     return EXIT_FAILURE;
   }
 
@@ -621,6 +660,7 @@ int main( int i_argc, char *i_argv[] ) {
       std::cerr << "invalid configuration: check cell counts, domain size, and end time" << std::endl;
       delete l_setup;
       delete l_waveProp;
+      delete l_wavePropGpu;
       return EXIT_FAILURE;
   }
 
@@ -689,7 +729,51 @@ int main( int i_argc, char *i_argv[] ) {
     std::cerr << "invalid setup state: maximum wave speed is zero" << std::endl;
     delete l_setup;
     delete l_waveProp;
+    delete l_wavePropGpu;
     return EXIT_FAILURE;
+  }
+
+  // Initialize GPU solver if requested
+  if( l_useCuda && !l_useWavePropagation1d ) {
+    std::cout << "initializing GPU solver" << std::endl;
+    
+    // Create CPU solver for I/O compatibility if not already created
+    if( l_waveProp == nullptr ) {
+      l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
+                                                                 l_ny,
+                                                                 l_useFWaveSolver,
+                                                                 l_boundaryCondition2d );
+      // Initialize CPU solver with setup data (same as above)
+      for( tsunami_lab::t_idx l_cy = 0; l_cy < l_ny; l_cy++ ) {
+        tsunami_lab::t_real l_y = l_domainStartY + l_cy * l_dy;
+        for( tsunami_lab::t_idx l_cx = 0; l_cx < l_nx; l_cx++ ) {
+          tsunami_lab::t_real l_x = l_domainStartX + l_cx * l_dx;
+          
+          tsunami_lab::t_real l_h = l_setup->getHeight( l_x, l_y );
+          tsunami_lab::t_real l_hu = l_setup->getMomentumX( l_x, l_y );
+          tsunami_lab::t_real l_hv = l_setup->getMomentumY( l_x, l_y );
+          tsunami_lab::t_real l_b = l_setup->getBathymetry( l_x, l_y );
+          
+          l_waveProp->setHeight( l_cx, l_cy, l_h );
+          l_waveProp->setMomentumX( l_cx, l_cy, l_hu );
+          l_waveProp->setMomentumY( l_cx, l_cy, l_hv );
+          l_waveProp->setBathymetry( l_cx, l_cy, l_b );
+        }
+      }
+    }
+
+    // Create GPU solver
+    l_wavePropGpu = new tsunami_lab::patches::cuda::WavePropagation2dCuda( l_nx,
+                                                                             l_ny,
+                                                                             l_useFWaveSolver );
+
+    // Copy data from CPU to GPU
+    l_wavePropGpu->copyToGpu( l_waveProp->getHeight(),
+                              l_waveProp->getMomentumX(),
+                              l_waveProp->getMomentumY(),
+                              l_waveProp->getBathymetry() );
+
+    std::cout << "GPU solver initialized successfully" << std::endl;
   }
 
   // derive constant time step; changes at simulation time are ignored
@@ -748,6 +832,12 @@ int main( int i_argc, char *i_argv[] ) {
   // iterate over time
   while( l_simTime < l_endTime ){
     if( l_timeStep % 25 == 0 ) {
+      if (l_wavePropGpu != nullptr) {
+        l_wavePropGpu->copyToHost( l_waveProp->getHeight(),
+                                 l_waveProp->getMomentumX(),
+                                 l_waveProp->getMomentumY() );
+      } 
+
       std::cout << "  simulation time / #time steps: "
                 << l_simTime << " / " << l_timeStep << std::endl;
 
@@ -768,8 +858,20 @@ int main( int i_argc, char *i_argv[] ) {
                         );
 
     auto const l_stepStart = std::chrono::steady_clock::now();
-    l_waveProp->setGhostOutflow();
-    l_waveProp->timeStep( l_scaling );
+    
+    if( l_wavePropGpu != nullptr ) {
+      // GPU time step (no copy after - only copy before output)
+      l_wavePropGpu->initNewCells();
+      l_wavePropGpu->xSweep( l_scaling );
+      l_wavePropGpu->ySweep( l_scaling );
+      l_wavePropGpu->swapBuffers();
+    }
+    else {
+      // CPU time step (original code)
+      l_waveProp->setGhostOutflow();
+      l_waveProp->timeStep( l_scaling );
+    }
+    
     auto const l_stepEnd = std::chrono::steady_clock::now();
 
     l_timeSteppingSeconds += std::chrono::duration<double>(
@@ -795,6 +897,11 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "freeing memory" << std::endl;
   delete l_setup;
   delete l_waveProp;
+  delete l_wavePropGpu;
+
+  if( l_useCuda ) {
+    tsunami_lab::cuda::CudaDriver::finalize();
+  }
 
   std::cout << "finished, exiting" << std::endl;
   return EXIT_SUCCESS;
