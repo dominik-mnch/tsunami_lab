@@ -9,6 +9,13 @@
 #include "../solvers/Roe.h"
 #include "../solvers/F_wave.h"
 
+// CUDA annotations for kernel functions
+#ifdef __CUDACC__
+  #define TSUNAMI_CUDA_GLOBAL __global__
+#else
+  #define TSUNAMI_CUDA_GLOBAL
+#endif
+
 namespace tsunami_lab {
   namespace patches {
     namespace cuda {
@@ -30,7 +37,8 @@ namespace tsunami_lab {
        * @param i_scaling time step scaling factor (dt/dx)
        * @param i_useFWave if true, use F-Wave solver; otherwise Roe solver
        **/
-      __global__ void xSweep( const t_real *i_h_old,
+      TSUNAMI_CUDA_GLOBAL
+      void xSweep( const t_real *i_h_old,
                    const t_real *i_hu_old,
                    const t_real *i_hv_old,
                    const t_real *i_b,
@@ -154,7 +162,7 @@ namespace tsunami_lab {
        * @param i_scaling time step scaling factor (dt/dx)
        * @param i_useFWave if true, use F-Wave solver; otherwise Roe solver
        **/
-      __global__
+      TSUNAMI_CUDA_GLOBAL
       void ySweep( const t_real *i_h_old,
                    const t_real *i_hu_old,
                    const t_real *i_hv_old,
@@ -272,7 +280,7 @@ namespace tsunami_lab {
        * @param o_hv_new initialized y-momentum
        * @param i_nValues total number of values to initialize
        **/
-      __global__
+      TSUNAMI_CUDA_GLOBAL
       void initNewCells( const t_real *i_h_old,
                         const t_real *i_hu_old,
                         const t_real *i_hv_old,
