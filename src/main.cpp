@@ -6,7 +6,9 @@
  **/
 #include "patches/WavePropagation1d.h"
 #include "patches/WavePropagation2d.h"
-#include "patches/WavePropagation2d_cuda.h"
+#ifdef CUDA_ENABLED
+  #include "cuda/WavePropagation2d_cuda.h"
+#endif
 #include "setups/ArtificialTsunami2d/ArtificialTsunami2d.h"
 #include "setups/CircularDamBreak2d/CircularDamBreak2d.h"
 #include "setups/DamBreak1d/DamBreak1d.h"
@@ -55,6 +57,9 @@ int main( int i_argc, char *i_argv[] ) {
   bool l_useFWaveSolver = true;
   bool l_useWavePropagation1d = false;
   bool l_useCuda = false;
+  // 2D boundary condition (declared here so it is available for GPU solver setup)
+  tsunami_lab::patches::WavePropagation2d::BoundaryCondition l_boundaryCondition2d =
+    tsunami_lab::patches::WavePropagation2d::BoundaryCondition::GhostOutflow;
   std::string l_setupName;
 
   std::cout << "####################################" << std::endl;
@@ -224,7 +229,11 @@ int main( int i_argc, char *i_argv[] ) {
 
   tsunami_lab::setups::Setup *l_setup = nullptr;
   tsunami_lab::patches::WavePropagation *l_waveProp = nullptr;
+  #ifdef CUDA_ENABLED
   tsunami_lab::patches::cuda::WavePropagation2dCuda *l_wavePropGpu = nullptr;
+  #else
+  void *l_wavePropGpu = nullptr;
+  #endif
 
   // Check whether a checkpoint exists. The actual resume decision is made after
   // parsing the current command so we can compare the full input signature.
@@ -336,7 +345,7 @@ int main( int i_argc, char *i_argv[] ) {
     int l_setupArgStart = 0;
     tsunami_lab::patches::WavePropagation1d::BoundaryCondition l_boundaryCondition =
       tsunami_lab::patches::WavePropagation1d::BoundaryCondition::GhostOutflow;
-    tsunami_lab::patches::WavePropagation2d::BoundaryCondition l_boundaryCondition2d =
+    l_boundaryCondition2d =
       tsunami_lab::patches::WavePropagation2d::BoundaryCondition::GhostOutflow;
     std::string l_boundarySignature = "0";
 
@@ -396,12 +405,19 @@ int main( int i_argc, char *i_argv[] ) {
       }
 
       // Check for GPU support (2D only)
+      #ifdef CUDA_ENABLED
       if( l_useCuda ) {
         if( !tsunami_lab::patches::cuda::WavePropagation2dCuda::initialize( 0 ) ) {
           std::cerr << "warning: CUDA initialization failed, falling back to CPU" << std::endl;
           l_useCuda = false;
         }
       }
+      #else
+      if( l_useCuda ) {
+        std::cerr << "warning: GPU support not available (built without CUDA)" << std::endl;
+        l_useCuda = false;
+      }
+      #endif
 
       if( !l_useCuda ) {
         l_waveProp = new tsunami_lab::patches::WavePropagation2d( l_nx,
@@ -762,6 +778,7 @@ int main( int i_argc, char *i_argv[] ) {
     }
 
     // Create GPU solver
+    #ifdef CUDA_ENABLED
     l_wavePropGpu = new tsunami_lab::patches::cuda::WavePropagation2dCuda( l_nx,
                                                                              l_ny,
                                                                              l_useFWaveSolver );
@@ -773,6 +790,7 @@ int main( int i_argc, char *i_argv[] ) {
                               l_waveProp->getBathymetry() );
 
     std::cout << "GPU solver initialized successfully" << std::endl;
+    #endif
   }
 
   // derive constant time step; changes at simulation time are ignored
@@ -832,9 +850,9 @@ int main( int i_argc, char *i_argv[] ) {
   while( l_simTime < l_endTime ){
     if( l_timeStep % 25 == 0 ) {
       if (l_wavePropGpu != nullptr) {
-        l_wavePropGpu->copyToHost( l_waveProp->getHeight(),
-                                 l_waveProp->getMomentumX(),
-                                 l_waveProp->getMomentumY() );
+        l_wavePropGpu->copyToHost( const_cast<tsunami_lab::t_real*>( l_waveProp->getHeight() ),
+                                 const_cast<tsunami_lab::t_real*>( l_waveProp->getMomentumX() ),
+                                 const_cast<tsunami_lab::t_real*>( l_waveProp->getMomentumY() ) );
       } 
 
       std::cout << "  simulation time / #time steps: "
@@ -896,11 +914,13 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "freeing memory" << std::endl;
   delete l_setup;
   delete l_waveProp;
+  #ifdef CUDA_ENABLED
   delete l_wavePropGpu;
 
   if( l_useCuda ) {
     tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize();
   }
+  #endif
 
   std::cout << "finished, exiting" << std::endl;
   return EXIT_SUCCESS;
