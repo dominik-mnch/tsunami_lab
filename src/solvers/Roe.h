@@ -9,6 +9,13 @@
 
 #include "../constants.h"
 
+// CUDA annotations for host/device code
+#ifdef __CUDACC__
+  #define TSUNAMI_CUDA_HOST_DEVICE __host__ __device__
+#else
+  #define TSUNAMI_CUDA_HOST_DEVICE
+#endif
+
 namespace tsunami_lab {
   namespace solvers {
     class Roe;
@@ -30,6 +37,7 @@ class tsunami_lab::solvers::Roe {
      * @param o_waveSpeedL will be set to the speed of the wave propagating to the left.
      * @param o_waveSpeedR will be set to the speed of the wave propagating to the right.
      **/
+    TSUNAMI_CUDA_HOST_DEVICE
     static void waveSpeeds( t_real   i_hL,
                             t_real   i_hR,
                             t_real   i_uL,
@@ -49,6 +57,7 @@ class tsunami_lab::solvers::Roe {
      * @param o_strengthL will be set to the strength of the wave propagating to the left.
      * @param o_strengthR will be set to the strength of the wave propagating to the right.
      **/
+    TSUNAMI_CUDA_HOST_DEVICE
     static void waveStrengths( t_real   i_hL,
                                t_real   i_hR,
                                t_real   i_huL,
@@ -69,6 +78,7 @@ class tsunami_lab::solvers::Roe {
      * @param o_netUpdateL will be set to the net-updates for the left side; 0: height, 1: momentum.
      * @param o_netUpdateR will be set to the net-updates for the right side; 0: height, 1: momentum.
      **/
+    TSUNAMI_CUDA_HOST_DEVICE
     static void netUpdates( t_real i_hL,
                             t_real i_hR,
                             t_real i_huL,

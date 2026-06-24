@@ -11,6 +11,13 @@
 
  #include "../constants.h"
 
+// CUDA annotations for host/device code
+#ifdef __CUDACC__
+  #define TSUNAMI_CUDA_HOST_DEVICE __host__ __device__
+#else
+  #define TSUNAMI_CUDA_HOST_DEVICE
+#endif
+
 namespace tsunami_lab {
     namespace solvers {
         class F_wave;
@@ -36,6 +43,7 @@ class tsunami_lab::solvers::F_wave {
          * @param o_netUpdateL will be set to the net-updates for the left side; 0: height, 1: momentum.
          * @param o_netUpdateR will be set to the net-updates for the right side; 0: height, 1: momentum.
          **/
+        TSUNAMI_CUDA_HOST_DEVICE
         static void netUpdates( t_real i_hL,
                                 t_real i_hR,
                                 t_real i_huL,
