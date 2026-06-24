@@ -47,13 +47,15 @@ static void runGridTest( tsunami_lab::t_idx i_nCellsX,
     tsunami_lab::t_real* l_d_hv = nullptr;
     tsunami_lab::t_real* l_d_b  = nullptr;
 
-    tsunami_lab::cuda::CudaRegressionTest::allocateGPUMemory( i_nCellsX,
+    // GPU level - did cudaMalloc succeed
+    REQUIRE(tsunami_lab::cuda::CudaRegressionTest::allocateGPUMemory( i_nCellsX,
                                                               i_nCellsY,
                                                               &l_d_h,
                                                               &l_d_hu,
                                                               &l_d_hv,
-                                                              &l_d_b );
-    // allocation succeeded if pointers are non-null
+                                                              &l_d_b ));
+
+    // CPU level - are pointers valid
     REQUIRE( l_d_h  != nullptr );
     REQUIRE( l_d_hu != nullptr );
     REQUIRE( l_d_hv != nullptr );
@@ -85,8 +87,10 @@ static void runGridTest( tsunami_lab::t_idx i_nCellsX,
                                                          l_hu_back,
                                                          l_hv_back );
 
+    l_h_back[0] += 1.0; // deliberately corrupt one value
+
     // round-trip check: CPU → GPU → CPU should be identical
-    REQUIRE( tsunami_lab::cuda::CudaRegressionTest::compareGrids( i_nCellsX,
+    REQUIRE_FALSE( tsunami_lab::cuda::CudaRegressionTest::compareGrids( i_nCellsX,
                                                                    i_nCellsY,
                                                                    l_waveProp.getHeight(),
                                                                    l_h_back ) );
@@ -106,10 +110,12 @@ static void runGridTest( tsunami_lab::t_idx i_nCellsX,
     delete[] l_hu_back;
     delete[] l_hv_back;
 
-    tsunami_lab::cuda::CudaRegressionTest::freeGPUMemory( l_d_h,
+    // GPU level - did cudaFree succeed
+    REQUIRE(tsunami_lab::cuda::CudaRegressionTest::freeGPUMemory( l_d_h,
                                                            l_d_hu,
                                                            l_d_hv,
-                                                           l_d_b );
+                                                           l_d_b ));
+
 }
 
 TEST_CASE( "CUDA regression infrastructure: 500x500 grid", "[CudaRegression500]" ) {

@@ -6,17 +6,18 @@
 namespace tsunami_lab {
 namespace cuda {
 
-void CudaRegressionTest::allocateGPUMemory( t_idx    i_nCellsX,
+bool CudaRegressionTest::allocateGPUMemory( t_idx    i_nCellsX,
                                             t_idx    i_nCellsY,
                                             t_real** o_h,
                                             t_real** o_hu,
                                             t_real** o_hv,
                                             t_real** o_b ) {
     std::size_t l_size = i_nCellsX * i_nCellsY * sizeof(t_real);
-    cudaMalloc( (void**)o_h,  l_size );
-    cudaMalloc( (void**)o_hu, l_size );
-    cudaMalloc( (void**)o_hv, l_size );
-    cudaMalloc( (void**)o_b,  l_size );
+    if (cudaMalloc( (void**)o_h,  l_size ) != cudaSucess) return false;
+    if (cudaMalloc( (void**)o_hu, l_size ) != cudaSucess) return false;
+    if (cudaMalloc( (void**)o_hv, l_size ) != cudaSucess) return false;
+    if (cudaMalloc( (void**)o_b,  l_size ) != cudaSucess) return false;
+    return true;
 }
 
 void CudaRegressionTest::copyToGPU( t_idx          i_nCellsX,
@@ -101,10 +102,11 @@ void CudaRegressionTest::freeGPUMemory( t_real* i_h,
                                         t_real* i_hu,
                                         t_real* i_hv,
                                         t_real* i_b ) {
-    cudaFree( i_h  );
-    cudaFree( i_hu );
-    cudaFree( i_hv );
-    cudaFree( i_b  );
+    if(cudaFree(i_h) != CudaSuccess) return false;
+    if(cudaFree(i_hu)   != CudaSuccess) return false;
+    if(cudaFree(i_hv)   != CudaSuccess) return false;
+    if(cudaFree(i_b)    != CudaSuccess) return false;
+    return true;
 }
 
 } // namespace cuda
