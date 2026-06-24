@@ -54,8 +54,8 @@
 - [ ] Unit tests
   - [ ] Create `src/cuda/CudaRegressionTest.test.cpp`
   - [ ] Test memory allocation/deallocation
-  - [ ] Test data copy CPU→GPU→CPU
-  - [ ] Test tolerance checking with known differences
+  - [x] Test data copy CPU→GPU→CPU
+  - [x] Test tolerance checking with known differences
   - [ ] Tests compile and pass
 
 **Validation Checklist:**
