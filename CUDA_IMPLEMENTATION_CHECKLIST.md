@@ -3,17 +3,17 @@
 ## Week 1: CUDA Infrastructure & Baseline
 
 ### Task 1: CUDA Infrastructure Setup
-- [ ] Install CUDA Toolkit (match GPU driver version)
-  - [ ] Download CUDA toolkit from NVIDIA
-  - [ ] Install nvcc compiler
-  - [ ] Set CUDA_PATH environment variable
-  - [ ] Verify installation: `nvcc --version`
-- [ ] Install profiling tools
-  - [ ] Install NVIDIA Nsys
-  - [ ] Install nvprof
-  - [ ] Install Nsight Compute
-  - [ ] Verify tools are in PATH
-- [ ] Set up SCons CUDA tool support
+- [x] Install CUDA Toolkit (match GPU driver version)
+  - [x] Download CUDA toolkit from NVIDIA
+  - [x] Install nvcc compiler
+  - [x] Set CUDA_PATH environment variable
+  - [x] Verify installation: `nvcc --version`
+- [x] Install profiling tools
+  - [x] Install NVIDIA Nsys
+  - [x] Install nvprof
+  - [x] Install Nsight Compute
+  - [x] Verify tools are in PATH
+- [x] Set up SCons CUDA tool support
   - [ ] Modify `SConstruct` to detect CUDA installation
   - [ ] Add CUDA compiler variables (NVCC, CUDA_ARCH)
   - [ ] Add NVCC flags (C++17 standard, optimization, compute capability)
