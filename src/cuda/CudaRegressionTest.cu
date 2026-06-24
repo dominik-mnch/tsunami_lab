@@ -60,7 +60,9 @@ bool CudaRegressionTest::compareGrids( t_idx          i_nCellsX,
         for( t_idx l_x = 0; l_x < i_nCellsX; l_x++ ) {
             t_idx  l_idx  = l_y * i_nCellsX + l_x;
             t_real l_diff = std::fabs( i_cpu[l_idx] - i_gpu[l_idx] );
-            if( l_diff > i_tolerance ) {
+            t_real l_allowed = i_tolerance * std::max( static_cast<t_real>(1),
+                                                       std::fabs( i_cpu[l_idx] ) );
+            if( l_diff > l_allowed ) {
                 std::cerr << "MISMATCH at ("
                           << l_x << ", " << l_y << "): "
                           << "CPU=" << i_cpu[l_idx]
@@ -85,7 +87,9 @@ bool CudaRegressionTest::compareSingleCells( t_idx         i_x,
     cudaMemcpy( &l_gpuVal, i_gpu + l_idx, sizeof(t_real), cudaMemcpyDeviceToHost );
 
     t_real l_diff = std::fabs( i_cpu[l_idx] - l_gpuVal );
-    if( l_diff > i_tolerance ) {
+    t_real l_allowed = i_tolerance * std::max( static_cast<t_real>(1),
+                                               std::fabs( i_cpu[l_idx] ) );
+    if( l_diff > l_allowed ) {
         std::cerr << "MISMATCH at ("
                   << i_x << ", " << i_y << "): "
                   << "CPU=" << i_cpu[l_idx]

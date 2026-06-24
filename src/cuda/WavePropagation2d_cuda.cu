@@ -51,6 +51,36 @@ namespace tsunami_lab {
                         t_real *o_hu_new,
                         t_real *o_hv_new,
                         t_idx i_nValues );
+
+      __global__
+      void setGhostOutflowLeftRightKernel( t_real *io_h,
+                                           t_real *io_hu,
+                                           t_real *io_hv,
+                                           t_idx i_nCellsX,
+                                           t_idx i_nCellsY,
+                                           t_idx i_stride );
+
+      __global__
+      void setGhostOutflowBottomTopKernel( t_real *io_h,
+                                           t_real *io_hu,
+                                           t_real *io_hv,
+                                           t_idx i_nCellsX,
+                                           t_idx i_nCellsY,
+                                           t_idx i_stride );
+
+      __global__
+      void computeStepKernel( const t_real *i_h,
+                              const t_real *i_hu,
+                              const t_real *i_hv,
+                              const t_real *i_b,
+                              t_real *o_h,
+                              t_real *o_hu,
+                              t_real *o_hv,
+                              t_idx i_nCellsX,
+                              t_idx i_nCellsY,
+                              t_idx i_stride,
+                              t_real i_scaling,
+                              bool i_useFWave );
     }
   }
 }
@@ -178,7 +208,14 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::initNewCells() {
       l_h_new, l_hu_new, l_hv_new,
       m_nValues );
 
-  cudaDeviceSynchronize();
+  cudaError_t l_launchErr = cudaGetLastError();
+  if( l_launchErr != cudaSuccess ) {
+    fprintf( stderr, "initNewCellsKernel launch error: %s\n", cudaGetErrorString( l_launchErr ) );
+  }
+  cudaError_t l_syncErr = cudaDeviceSynchronize();
+  if( l_syncErr != cudaSuccess ) {
+    fprintf( stderr, "initNewCellsKernel sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+  }
 }
 
 void tsunami_lab::patches::cuda::WavePropagation2dCuda::xSweep( t_real i_scaling ) {
@@ -198,7 +235,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::xSweep( t_real i_scaling
   dim3 l_blockDim( 16, 16 );  // 256 threads per block
   dim3 l_gridDim(
       (m_nCellsX + 1 + l_blockDim.x - 1) / l_blockDim.x,
-      (m_nCellsY + l_blockDim.y - 1) / l_blockDim.y
+      (m_nCellsY + 1 + l_blockDim.y - 1) / l_blockDim.y
   );
 
   xSweepKernel<<<l_gridDim, l_blockDim>>>(
@@ -207,7 +244,14 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::xSweep( t_real i_scaling
       m_nCellsX, m_nCellsY, m_stride,
       i_scaling, m_useFWaveSolver );
 
-  cudaDeviceSynchronize();
+  cudaError_t l_launchErr = cudaGetLastError();
+  if( l_launchErr != cudaSuccess ) {
+    fprintf( stderr, "xSweepKernel launch error: %s\n", cudaGetErrorString( l_launchErr ) );
+  }
+  cudaError_t l_syncErr = cudaDeviceSynchronize();
+  if( l_syncErr != cudaSuccess ) {
+    fprintf( stderr, "xSweepKernel sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+  }
 }
 
 void tsunami_lab::patches::cuda::WavePropagation2dCuda::ySweep( t_real i_scaling ) {
@@ -226,7 +270,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::ySweep( t_real i_scaling
 
   dim3 l_blockDim( 16, 16 );
   dim3 l_gridDim(
-      (m_nCellsX + l_blockDim.x - 1) / l_blockDim.x,
+      (m_nCellsX + 1 + l_blockDim.x - 1) / l_blockDim.x,
       (m_nCellsY + 1 + l_blockDim.y - 1) / l_blockDim.y
   );
 
@@ -236,9 +280,88 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::ySweep( t_real i_scaling
       m_nCellsX, m_nCellsY, m_stride,
       i_scaling, m_useFWaveSolver );
 
-  cudaDeviceSynchronize();
+  cudaError_t l_launchErr = cudaGetLastError();
+  if( l_launchErr != cudaSuccess ) {
+    fprintf( stderr, "ySweepKernel launch error: %s\n", cudaGetErrorString( l_launchErr ) );
+  }
+  cudaError_t l_syncErr = cudaDeviceSynchronize();
+  if( l_syncErr != cudaSuccess ) {
+    fprintf( stderr, "ySweepKernel sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+  }
 }
 
 void tsunami_lab::patches::cuda::WavePropagation2dCuda::swapBuffers() {
   m_step = 1 - m_step;
+}
+
+void tsunami_lab::patches::cuda::WavePropagation2dCuda::setGhostOutflow() {
+  // Operate on the active buffer (the one the step reads this iteration).
+  t_real *l_h  = m_d_h[m_step];
+  t_real *l_hu = m_d_hu[m_step];
+  t_real *l_hv = m_d_hv[m_step];
+
+  int l_threadsPerBlock = 256;
+
+  // Left/right ghost columns first (one thread per row), then bottom/top ghost
+  // rows (one thread per column). The two launches are serialized by the stream,
+  // so the corner ghost cells take their value from the bottom/top edge - this
+  // matches the sequential two-loop CPU reference and avoids the data race that
+  // a single fused kernel would have (overlapping ghost read/writes).
+  int l_blocksLeftRight = ( (m_nCellsY + 2) + l_threadsPerBlock - 1 ) / l_threadsPerBlock;
+  setGhostOutflowLeftRightKernel<<<l_blocksLeftRight, l_threadsPerBlock>>>(
+      l_h, l_hu, l_hv,
+      m_nCellsX, m_nCellsY, m_stride );
+
+  cudaError_t l_lrErr = cudaGetLastError();
+  if( l_lrErr != cudaSuccess ) {
+    fprintf( stderr, "setGhostOutflowLeftRightKernel launch error: %s\n", cudaGetErrorString( l_lrErr ) );
+  }
+
+  int l_blocksBottomTop = ( (m_nCellsX + 2) + l_threadsPerBlock - 1 ) / l_threadsPerBlock;
+  setGhostOutflowBottomTopKernel<<<l_blocksBottomTop, l_threadsPerBlock>>>(
+      l_h, l_hu, l_hv,
+      m_nCellsX, m_nCellsY, m_stride );
+
+  cudaError_t l_launchErr = cudaGetLastError();
+  if( l_launchErr != cudaSuccess ) {
+    fprintf( stderr, "setGhostOutflowBottomTopKernel launch error: %s\n", cudaGetErrorString( l_launchErr ) );
+  }
+  cudaError_t l_syncErr = cudaDeviceSynchronize();
+  if( l_syncErr != cudaSuccess ) {
+    fprintf( stderr, "setGhostOutflow sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+  }
+}
+
+void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStep( t_real i_scaling ) {
+  // One fused kernel reads only the old buffers and writes each new cell once,
+  // so there are no atomics and no inter-kernel write hazards (race-free).
+  t_real *l_h_old  = m_d_h[m_step];
+  t_real *l_hu_old = m_d_hu[m_step];
+  t_real *l_hv_old = m_d_hv[m_step];
+
+  t_real *l_h_new  = m_d_h[1 - m_step];
+  t_real *l_hu_new = m_d_hu[1 - m_step];
+  t_real *l_hv_new = m_d_hv[1 - m_step];
+
+  // One thread per cell over the full ghost-celled grid.
+  dim3 l_blockDim( 16, 16 );
+  dim3 l_gridDim(
+      (m_nCellsX + 2 + l_blockDim.x - 1) / l_blockDim.x,
+      (m_nCellsY + 2 + l_blockDim.y - 1) / l_blockDim.y
+  );
+
+  computeStepKernel<<<l_gridDim, l_blockDim>>>(
+      l_h_old, l_hu_old, l_hv_old, m_d_b,
+      l_h_new, l_hu_new, l_hv_new,
+      m_nCellsX, m_nCellsY, m_stride,
+      i_scaling, m_useFWaveSolver );
+
+  cudaError_t l_launchErr = cudaGetLastError();
+  if( l_launchErr != cudaSuccess ) {
+    fprintf( stderr, "computeStepKernel launch error: %s\n", cudaGetErrorString( l_launchErr ) );
+  }
+  cudaError_t l_syncErr = cudaDeviceSynchronize();
+  if( l_syncErr != cudaSuccess ) {
+    fprintf( stderr, "computeStepKernel sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+  }
 }
