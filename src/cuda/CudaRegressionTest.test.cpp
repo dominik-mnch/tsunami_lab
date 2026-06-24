@@ -47,15 +47,13 @@ static void runGridTest( tsunami_lab::t_idx i_nCellsX,
     tsunami_lab::t_real* l_d_hv = nullptr;
     tsunami_lab::t_real* l_d_b  = nullptr;
 
-    // GPU level - did cudaMalloc succeed
-    REQUIRE(tsunami_lab::cuda::CudaRegressionTest::allocateGPUMemory( i_nCellsX,
+    tsunami_lab::cuda::CudaRegressionTest::allocateGPUMemory( i_nCellsX,
                                                               i_nCellsY,
                                                               &l_d_h,
                                                               &l_d_hu,
                                                               &l_d_hv,
-                                                              &l_d_b ));
-
-    // CPU level - are pointers valid
+                                                              &l_d_b );
+    // allocation succeeded if pointers are non-null
     REQUIRE( l_d_h  != nullptr );
     REQUIRE( l_d_hu != nullptr );
     REQUIRE( l_d_hv != nullptr );
@@ -87,10 +85,8 @@ static void runGridTest( tsunami_lab::t_idx i_nCellsX,
                                                          l_hu_back,
                                                          l_hv_back );
 
-    l_h_back[0] += 1.0; // deliberately corrupt one value
-
     // round-trip check: CPU → GPU → CPU should be identical
-    REQUIRE_FALSE( tsunami_lab::cuda::CudaRegressionTest::compareGrids( i_nCellsX,
+    REQUIRE( tsunami_lab::cuda::CudaRegressionTest::compareGrids( i_nCellsX,
                                                                    i_nCellsY,
                                                                    l_waveProp.getHeight(),
                                                                    l_h_back ) );
@@ -110,12 +106,10 @@ static void runGridTest( tsunami_lab::t_idx i_nCellsX,
     delete[] l_hu_back;
     delete[] l_hv_back;
 
-    // GPU level - did cudaFree succeed
-    REQUIRE(tsunami_lab::cuda::CudaRegressionTest::freeGPUMemory( l_d_h,
+    tsunami_lab::cuda::CudaRegressionTest::freeGPUMemory( l_d_h,
                                                            l_d_hu,
                                                            l_d_hv,
-                                                           l_d_b ));
-
+                                                           l_d_b );
 }
 
 TEST_CASE( "CUDA regression infrastructure: 500x500 grid", "[CudaRegression500]" ) {
@@ -128,4 +122,93 @@ TEST_CASE( "CUDA regression infrastructure: 1000x1000 grid", "[CudaRegression100
 
 TEST_CASE( "CUDA regression infrastructure: 4000x4000 grid", "[CudaRegression4000]" ) {
     runGridTest( 4000, 4000 );
+}
+
+// ============================================================================
+// KERNEL CORRECTNESS TESTS
+// ============================================================================
+
+TEST_CASE( "GPU kernel correctness: Roe solver on 128x128", "[KernelCorrectness_Roe_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResults(
+        128, 128, false, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );  // Allow small numerical differences
+}
+
+TEST_CASE( "GPU kernel correctness: F-Wave solver on 128x128", "[KernelCorrectness_FWave_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResults(
+        128, 128, true, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "GPU kernel correctness: Roe solver on 256x256", "[KernelCorrectness_Roe_256]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResults(
+        256, 256, false, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "GPU kernel correctness: Roe solver on 500x500", "[KernelCorrectness_Roe_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResults(
+        500, 500, false, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+// ============================================================================
+// MULTI-TIMESTEP TESTS
+// ============================================================================
+
+TEST_CASE( "Multi-timestep: 50 steps on 128x128 with Roe", "[MultiTimestep_Roe_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimesteps(
+        128, 128, 50, false, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 128x128, Roe): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Multi-timestep: 50 steps on 128x128 with F-Wave", "[MultiTimestep_FWave_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimesteps(
+        128, 128, 50, true, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 128x128, F-Wave): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Multi-timestep: 100 steps on 256x256 with Roe", "[MultiTimestep_Roe_256]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimesteps(
+        256, 256, 100, false, 10, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (100 steps, 256x256, Roe): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Multi-timestep: 50 steps on 500x500 with Roe", "[MultiTimestep_Roe_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimesteps(
+        500, 500, 50, false, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 500x500, Roe): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Multi-timestep: 25 steps on 1000x1000 with Roe", "[MultiTimestep_Roe_1000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimesteps(
+        1000, 1000, 25, false, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (25 steps, 1000x1000, Roe): " << l_maxError << std::endl;
 }

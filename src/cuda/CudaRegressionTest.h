@@ -135,6 +135,59 @@ static void copyFromGPU( t_idx          i_nCellsX,
                                t_real* i_hu,
                                t_real* i_hv,
                                t_real* i_b );
+
+    /**
+     * @brief Compare GPU and CPU solver results after one timestep.
+     *
+     * Runs a single x-sweep and y-sweep on both GPU and CPU, then compares results.
+     *
+     * @param i_nCellsX Number of cells in x direction.
+     * @param i_nCellsY Number of cells in y direction.
+     * @param i_useFWave Use F-Wave solver (true) or Roe solver (false).
+     * @param o_maxError Optional output: maximum absolute error across all cells.
+     * @return true if GPU and CPU results match within tolerance, false otherwise.
+     */
+    static bool compareKernelResults( t_idx i_nCellsX,
+                                      t_idx i_nCellsY,
+                                      bool i_useFWave,
+                                      t_real* o_maxError = nullptr );
+
+    /**
+     * @brief Compare GPU and CPU solver results over multiple timesteps.
+     *
+     * Runs both solvers for the specified number of timesteps and periodically
+     * compares their results. Allows accumulated error from floating-point operations.
+     *
+     * @param i_nCellsX Number of cells in x direction.
+     * @param i_nCellsY Number of cells in y direction.
+     * @param i_nTimesteps Number of timesteps to run.
+     * @param i_useFWave Use F-Wave solver (true) or Roe solver (false).
+     * @param i_checkInterval Compare results every N timesteps (default: 1).
+     * @param o_maxError Optional output: maximum error across all checks.
+     * @return true if all comparisons are within tolerance, false otherwise.
+     */
+    static bool compareMultipleTimesteps( t_idx i_nCellsX,
+                                          t_idx i_nCellsY,
+                                          t_idx i_nTimesteps,
+                                          bool i_useFWave,
+                                          t_idx i_checkInterval = 1,
+                                          t_real* o_maxError = nullptr );
+
+    /**
+     * @brief Calculate maximum absolute error across all cells in three arrays.
+     *
+     * Useful for diagnostic output and error tracking.
+     *
+     * @param i_nCellsX Number of cells in x direction.
+     * @param i_nCellsY Number of cells in y direction.
+     * @param i_cpu Reference CPU array.
+     * @param i_gpu Comparison GPU array.
+     * @return Maximum absolute error found.
+     */
+    static t_real getMaxError( t_idx i_nCellsX,
+                               t_idx i_nCellsY,
+                               t_real const* i_cpu,
+                               t_real const* i_gpu );
 };
 
 } // namespace cuda
