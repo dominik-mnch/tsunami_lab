@@ -20,6 +20,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/Stations.cpp',
               'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp',
               'cuda/cuda_driver.cpp',
+              'cuda/WavePropagation2d_cuda.cu',
               'cuda/CudaRegressionTest.cu',
               'cuda/WavePropagation2d_kernels.cu'
             ]
