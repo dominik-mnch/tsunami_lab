@@ -1,9 +1,7 @@
 Import('env')
 
 # gather sources (both .cpp and .cu files)
-l_sources = [ 'solvers/Roe.cpp',
-              'solvers/F_wave.cpp',
-              'patches/WavePropagation1d.cpp',
+l_sources = [ 'patches/WavePropagation1d.cpp',
               'patches/WavePropagation2d.cpp',
               'setups/DamBreak1d/DamBreak1d.cpp',
               'setups/RareRare1d/RareRare1d.cpp',
@@ -17,11 +15,25 @@ l_sources = [ 'solvers/Roe.cpp',
               'io/Csv.cpp',
               'io/NetCdf.cpp',
               'io/Stations.cpp',
-              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp',
-              'cuda/WavePropagation2d_cuda.cu',
-              'cuda/CudaRegressionTest.cu',
-              'cuda/WavePropagation2d_kernels.cu'
+              'setups/ArtificialTsunami2d/ArtificialTsunami2d.cpp'
             ]
+
+
+if 'CUDA_ENABLED' in env['CPPDEFINES']:
+    l_sources.extend([
+              'cuda/WavePropagation2d_cuda.cu',
+              'cuda/WavePropagation2d_kernels.cu',
+              'cuda/CudaRegressionTest.cu'
+            ])
+
+    # The CUDA regression-test orchestration lives in a separate .cpp that only
+    # calls host-side wrapper methods (no kernel launches), so it is compiled
+    # with g++. It needs an explicit object name because adding it to l_sources
+    # would compile it to cuda/CudaRegressionTest.o, colliding with the object
+    # produced by CudaRegressionTest.cu, which shares the same base name.
+    env.sources.append(
+        env.Object( 'cuda/CudaRegressionTest_host', 'cuda/CudaRegressionTest.cpp' )
+    )
 
 for l_so in l_sources:
     if l_so.endswith('.cu'):

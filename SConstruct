@@ -27,20 +27,28 @@ if not cuda_path:
                 if os.path.isdir(path):
                         cuda_path = path
                         break
-# 3. Fail clearly if CUDA is nowhere to be found
-if not cuda_path:
-        print("ERROR: CUDA not found. Set CUDA_PATH.")
-        Exit(1)
 
-print(f"CUDA found at: {cuda_path}")
+# 3. If still not found, disable CUDA support (graceful degradation for CI)
+cuda_available = bool(cuda_path)
+if not cuda_available:
+        print("WARNING: CUDA not found. Building without GPU support.")
+        print("  To enable GPU: set CUDA_PATH environment variable or install CUDA toolkit locally")
+else:
+        print(f"CUDA found at: {cuda_path}")
 
-# --- CUDA Compiler Setup ---
+# --- CUDA Compiler Setup (only if available) ---
 
-# Path to nvcc binary
-nvcc = os.path.join(cuda_path, 'bin', 'nvcc')
+if cuda_available:
+        # Path to nvcc binary
+        nvcc = os.path.join(cuda_path, 'bin', 'nvcc')
 
-# GPU architecture 
-cuda_arch = 'sm_89'
+        # GPU architecture. Defaults to sm_120 (Blackwell, e.g. RTX 50-series);
+        # override via the CUDA_ARCH environment variable for other GPUs, e.g.
+        # CUDA_ARCH=sm_89 for Ada (RTX 40-series) or sm_86 for Ampere.
+        cuda_arch = os.environ.get('CUDA_ARCH', 'sm_120')
+else:
+        nvcc = None
+        cuda_arch = None
 
 # configuration
 vars = Variables()
@@ -62,30 +70,46 @@ if vars.UnknownVariables():
 # create environment
 env = Environment( variables = vars )
 env.Append(CPPPATH=['src'])
-env.Append(CPPPATH=[os.path.join(cuda_path, 'include')])
 
-# Create an SCons Environment with CUDA settings
-env['NVCC'] = nvcc
-env['CUDA_ARCH'] = cuda_arch
-env['CUDA_PATH'] = cuda_path
+# Configure CUDA if available
+if cuda_available:
+  env.Append(CPPPATH=[os.path.join(cuda_path, 'include')])
 
-# Tell SCons how to compile .cu files using nvcc
-env['BUILDERS']['CUDAObject'] = Builder(
-    action='$NVCC $NVCCFLAGS -c $SOURCE -o $TARGET',
-    suffix='.o',
-    src_suffix='.cu'
-)
+  # Create an SCons Environment with CUDA settings
+  env['NVCC'] = nvcc
+  env['CUDA_ARCH'] = cuda_arch
+  env['CUDA_PATH'] = cuda_path
 
-# CUDA compiler flags
-env['NVCCFLAGS'] = [
-  '-std=c++17',
-  '-O2',
-  f'-arch={cuda_arch}'
-]
+  # Tell SCons how to compile .cu files using nvcc
+  env['BUILDERS']['CUDAObject'] = Builder(
+      action='$NVCC $NVCCFLAGS -c $SOURCE -o $TARGET',
+      suffix='.o',
+      src_suffix='.cu'
+  )
 
-# CUDA runtime library linking
-env.Append( LIBS     = ['cudart'] )
-env.Append( LIBPATH  = [os.path.join(cuda_path, 'lib64')] )
+  # CUDA compiler flags
+  env['NVCCFLAGS'] = [
+    '-std=c++17',
+    '-O2',
+    f'-arch={cuda_arch}',
+    f'-I{os.path.join(cuda_path, "include")}',
+    '-Isrc',
+    '-Isrc/cuda',
+    '-DCUDA_ENABLED'
+  ]
+
+  # CUDA runtime library linking
+  # The library directory differs between CUDA distributions: traditional
+  # installs use 'lib64', while Nix-provided toolkits use 'lib'.
+  cuda_libdirs = [d for d in ('lib64', 'lib')
+                  if os.path.isdir(os.path.join(cuda_path, d))]
+  if not cuda_libdirs:
+    cuda_libdirs = ['lib64']
+  env.Append( LIBS     = ['cudart'] )
+  env.Append( LIBPATH  = [os.path.join(cuda_path, d) for d in cuda_libdirs] )
+
+  # Define CUDA macro
+  env.Append( CPPDEFINES = ['CUDA_ENABLED'] )
 
 # env.CUDAObject('test_kernel.cu')
 
