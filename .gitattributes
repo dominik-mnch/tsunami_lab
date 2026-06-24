@@ -1,0 +1,18 @@
+# Enforce Unix line endings for all text files
+* text=auto
+
+# Shell scripts and Nix files must use LF
+*.sh text eol=lf
+*.nix text eol=lf
+SConstruct text eol=lf
+*.py text eol=lf
+
+# C++ files use LF
+*.cpp text eol=lf
+*.h text eol=lf
+*.cu text eol=lf
+*.cuh text eol=lf
+
+# Documentation
+*.rst text eol=lf
+*.md text eol=lf
