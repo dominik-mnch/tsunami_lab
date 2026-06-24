@@ -52,16 +52,16 @@
   - [x] Implement append-to-CSV functionality
   - [x] Create `data/benchmark_results/` directory for outputs
 - [ ] Unit tests
-  - [ ] Create `src/cuda/CudaRegressionTest.test.cpp`
-  - [ ] Test memory allocation/deallocation
+  - [x] Create `src/cuda/CudaRegressionTest.test.cpp`
+  - [x] Test memory allocation/deallocation
   - [x] Test data copy CPU→GPU→CPU
   - [x] Test tolerance checking with known differences
   - [ ] Tests compile and pass
 
 **Validation Checklist:**
-- [ ] Regression test framework compiles
-- [ ] All 3 grid sizes can be tested
-- [ ] CSV logging works and files created
+- [x] Regression test framework compiles
+- [x] All 3 grid sizes can be tested
+- [x] CSV logging works and files created
 - [ ] Tolerance checking catches significant differences
 - [ ] Unit tests pass for memory and copying
 
