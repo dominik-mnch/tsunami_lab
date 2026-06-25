@@ -210,9 +210,7 @@ bool CudaRegressionTest::compareMultipleTimesteps( t_idx i_nCellsX,
     }
 
     // Apply outflow boundary on the CPU before copying so the GPU starts from
-    // an identical full (ghost-celled) grid. The GPU keeps these ghost values
-    // throughout (initNewCells copies the full grid each step), which matches
-    // the CPU as long as no wave reaches the domain boundary.
+    // an identical full (ghost-celled) grid.
     l_wavePropCpu.setGhostOutflow();
 
     t_idx l_stride = l_wavePropCpu.getStride();   // nCellsX + 2

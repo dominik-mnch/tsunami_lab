@@ -68,38 +68,43 @@
 ---
 
 ### Task 3: Baseline Implementation
-- [x] Implement baseline x-sweep kernel
-  - [x] Create `src/patches/WavePropagation2d_kernels.cu`
-  - [x] Implement "one thread per edge" x-sweep kernel
-  - [x] Use simple, clear algorithm (no optimizations yet)
-  - [x] Handle boundary conditions
+- [x] Implement fused single-step kernel
+  - [x] Create `src/cuda/WavePropagation2d_kernels.cu`
+  - [x] Implement `computeStepKernel`: one thread per cell, reads only old buffers, writes new cell once
+  - [x] Accumulates net-updates from all four surrounding edges (left/right x, bottom/top y) in one kernel launch
+  - [x] Handle wet/dry boundary conditions via `edgeNetUpdate` device function
+  - [x] Race-free by design — no atomics needed
+- [x] Implement ghost cell boundary kernels
+  - [x] `setGhostOutflowLeftRightKernel`: one thread per row, copies first/last interior column to ghost columns
+  - [x] `setGhostOutflowBottomTopKernel`: one thread per column, copies first/last interior row to ghost rows (runs after left/right to set corners correctly)
 - [x] Implement GPU wrapper
-  - [x] Create `src/patches/WavePropagation2d_cuda.h/cpp`
-  - [x] Allocate GPU memory for state arrays
-  - [x] Implement host functions to launch x-sweep kernel
-  - [x] Copy results back to host
-- [x] Create minimal host code
-  - [x] Create `src/cuda/cuda_driver.h/cpp`
-  - [x] Implement kernel launch wrapper
-  - [x] Implement memory management interface
-  - [x] Document kernel launch parameters
+  - [x] Create `src/cuda/WavePropagation2d_cuda.h` and `src/cuda/WavePropagation2d_cuda.cu`
+  - [x] Allocate double-buffered GPU memory for h, hu, hv; single buffer for b
+  - [x] `copyToGpu` / `copyToHost` for initialization and result retrieval
+  - [x] `setGhostOutflow()`: launches left/right then bottom/top kernels with one `cudaDeviceSynchronize`
+  - [x] `computeStep(scaling)`: launches `computeStepKernel` with one `cudaDeviceSynchronize`
+  - [x] `swapBuffers()`: CPU-only flip of the active buffer index (zero-cost)
+  - [x] `initialize(deviceId)` / `finalize()` static methods for CUDA device lifecycle
+- [x] Integrate with build system
+  - [x] `src/SConscript` compiles `.cu` files via `CUDAObject` builder under `CUDA_ENABLED` guard
+  - [x] `build/benchmark_cuda` executable added to `SConstruct`, built only when CUDA is enabled
+  - [x] `src/benchmark_cuda.cpp` implements 3-run benchmark using `computeStep` path, same grid (2160×1200) and input data as `benchmark`
 - [x] Verify correctness
-  - [x] Run baseline kernel on small test case
-  - [x] Compare output with CPU version
+  - [x] Run kernel on small test cases via `CudaRegressionTest`
+  - [x] Compare GPU output with CPU `WavePropagation2d` reference within tolerance
   - [x] Check numerical accuracy within tolerance
-  - [x] Verify no segfaults or memory issues
+  - [x] Verify no segfaults or CUDA memory errors
 - [x] Unit tests
-  - [x] Create baseline kernel tests
-  - [x] Test on 500×500 grid
-  - [x] Test on multiple timesteps
-  - [x] Regression test passes
+  - [x] `src/cuda/CudaRegressionTest.test.cpp` tests memory allocation, copy round-trip, and multi-step regression
+  - [x] Regression test passes on multiple grid sizes and timesteps
 
 **Validation Checklist:**
-- [x] Baseline kernel compiles without warnings
-- [x] Kernel executes without CUDA runtime errors
+- [x] All kernels compile without warnings
+- [x] Kernels execute without CUDA runtime errors
 - [x] GPU results match CPU results within tolerance
-- [x] Numerical correctness verified
-- [x] Can run for multiple timesteps
+- [x] Numerical correctness verified across multiple timesteps
+- [x] `benchmark_cuda` executable builds and runs end-to-end
+- [x] Per-time-step workflow: `setGhostOutflow` → `computeStep` → `swapBuffers` (3 kernel launches, 2 syncs, 0 host↔device transfers)
 
 ---
 

@@ -110,29 +110,9 @@ class tsunami_lab::patches::cuda::WavePropagation2dCuda {
                      t_real *o_hv );
 
     /**
-     * Performs one x-sweep (net-updates over horizontal edges).
-     *
-     * @param i_scaling time step scaling factor (dt/dx)
-     **/
-    void xSweep( t_real i_scaling );
-
-    /**
-     * Performs one y-sweep (net-updates over vertical edges).
-     *
-     * @param i_scaling time step scaling factor (dt/dx)
-     **/
-    void ySweep( t_real i_scaling );
-
-    /**
-     * Initialize new cell quantities from current values.
-     * Called at the beginning of each time step.
-     **/
-    void initNewCells();
-
-    /**
      * Apply outflow boundary conditions on the active buffers by copying the
      * outermost interior cells into the surrounding ghost cells. Must be called
-     * before initNewCells()/the sweeps each time step to mirror the CPU solver.
+     * before computeStep() each time step to mirror the CPU solver.
      **/
     void setGhostOutflow();
 
@@ -144,10 +124,8 @@ class tsunami_lab::patches::cuda::WavePropagation2dCuda {
     /**
      * Perform one full time step in a single fused kernel launch: one thread per
      * cell reads only the old buffers and writes its new cell once, computing the
-     * net-updates from all four surrounding edges. This avoids the atomics and
-     * inter-kernel write hazards of the separate initNewCells()/xSweep()/ySweep()
-     * path and is therefore race-free and deterministic. Call swapBuffers()
-     * afterwards to make the result the new active state.
+     * net-updates from all four surrounding edges. Race-free and deterministic.
+     * Call swapBuffers() afterwards to make the result the new active state.
      *
      * @param i_scaling time-step scaling dt/dx.
      **/
