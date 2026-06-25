@@ -189,5 +189,9 @@ env.Program( target = 'build/benchmark',
 env.Program( target = 'build/benchmark_grace',
              source = env.sources + env.benchmark_grace )
 
+if hasattr( env, 'benchmark_cuda' ):
+  env.Program( target = 'build/benchmark_cuda',
+               source = env.sources + env.benchmark_cuda )
+
 env.Program( target = 'build/tests',
              source = env.sources + env.tests )

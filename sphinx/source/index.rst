@@ -64,25 +64,7 @@ To execute tests or the program itself you can use:
 .. code-block:: bash
 
    ./build/tests
-   ./build/tsunami_lab [nx] [ny] [x_lower] [x_upper] [y_lower] [y_upper] [k] [solver_mode] [end_time] [gpu_flag] [propagation] [prop_params] [setup] [setup_params]
-
-**GPU Acceleration (2D simulations only):**
-
-The simulator supports GPU acceleration for 2D wave propagation using CUDA. To enable GPU acceleration, pass ``1``, ``true``, or ``0``, ``false`` as the optional GPU flag between the ``end_time`` and ``propagation`` arguments.
-
-Example with GPU acceleration enabled:
-
-.. code-block:: bash
-
-   ./build/tsunami_lab 100 100 -1000 1000 -1000 1000 1 1 5.0 true 2d artificial_tsunami_2d
-
-Example with GPU acceleration disabled (default):
-
-.. code-block:: bash
-
-   ./build/tsunami_lab 100 100 -1000 1000 -1000 1000 1 1 5.0 false 2d artificial_tsunami_2d
-
-**Note:** GPU acceleration requires a CUDA-capable GPU and the CUDA toolkit to be installed. The GPU solver uses a "one thread per edge" kernel design for baseline wave propagation computation.
+   ./build/tsunami_lab [nx] [ny] [x_lower] [x_upper] [y_lower] [y_upper] [k] [solver_mode] [end_time] [propagation] [prop_params] [setup] [setup_params]
 
 Continuous Integration:
 =======================

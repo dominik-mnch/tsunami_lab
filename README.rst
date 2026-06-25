@@ -20,8 +20,8 @@ Command Line Interface
 
 The simulator is invoked with the following syntax::
 
-   ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME [GPU_FLAG] PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
-   ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME [GPU_FLAG] PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
+   ./build/tsunami_lab NX NY X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
+   ./build/tsunami_lab <RES>m  X_LOWER X_UPPER Y_LOWER Y_UPPER K SOLVER_MODE END_TIME PROPAGATION [PROP_PARAMS] SETUP [SETUP_PARAMS]
 
 **General Arguments:**
 
@@ -35,7 +35,6 @@ The simulator is invoked with the following syntax::
 - ``K``: Coarsening factor; ``k*k`` cells are averaged into one output cell (positive integer, default: ``1`` for no coarsening).
 - ``SOLVER_MODE``: ``1`` for F-Wave solver, ``0`` for Roe solver.
 - ``END_TIME``: Simulation end time in seconds (positive real).
-- ``GPU_FLAG`` (optional, 2D only): Enable GPU acceleration for wave propagation computation. Options: ``0``, ``1``, ``true``, or ``false`` (default: ``false``). GPU acceleration is only available for 2D simulations.
 
 **Propagation Modes:**
 
@@ -153,14 +152,6 @@ The simulator is invoked with the following syntax::
 10. Tohoku 2011 at 1 km resolution using resolution mode::
 
    ./build/tsunami_lab 1000m -200000 2500000 -750000 750000 1 1 7200 2d outflow tsunami2d data/output/tohoku_gebco20_ucsb3_250m_bath.nc data/output/tohoku_gebco20_ucsb3_250m_displ.nc
-
-11. 2D circular dam break with GPU acceleration::
-
-   ./build/tsunami_lab 50 40 0 5000 0 4000 1 1 2.0 true 2d circular_dam_break_2d 10 5 0 0 0 0 2500 2000 1000
-
-12. 2D Tohoku tsunami with GPU acceleration::
-
-   ./build/tsunami_lab 500 400 0 100000 0 80000 1 1 10.0 1 2d tsunami2d res/artificialtsunami_bathymetry_1000.nc res/artificialtsunami_displ_1000.nc
 
 Runtime Benchmark
 -----------------

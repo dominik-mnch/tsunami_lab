@@ -59,6 +59,8 @@ if 'CUDA_ENABLED' in env['CPPDEFINES']:
     # so they are only built when CUDA is enabled.
     env.tests.append( env.Object( 'cuda/CudaRegressionTest.test.cpp' ) )
 
+    env.benchmark_cuda = env.Object( 'benchmark_cuda.cpp' )
+
 for l_so in l_sources:
     if l_so.endswith('.cu'):
         env.sources.append( env.CUDAObject( l_so ) )
