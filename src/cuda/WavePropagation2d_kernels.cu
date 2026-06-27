@@ -280,6 +280,130 @@ namespace tsunami_lab {
         io_hu[l_top] = io_hu[l_topInner];
         io_hv[l_top] = io_hv[l_topInner];
       }
+
+      /**
+       * X-sweep kernel: one thread per cell.
+       *
+       * Reads the OLD buffers. For ghost cells, copies all three fields
+       * through unchanged. For interior cells, applies x-direction net-updates
+       * to h and hu, and copies hv unchanged to the NEW buffer.
+       * Mirrors the x-sweep pass of the CPU operator-split reference.
+       **/
+      TSUNAMI_CUDA_GLOBAL
+      void computeXSweepKernel( const t_real *i_h,
+                                 const t_real *i_hu,
+                                 const t_real *i_hv,
+                                 const t_real *i_b,
+                                 t_real *o_h,
+                                 t_real *o_hu,
+                                 t_real *o_hv,
+                                 t_idx i_nCellsX,
+                                 t_idx i_nCellsY,
+                                 t_idx i_stride,
+                                 t_real i_scaling,
+                                 bool i_useFWave ) {
+        t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
+        t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
+
+        t_idx l_ce = l_cy * i_stride + l_cx;
+
+        // Ghost cells: copy through unchanged.
+        if( l_cx < 1 || l_cx > i_nCellsX || l_cy < 1 || l_cy > i_nCellsY ) {
+          o_h[l_ce]  = i_h[l_ce];
+          o_hu[l_ce] = i_hu[l_ce];
+          o_hv[l_ce] = i_hv[l_ce];
+          return;
+        }
+
+        t_real l_hNew  = i_h[l_ce];
+        t_real l_huNew = i_hu[l_ce];
+
+        t_real l_uA_h, l_uA_q, l_uB_h, l_uB_q;
+
+        // Left x-edge (ce-1, ce): this cell is the right (B) cell.
+        edgeNetUpdate( i_h[l_ce - 1], i_h[l_ce],
+                       i_hu[l_ce - 1], i_hu[l_ce],
+                       i_b[l_ce - 1], i_b[l_ce],
+                       i_useFWave,
+                       l_uA_h, l_uA_q, l_uB_h, l_uB_q );
+        l_hNew  -= i_scaling * l_uB_h;
+        l_huNew -= i_scaling * l_uB_q;
+
+        // Right x-edge (ce, ce+1): this cell is the left (A) cell.
+        edgeNetUpdate( i_h[l_ce], i_h[l_ce + 1],
+                       i_hu[l_ce], i_hu[l_ce + 1],
+                       i_b[l_ce], i_b[l_ce + 1],
+                       i_useFWave,
+                       l_uA_h, l_uA_q, l_uB_h, l_uB_q );
+        l_hNew  -= i_scaling * l_uA_h;
+        l_huNew -= i_scaling * l_uA_q;
+
+        o_h[l_ce]  = l_hNew;
+        o_hu[l_ce] = l_huNew;
+        o_hv[l_ce] = i_hv[l_ce];  // hv is not modified by the x-sweep
+      }
+
+      /**
+       * Y-sweep kernel: one thread per cell.
+       *
+       * Uses the OLD h and hv buffers for Riemann-problem inputs (matching the
+       * CPU reference which reads h_old in the y-sweep). Accumulates the
+       * y-direction net-update on top of the x-swept h already in io_h, and
+       * writes the final hv value to o_hv. hu is left untouched (already
+       * written by the x-sweep kernel).
+       *
+       * No atomics are required: each thread is the sole writer of its cell.
+       **/
+      TSUNAMI_CUDA_GLOBAL
+      void computeYSweepKernel( const t_real *i_h,
+                                 const t_real *i_hv,
+                                 const t_real *i_b,
+                                 t_real *io_h,
+                                 t_real *o_hv,
+                                 t_idx i_nCellsX,
+                                 t_idx i_nCellsY,
+                                 t_idx i_stride,
+                                 t_real i_scaling,
+                                 bool i_useFWave ) {
+        t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
+        t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
+
+        t_idx l_ce = l_cy * i_stride + l_cx;
+
+        // Ghost cells: copy hv through (h was already handled by x-sweep).
+        if( l_cx < 1 || l_cx > i_nCellsX || l_cy < 1 || l_cy > i_nCellsY ) {
+          o_hv[l_ce] = i_hv[l_ce];
+          return;
+        }
+
+        t_real l_uA_h, l_uA_q, l_uB_h, l_uB_q;
+
+        // Bottom y-edge (ce-stride, ce): this cell is the top (B) cell.
+        // Solver reads OLD h and hv, matching the CPU y-sweep.
+        edgeNetUpdate( i_h[l_ce - i_stride], i_h[l_ce],
+                       i_hv[l_ce - i_stride], i_hv[l_ce],
+                       i_b[l_ce - i_stride], i_b[l_ce],
+                       i_useFWave,
+                       l_uA_h, l_uA_q, l_uB_h, l_uB_q );
+        // io_h already has the x-sweep contribution; add the y contribution.
+        io_h[l_ce] -= i_scaling * l_uB_h;
+        t_real l_hvNew = i_hv[l_ce] - i_scaling * l_uB_q;
+
+        // Top y-edge (ce, ce+stride): this cell is the bottom (A) cell.
+        edgeNetUpdate( i_h[l_ce], i_h[l_ce + i_stride],
+                       i_hv[l_ce], i_hv[l_ce + i_stride],
+                       i_b[l_ce], i_b[l_ce + i_stride],
+                       i_useFWave,
+                       l_uA_h, l_uA_q, l_uB_h, l_uB_q );
+        io_h[l_ce] -= i_scaling * l_uA_h;
+        l_hvNew    -= i_scaling * l_uA_q;
+
+        o_hv[l_ce] = l_hvNew;
+      }
     }
   }
 }

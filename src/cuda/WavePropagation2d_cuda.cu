@@ -34,18 +34,30 @@ namespace tsunami_lab {
                                            t_idx i_stride );
 
       __global__
-      void computeStepKernel( const t_real *i_h,
-                              const t_real *i_hu,
-                              const t_real *i_hv,
-                              const t_real *i_b,
-                              t_real *o_h,
-                              t_real *o_hu,
-                              t_real *o_hv,
-                              t_idx i_nCellsX,
-                              t_idx i_nCellsY,
-                              t_idx i_stride,
-                              t_real i_scaling,
-                              bool i_useFWave );
+      void computeXSweepKernel( const t_real *i_h,
+                                 const t_real *i_hu,
+                                 const t_real *i_hv,
+                                 const t_real *i_b,
+                                 t_real *o_h,
+                                 t_real *o_hu,
+                                 t_real *o_hv,
+                                 t_idx i_nCellsX,
+                                 t_idx i_nCellsY,
+                                 t_idx i_stride,
+                                 t_real i_scaling,
+                                 bool i_useFWave );
+
+      __global__
+      void computeYSweepKernel( const t_real *i_h,
+                                 const t_real *i_hv,
+                                 const t_real *i_b,
+                                 t_real *io_h,
+                                 t_real *o_hv,
+                                 t_idx i_nCellsX,
+                                 t_idx i_nCellsY,
+                                 t_idx i_stride,
+                                 t_real i_scaling,
+                                 bool i_useFWave );
     }
   }
 }
@@ -196,8 +208,10 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::setGhostOutflow() {
 }
 
 void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStep( t_real i_scaling ) {
-  // One fused kernel reads only the old buffers and writes each new cell once,
-  // so there are no atomics and no inter-kernel write hazards (race-free).
+  // Operator-split implementation: x-sweep then y-sweep, matching the CPU
+  // reference exactly. Each kernel is one thread per cell and requires no
+  // atomics. The two kernels are launched into the same (default) stream so
+  // the x-sweep is guaranteed to finish before the y-sweep starts.
   t_real *l_h_old  = m_d_h[m_step];
   t_real *l_hu_old = m_d_hu[m_step];
   t_real *l_hv_old = m_d_hv[m_step];
@@ -206,25 +220,39 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStep( t_real i_sc
   t_real *l_hu_new = m_d_hu[1 - m_step];
   t_real *l_hv_new = m_d_hv[1 - m_step];
 
-  // One thread per cell over the full ghost-celled grid.
   dim3 l_blockDim( 16, 16 );
   dim3 l_gridDim(
       (m_nCellsX + 2 + l_blockDim.x - 1) / l_blockDim.x,
       (m_nCellsY + 2 + l_blockDim.y - 1) / l_blockDim.y
   );
 
-  computeStepKernel<<<l_gridDim, l_blockDim>>>(
+  // X-sweep: apply x-direction net-updates to h and hu; copy hv through.
+  computeXSweepKernel<<<l_gridDim, l_blockDim>>>(
       l_h_old, l_hu_old, l_hv_old, m_d_b,
       l_h_new, l_hu_new, l_hv_new,
       m_nCellsX, m_nCellsY, m_stride,
       i_scaling, m_useFWaveSolver );
 
-  cudaError_t l_launchErr = cudaGetLastError();
-  if( l_launchErr != cudaSuccess ) {
-    fprintf( stderr, "computeStepKernel launch error: %s\n", cudaGetErrorString( l_launchErr ) );
+  cudaError_t l_xErr = cudaGetLastError();
+  if( l_xErr != cudaSuccess ) {
+    fprintf( stderr, "computeXSweepKernel launch error: %s\n", cudaGetErrorString( l_xErr ) );
+  }
+
+  // Y-sweep: reads OLD h/hv for solver inputs; accumulates y-updates onto
+  // the x-swept h_new and writes the final hv_new.
+  // The default stream serialises launches, so x-sweep output is visible here.
+  computeYSweepKernel<<<l_gridDim, l_blockDim>>>(
+      l_h_old, l_hv_old, m_d_b,
+      l_h_new, l_hv_new,
+      m_nCellsX, m_nCellsY, m_stride,
+      i_scaling, m_useFWaveSolver );
+
+  cudaError_t l_yErr = cudaGetLastError();
+  if( l_yErr != cudaSuccess ) {
+    fprintf( stderr, "computeYSweepKernel launch error: %s\n", cudaGetErrorString( l_yErr ) );
   }
   cudaError_t l_syncErr = cudaDeviceSynchronize();
   if( l_syncErr != cudaSuccess ) {
-    fprintf( stderr, "computeStepKernel sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+    fprintf( stderr, "computeStep sync error: %s\n", cudaGetErrorString( l_syncErr ) );
   }
 }
