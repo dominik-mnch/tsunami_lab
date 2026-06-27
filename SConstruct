@@ -96,8 +96,7 @@ if cuda_available:
     '-Isrc',
     '-Isrc/cuda',
     '-DCUDA_ENABLED',
-    # Disable FMA fusion so GPU float32 arithmetic matches GCC without -march=native.
-    '--fmad=false',
+    '--fmad=false'
   ]
 
   # CUDA runtime library linking
@@ -127,7 +126,8 @@ env.Append( CXXFLAGS = [ '-std=c++17',
                          '-Wall',
                          '-Wextra',
                          '-Wpedantic',
-                         '-fopenmp' ] )
+                         '-fopenmp',
+                         '-ffp-contract=off' ] )
 env.Append( LINKFLAGS = [ '-fopenmp' ] )
 
 # add middle_states.csv location environment variable
