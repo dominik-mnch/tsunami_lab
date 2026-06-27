@@ -24,11 +24,52 @@ namespace {
     tsunami_lab::t_idx timeSteps = 0;
   };
 
+  struct FieldStats {
+    tsunami_lab::t_idx nanCount    = 0;
+    tsunami_lab::t_idx infCount    = 0;
+    double             minVal      =  std::numeric_limits<double>::max();
+    double             maxVal      =  std::numeric_limits<double>::lowest();
+    double             meanVal     = 0.0;
+    tsunami_lab::t_idx finiteCount = 0;
+  };
+
+  /**
+   * Compute per-field statistics for an interior-layout array.
+   * i_ptr is an interior pointer: element (cx,cy) lives at i_ptr[cy*i_stride + cx].
+   **/
+  FieldStats computeFieldStats( tsunami_lab::t_real const* i_ptr,
+                                tsunami_lab::t_idx          i_nx,
+                                tsunami_lab::t_idx          i_ny,
+                                tsunami_lab::t_idx          i_stride ) {
+    FieldStats l_stats;
+    double l_sum = 0.0;
+    for( tsunami_lab::t_idx l_cy = 0; l_cy < i_ny; l_cy++ ) {
+      for( tsunami_lab::t_idx l_cx = 0; l_cx < i_nx; l_cx++ ) {
+        double l_v = static_cast<double>( i_ptr[ l_cy * i_stride + l_cx ] );
+        if( std::isnan( l_v ) ) { l_stats.nanCount++; continue; }
+        if( std::isinf( l_v ) ) { l_stats.infCount++; continue; }
+        l_stats.minVal = std::min( l_stats.minVal, l_v );
+        l_stats.maxVal = std::max( l_stats.maxVal, l_v );
+        l_sum += l_v;
+        l_stats.finiteCount++;
+      }
+    }
+    if( l_stats.finiteCount > 0 ) {
+      l_stats.meanVal = l_sum / static_cast<double>( l_stats.finiteCount );
+    }
+    return l_stats;
+  }
+
   struct VerificationResult {
+    // max absolute error over all finite-vs-finite pairs
     double maxErrorH  = 0.0;
     double maxErrorHu = 0.0;
     double maxErrorHv = 0.0;
+    // cells where both values are finite but |gpu - cpu| > tolerance
+    tsunami_lab::t_idx mismatchCells = 0;
     tsunami_lab::t_idx timeSteps = 0;
+    FieldStats gpuH,  gpuHu,  gpuHv;
+    FieldStats cpuH,  cpuHu,  cpuHv;
   };
 
   unsigned int parsePositiveInt( char const * i_value,
@@ -273,21 +314,45 @@ namespace {
     std::vector<tsunami_lab::t_real> l_hvGpu( l_nFull, 0 );
     l_gpuSolver->copyToHost( l_hGpu.data(), l_huGpu.data(), l_hvGpu.data() );
 
+    // GPU interior pointer: full array offset by (stride+1)
+    tsunami_lab::t_real const* l_hGpuInterior  = l_hGpu.data()  + l_stride + 1;
+    tsunami_lab::t_real const* l_huGpuInterior = l_huGpu.data() + l_stride + 1;
+    tsunami_lab::t_real const* l_hvGpuInterior = l_hvGpu.data() + l_stride + 1;
+
     // CPU interior pointer has pitch l_stride; interior cell (cx,cy) is at cy*l_stride+cx
     tsunami_lab::t_real const* l_hCpu  = l_cpuSolver->getHeight();
     tsunami_lab::t_real const* l_huCpu = l_cpuSolver->getMomentumX();
     tsunami_lab::t_real const* l_hvCpu = l_cpuSolver->getMomentumY();
 
+    // Per-field statistics
+    l_result.gpuH  = computeFieldStats( l_hGpuInterior,  i_nx, i_ny, l_stride );
+    l_result.gpuHu = computeFieldStats( l_huGpuInterior, i_nx, i_ny, l_stride );
+    l_result.gpuHv = computeFieldStats( l_hvGpuInterior, i_nx, i_ny, l_stride );
+    l_result.cpuH  = computeFieldStats( l_hCpu,          i_nx, i_ny, l_stride );
+    l_result.cpuHu = computeFieldStats( l_huCpu,         i_nx, i_ny, l_stride );
+    l_result.cpuHv = computeFieldStats( l_hvCpu,         i_nx, i_ny, l_stride );
+
+    // Per-cell comparison (only for cells where both values are finite)
+    constexpr double l_mismatchTol = 1e-2;
     for( tsunami_lab::t_idx l_cy = 0; l_cy < i_ny; l_cy++ ) {
       for( tsunami_lab::t_idx l_cx = 0; l_cx < i_nx; l_cx++ ) {
-        tsunami_lab::t_idx l_gpuIdx = ( l_cy + 1 ) * l_stride + ( l_cx + 1 );
-        tsunami_lab::t_idx l_cpuIdx =   l_cy        * l_stride +   l_cx;
-        l_result.maxErrorH  = std::max( l_result.maxErrorH,
-            static_cast<double>( std::fabs( l_hGpu[l_gpuIdx]  - l_hCpu[l_cpuIdx]  ) ) );
-        l_result.maxErrorHu = std::max( l_result.maxErrorHu,
-            static_cast<double>( std::fabs( l_huGpu[l_gpuIdx] - l_huCpu[l_cpuIdx] ) ) );
-        l_result.maxErrorHv = std::max( l_result.maxErrorHv,
-            static_cast<double>( std::fabs( l_hvGpu[l_gpuIdx] - l_hvCpu[l_cpuIdx] ) ) );
+        tsunami_lab::t_idx l_idx = l_cy * l_stride + l_cx;
+
+        auto fieldErr = [&]( tsunami_lab::t_real const* i_gpuPtr,
+                             tsunami_lab::t_real const* i_cpuPtr,
+                             double & io_maxErr ) -> bool {
+          double l_g = static_cast<double>( i_gpuPtr[ l_idx ] );
+          double l_c = static_cast<double>( i_cpuPtr[ l_idx ] );
+          if( !std::isfinite( l_g ) || !std::isfinite( l_c ) ) return false;
+          double l_err = std::fabs( l_g - l_c );
+          io_maxErr = std::max( io_maxErr, l_err );
+          return l_err > l_mismatchTol;
+        };
+
+        bool l_hMismatch  = fieldErr( l_hGpuInterior,  l_hCpu,  l_result.maxErrorH  );
+        bool l_huMismatch = fieldErr( l_huGpuInterior, l_huCpu, l_result.maxErrorHu );
+        bool l_hvMismatch = fieldErr( l_hvGpuInterior, l_hvCpu, l_result.maxErrorHv );
+        if( l_hMismatch || l_huMismatch || l_hvMismatch ) l_result.mismatchCells++;
       }
     }
 
@@ -419,11 +484,36 @@ int main( int i_argc,
                                                   l_endTime,
                                                   l_bathymetryPath,
                                                   l_displacementPath );
+      tsunami_lab::t_idx const l_totalCells = static_cast<tsunami_lab::t_idx>( l_nx ) *
+                                               static_cast<tsunami_lab::t_idx>( l_ny );
+
+      auto printFieldStats = [&]( char const* i_name,
+                                  FieldStats const& i_gpu,
+                                  FieldStats const& i_cpu ) {
+        std::cout << "  [" << i_name << "] GPU:"
+                  << "  nan=" << i_gpu.nanCount
+                  << "  inf=" << i_gpu.infCount
+                  << "  min=" << i_gpu.minVal
+                  << "  max=" << i_gpu.maxVal
+                  << "  mean=" << i_gpu.meanVal << std::endl;
+        std::cout << "  [" << i_name << "] CPU:"
+                  << "  nan=" << i_cpu.nanCount
+                  << "  inf=" << i_cpu.infCount
+                  << "  min=" << i_cpu.minVal
+                  << "  max=" << i_cpu.maxVal
+                  << "  mean=" << i_cpu.meanVal << std::endl;
+      };
+
       std::cout << "verification complete" << std::endl;
-      std::cout << "  time steps:        " << l_vr.timeSteps << std::endl;
-      std::cout << "  max error h:       " << l_vr.maxErrorH  << std::endl;
-      std::cout << "  max error hu:      " << l_vr.maxErrorHu << std::endl;
-      std::cout << "  max error hv:      " << l_vr.maxErrorHv << std::endl;
+      std::cout << "  time steps:                    " << l_vr.timeSteps << std::endl;
+      std::cout << "  total cells:                   " << l_totalCells << std::endl;
+      std::cout << "  mismatch cells (|err|>1e-2):   " << l_vr.mismatchCells << std::endl;
+      std::cout << "  max error h  (finite pairs):   " << l_vr.maxErrorH  << std::endl;
+      std::cout << "  max error hu (finite pairs):   " << l_vr.maxErrorHu << std::endl;
+      std::cout << "  max error hv (finite pairs):   " << l_vr.maxErrorHv << std::endl;
+      printFieldStats( "h",  l_vr.gpuH,  l_vr.cpuH  );
+      printFieldStats( "hu", l_vr.gpuHu, l_vr.cpuHu );
+      printFieldStats( "hv", l_vr.gpuHv, l_vr.cpuHv );
     }
 
     tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize();
