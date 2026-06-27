@@ -95,7 +95,9 @@ if cuda_available:
     f'-I{os.path.join(cuda_path, "include")}',
     '-Isrc',
     '-Isrc/cuda',
-    '-DCUDA_ENABLED'
+    '-DCUDA_ENABLED',
+    # Disable FMA fusion so GPU float32 arithmetic matches GCC without -march=native.
+    '--fmad=false',
   ]
 
   # CUDA runtime library linking
