@@ -148,7 +148,10 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::copyToGpu(
   cudaMemcpy( m_d_hu[m_step], i_hu, l_size, cudaMemcpyHostToDevice );
   cudaMemcpy( m_d_hv[m_step], i_hv, l_size, cudaMemcpyHostToDevice );
 
-  // Copy bathymetry (constant)
+  // Copy bathymetry (constant throughout the simulation).
+  // The caller is responsible for having set ghost cells on the source array
+  // before this call (e.g. via WavePropagation2d::setGhostOutflow()), so that
+  // the bathymetry ghost cells copied here are already correct.
   cudaMemcpy( m_d_b, i_b, l_size, cudaMemcpyHostToDevice );
 }
 

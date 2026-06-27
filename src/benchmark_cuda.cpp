@@ -159,9 +159,10 @@ namespace {
       }
     }
 
-    // Create GPU solver and upload initial state
-    // copyToGpu expects the full ghost-celled base pointer; subtract (stride+1)
-    // from the interior pointer returned by getHeight() etc.
+    // Create GPU solver and upload initial state.
+    // Set ghost cells on the CPU staging solver first so that bathymetry (and
+    // h/hu/hv) ghost cells are correct in the array that copyToGpu copies.
+    l_cpuInit->setGhostOutflow();
     tsunami_lab::t_idx const l_initStride = l_cpuInit->getStride();
     std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_wavePropGpu(
       new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true )
@@ -276,6 +277,9 @@ namespace {
     std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_gpuSolver(
       new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true )
     );
+    // Set ghost cells on the CPU solver before copying so that bathymetry ghost
+    // cells are propagated correctly into the GPU's constant bathymetry array.
+    l_cpuSolver->setGhostOutflow();
     // copyToGpu expects the full ghost-celled base pointer; subtract (stride+1)
     // from the interior pointer returned by getHeight() etc.
     tsunami_lab::t_idx const l_initStride = l_cpuSolver->getStride();
