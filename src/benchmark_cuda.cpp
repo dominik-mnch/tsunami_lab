@@ -160,13 +160,16 @@ namespace {
     }
 
     // Create GPU solver and upload initial state
+    // copyToGpu expects the full ghost-celled base pointer; subtract (stride+1)
+    // from the interior pointer returned by getHeight() etc.
+    tsunami_lab::t_idx const l_initStride = l_cpuInit->getStride();
     std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_wavePropGpu(
       new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true )
     );
-    l_wavePropGpu->copyToGpu( l_cpuInit->getHeight(),
-                              l_cpuInit->getMomentumX(),
-                              l_cpuInit->getMomentumY(),
-                              l_cpuInit->getBathymetry() );
+    l_wavePropGpu->copyToGpu( l_cpuInit->getHeight()     - (l_initStride + 1),
+                              l_cpuInit->getMomentumX()  - (l_initStride + 1),
+                              l_cpuInit->getMomentumY()  - (l_initStride + 1),
+                              l_cpuInit->getBathymetry() - (l_initStride + 1) );
     l_cpuInit.reset(); // free CPU staging memory
 
     tsunami_lab::t_real l_speedMax = std::sqrt(
@@ -273,11 +276,13 @@ namespace {
     std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_gpuSolver(
       new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true )
     );
-    // copyToGpu accepts interior pointers (stride = nCellsX + 2)
-    l_gpuSolver->copyToGpu( l_cpuSolver->getHeight(),
-                            l_cpuSolver->getMomentumX(),
-                            l_cpuSolver->getMomentumY(),
-                            l_cpuSolver->getBathymetry() );
+    // copyToGpu expects the full ghost-celled base pointer; subtract (stride+1)
+    // from the interior pointer returned by getHeight() etc.
+    tsunami_lab::t_idx const l_initStride = l_cpuSolver->getStride();
+    l_gpuSolver->copyToGpu( l_cpuSolver->getHeight()     - (l_initStride + 1),
+                            l_cpuSolver->getMomentumX()  - (l_initStride + 1),
+                            l_cpuSolver->getMomentumY()  - (l_initStride + 1),
+                            l_cpuSolver->getBathymetry() - (l_initStride + 1) );
 
     tsunami_lab::t_real l_speedMax = std::sqrt(
       static_cast<tsunami_lab::t_real>( 9.81 ) *
