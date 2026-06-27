@@ -129,15 +129,22 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::copyToGpu(
     const t_real *i_hv,
     const t_real *i_b ) {
 
-  size_t l_size = m_nValues * sizeof(t_real);
+  // The input pointers are interior pointers (ghost cells excluded) with
+  // pitch m_stride, as returned by WavePropagation2d::getHeight() etc.
+  // Use cudaMemcpy2D to place interior data into the correct positions of
+  // the GPU arrays (offset by one ghost row + one ghost column).
+  size_t l_widthBytes = m_nCellsX * sizeof(t_real);
+  size_t l_pitchBytes = m_stride   * sizeof(t_real);
 
-  // Copy to active buffers
-  cudaMemcpy( m_d_h[m_step], i_h, l_size, cudaMemcpyHostToDevice );
-  cudaMemcpy( m_d_hu[m_step], i_hu, l_size, cudaMemcpyHostToDevice );
-  cudaMemcpy( m_d_hv[m_step], i_hv, l_size, cudaMemcpyHostToDevice );
+  t_real *l_dstH  = m_d_h[m_step]  + m_stride + 1;
+  t_real *l_dstHu = m_d_hu[m_step] + m_stride + 1;
+  t_real *l_dstHv = m_d_hv[m_step] + m_stride + 1;
+  t_real *l_dstB  = m_d_b          + m_stride + 1;
 
-  // Copy bathymetry (constant)
-  cudaMemcpy( m_d_b, i_b, l_size, cudaMemcpyHostToDevice );
+  cudaMemcpy2D( l_dstH,  l_pitchBytes, i_h,  l_pitchBytes, l_widthBytes, m_nCellsY, cudaMemcpyHostToDevice );
+  cudaMemcpy2D( l_dstHu, l_pitchBytes, i_hu, l_pitchBytes, l_widthBytes, m_nCellsY, cudaMemcpyHostToDevice );
+  cudaMemcpy2D( l_dstHv, l_pitchBytes, i_hv, l_pitchBytes, l_widthBytes, m_nCellsY, cudaMemcpyHostToDevice );
+  cudaMemcpy2D( l_dstB,  l_pitchBytes, i_b,  l_pitchBytes, l_widthBytes, m_nCellsY, cudaMemcpyHostToDevice );
 }
 
 void tsunami_lab::patches::cuda::WavePropagation2dCuda::copyToHost(
