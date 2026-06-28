@@ -84,9 +84,11 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize() {
 tsunami_lab::patches::cuda::WavePropagation2dCuda::WavePropagation2dCuda(
     t_idx i_nCellsX,
     t_idx i_nCellsY,
-    bool i_useFWaveSolver ) : m_nCellsX( i_nCellsX ),
-                              m_nCellsY( i_nCellsY ),
-                              m_useFWaveSolver( i_useFWaveSolver ) {
+    bool i_useFWaveSolver,
+    int  i_blockWidth ) : m_nCellsX( i_nCellsX ),
+                          m_nCellsY( i_nCellsY ),
+                          m_useFWaveSolver( i_useFWaveSolver ),
+                          m_blockWidth( i_blockWidth ) {
 
   // Stride includes ghost cells on both sides: nCellsX + 2
   m_stride = i_nCellsX + 2;
@@ -178,7 +180,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::setGhostOutflow() {
   t_real *l_hu = m_d_hu[m_step];
   t_real *l_hv = m_d_hv[m_step];
 
-  int l_threadsPerBlock = 256;
+  int l_threadsPerBlock = m_blockWidth * m_blockWidth;
 
   // Left/right ghost columns first (one thread per row), then bottom/top ghost
   // rows (one thread per column). The two launches are serialized by the stream,
@@ -223,7 +225,7 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStep( t_real i_sc
   t_real *l_hu_new = m_d_hu[1 - m_step];
   t_real *l_hv_new = m_d_hv[1 - m_step];
 
-  dim3 l_blockDim( 16, 16 );
+  dim3 l_blockDim( m_blockWidth, m_blockWidth );
   dim3 l_gridDim(
       (m_nCellsX + 2 + l_blockDim.x - 1) / l_blockDim.x,
       (m_nCellsY + 2 + l_blockDim.y - 1) / l_blockDim.y

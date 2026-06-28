@@ -112,7 +112,8 @@ namespace {
                           tsunami_lab::t_idx i_ny,
                           tsunami_lab::t_real i_endTime,
                           std::string const & i_bathymetryPath,
-                          std::string const & i_displacementPath ) {
+                          std::string const & i_displacementPath,
+                          int i_blockWidth ) {
     std::unique_ptr<tsunami_lab::setups::TsunamiEvent2d> l_setup(
       new tsunami_lab::setups::TsunamiEvent2d( i_bathymetryPath,
                                                i_displacementPath )
@@ -165,7 +166,7 @@ namespace {
     l_cpuInit->setGhostOutflow();
     tsunami_lab::t_idx const l_initStride = l_cpuInit->getStride();
     std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_wavePropGpu(
-      new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true )
+      new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true, i_blockWidth )
     );
     l_wavePropGpu->copyToGpu( l_cpuInit->getHeight()     - (l_initStride + 1),
                               l_cpuInit->getMomentumX()  - (l_initStride + 1),
@@ -234,7 +235,8 @@ namespace {
                                        tsunami_lab::t_idx i_ny,
                                        tsunami_lab::t_real i_endTime,
                                        std::string const & i_bathymetryPath,
-                                       std::string const & i_displacementPath ) {
+                                       std::string const & i_displacementPath,
+                                       int i_blockWidth ) {
     std::unique_ptr<tsunami_lab::setups::TsunamiEvent2d> l_setup(
       new tsunami_lab::setups::TsunamiEvent2d( i_bathymetryPath,
                                                i_displacementPath )
@@ -275,7 +277,7 @@ namespace {
     }
 
     std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_gpuSolver(
-      new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true )
+      new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true, i_blockWidth )
     );
     // Set ghost cells on the CPU solver before copying so that bathymetry ghost
     // cells are propagated correctly into the GPU's constant bathymetry array.
@@ -370,13 +372,15 @@ namespace {
 
   void printUsage() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify]" << std::endl;
+    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N]" << std::endl;
     std::cerr << "" << std::endl;
-    std::cerr << "RUNS:     number of repeated benchmark runs" << std::endl;
-    std::cerr << "END_TIME: optional simulation end time in seconds, default 10800" << std::endl;
-    std::cerr << "BATHY_NC: optional path to bathymetry NetCDF file" << std::endl;
-    std::cerr << "DISPL_NC: optional path to displacement NetCDF file" << std::endl;
-    std::cerr << "--verify: after GPU runs, also run once on CPU and compare final state" << std::endl;
+    std::cerr << "RUNS:          number of repeated benchmark runs" << std::endl;
+    std::cerr << "END_TIME:      optional simulation end time in seconds, default 10800" << std::endl;
+    std::cerr << "BATHY_NC:      optional path to bathymetry NetCDF file" << std::endl;
+    std::cerr << "DISPL_NC:      optional path to displacement NetCDF file" << std::endl;
+    std::cerr << "--verify:      after GPU runs, also run once on CPU and compare final state" << std::endl;
+    std::cerr << "--block-size N: CUDA block width (threads per block = N*N for sweeps, default 16)" << std::endl;
+    std::cerr << "               valid values: 1, 2, 4, 8, 16, 32  (N*N must be <= 1024)" << std::endl;
   }
 }
 
@@ -388,13 +392,17 @@ int main( int i_argc,
   std::cout << "### https://scalable.uni-jena.de ###" << std::endl;
   std::cout << "####################################" << std::endl;
 
-  // Scan for --verify flag and remove it from the positional argument list
+  // Scan for --verify and --block-size flags; remove both from the positional
+  // argument list so the positional-arg parser below is unaffected.
   bool l_verify = false;
+  int  l_blockWidth = 16;
   std::vector<char*> l_args;
   l_args.reserve( i_argc );
   for( int l_i = 0; l_i < i_argc; l_i++ ) {
     if( std::string( i_argv[l_i] ) == "--verify" ) {
       l_verify = true;
+    } else if( std::string( i_argv[l_i] ) == "--block-size" && l_i + 1 < i_argc ) {
+      l_blockWidth = std::stoi( i_argv[++l_i] );
     } else {
       l_args.push_back( i_argv[l_i] );
     }
@@ -427,11 +435,18 @@ int main( int i_argc,
       l_argc >= 5 ? l_argv[4] : "data/output/tohoku_gebco20_usgs_250m_displ.nc"
     );
 
+    if( l_blockWidth < 1 || l_blockWidth > 32 || l_blockWidth * l_blockWidth > 1024 ) {
+      throw std::runtime_error( "--block-size N must satisfy 1 <= N <= 32 and N*N <= 1024" );
+    }
+
     std::cout << "benchmark_cuda configuration" << std::endl;
     std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
     std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
     std::cout << "  runs:                           " << l_runs << std::endl;
     std::cout << "  end time:                       " << l_endTime << std::endl;
+    std::cout << "  block width:                    " << l_blockWidth
+              << "  (" << l_blockWidth << "x" << l_blockWidth
+              << " = " << l_blockWidth * l_blockWidth << " threads/block)" << std::endl;
     std::cout << "  bathymetry:                     " << l_bathymetryPath << std::endl;
     std::cout << "  displacement:                   " << l_displacementPath << std::endl;
     std::cout << "  verify (CPU vs GPU):            " << (l_verify ? "yes" : "no") << std::endl;
@@ -450,7 +465,8 @@ int main( int i_argc,
                                        l_ny,
                                        l_endTime,
                                        l_bathymetryPath,
-                                       l_displacementPath );
+                                       l_displacementPath,
+                                       l_blockWidth );
 
       double const l_timePerCellIteration = l_results[l_run].timeSteppingSeconds /
         ( static_cast<double>( l_nx ) * static_cast<double>( l_ny ) *
@@ -492,7 +508,8 @@ int main( int i_argc,
                                                   l_ny,
                                                   l_endTime,
                                                   l_bathymetryPath,
-                                                  l_displacementPath );
+                                                  l_displacementPath,
+                                                  l_blockWidth );
       tsunami_lab::t_idx const l_totalCells = static_cast<tsunami_lab::t_idx>( l_nx ) *
                                                static_cast<tsunami_lab::t_idx>( l_ny );
 

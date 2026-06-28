@@ -55,6 +55,10 @@ class tsunami_lab::patches::cuda::WavePropagation2dCuda {
     //! Whether to use F-Wave solver (true) or Roe solver (false)
     bool m_useFWaveSolver = false;
 
+    //! Block width used for kernel launches (threads per block = blockWidth^2 for
+    //! 2-D sweeps, blockWidth^2 for 1-D ghost-cell kernels).
+    int m_blockWidth = 16;
+
   public:
     /**
      * Initialize CUDA device and query capabilities.
@@ -78,7 +82,8 @@ class tsunami_lab::patches::cuda::WavePropagation2dCuda {
      **/
     WavePropagation2dCuda( t_idx i_nCellsX,
                            t_idx i_nCellsY,
-                           bool i_useFWaveSolver = false );
+                           bool i_useFWaveSolver = false,
+                           int  i_blockWidth     = 16 );
 
     /**
      * Destructor: frees GPU memory.
