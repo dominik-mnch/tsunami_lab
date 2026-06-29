@@ -302,6 +302,233 @@ namespace tsunami_lab {
 
         o_hv[l_ce] = l_hvNew;
       }
+
+      /**
+       * Initialize new cell quantities by copying from old buffers.
+       * One thread per cell.
+       *
+       * @param i_h old water heights
+       * @param i_hu old x-momentum
+       * @param i_hv old y-momentum
+       * @param o_h new water heights
+       * @param o_hu new x-momentum
+       * @param o_hv new y-momentum
+       * @param i_nCellsX number of interior cells in x-direction
+       * @param i_nCellsY number of interior cells in y-direction
+       * @param i_stride row stride in elements
+       **/
+      TSUNAMI_CUDA_GLOBAL
+      void initNewCellsKernel( const t_real *i_h,
+                               const t_real *i_hu,
+                               const t_real *i_hv,
+                               t_real *o_h,
+                               t_real *o_hu,
+                               t_real *o_hv,
+                               t_idx i_nCellsX,
+                               t_idx i_nCellsY,
+                               t_idx i_stride ) {
+        t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
+        t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
+
+        t_idx l_ce = l_cy * i_stride + l_cx;
+        o_h[l_ce]  = i_h[l_ce];
+        o_hu[l_ce] = i_hu[l_ce];
+        o_hv[l_ce] = i_hv[l_ce];
+      }
+
+      /**
+       * X-sweep kernel with atomic updates: one thread per edge.
+       *
+       * Computes net-updates from the Riemann solver and uses atomicAdd to
+       * accumulate them into the new buffers. Similar structure to CPU version.
+       *
+       * @param i_h old water heights
+       * @param i_hu old x-momentum
+       * @param i_hv old y-momentum
+       * @param i_b bathymetry
+       * @param io_h new water heights (modified in place with atomicAdd)
+       * @param io_hu new x-momentum (modified in place with atomicAdd)
+       * @param i_nCellsX number of interior cells in x-direction
+       * @param i_nCellsY number of interior cells in y-direction
+       * @param i_stride row stride in elements
+       * @param i_scaling time-step scaling dt/dx
+       * @param i_useFWave whether to use F-Wave solver
+       **/
+      TSUNAMI_CUDA_GLOBAL
+      void computeXSweepAtomicKernel( const t_real *i_h,
+                                      const t_real *i_hu,
+                                      const t_real *i_hv,
+                                      const t_real *i_b,
+                                      t_real *io_h,
+                                      t_real *io_hu,
+                                      t_idx i_nCellsX,
+                                      t_idx i_nCellsY,
+                                      t_idx i_stride,
+                                      t_real i_scaling,
+                                      bool i_useFWave ) {
+        // One thread per x-edge: cy in [1, nCellsY], cx in [0, nCellsX]
+        t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;  // edge index 0..nCellsX
+        t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;  // row index 1..nCellsY
+
+        if( l_cx > i_nCellsX || l_cy < 1 || l_cy > i_nCellsY ) return;
+
+        t_idx l_ce = l_cy * i_stride + l_cx;    // left cell
+        t_idx l_ceR = l_ce + 1;                   // right cell
+
+        bool l_leftDry = (i_b[l_ce] > 0);
+        bool l_rightDry = (i_b[l_ceR] > 0);
+
+        if( l_leftDry && l_rightDry ) {
+          return;
+        }
+
+        bool l_reflectAtShore = (l_leftDry != l_rightDry);
+
+        t_real l_hL = i_h[l_ce];
+        t_real l_hR = i_h[l_ceR];
+        t_real l_huL = i_hu[l_ce];
+        t_real l_huR = i_hu[l_ceR];
+        t_real l_bL = i_b[l_ce];
+        t_real l_bR = i_b[l_ceR];
+
+        // Mirror at wet/dry interface
+        if( l_reflectAtShore ) {
+          if( l_leftDry ) {
+            l_hL = l_hR;
+            l_huL = -l_huR;
+            l_bL = l_bR;
+          }
+          else {
+            l_hR = l_hL;
+            l_huR = -l_huL;
+            l_bR = l_bL;
+          }
+        }
+
+        t_real l_nu[2][2];
+        if( i_useFWave ) {
+          solvers::F_wave::netUpdates( l_hL, l_hR, l_huL, l_huR, l_bL, l_bR,
+                                       l_nu[0], l_nu[1] );
+        }
+        else {
+          solvers::Roe::netUpdates( l_hL, l_hR, l_huL, l_huR,
+                                    l_nu[0], l_nu[1] );
+        }
+
+        if( l_reflectAtShore ) {
+          if( l_leftDry ) {
+            l_nu[0][0] = 0;
+            l_nu[0][1] = 0;
+          }
+          else {
+            l_nu[1][0] = 0;
+            l_nu[1][1] = 0;
+          }
+        }
+
+        // Use atomicAdd to update both cells
+        atomicAdd( &io_h[l_ce], -i_scaling * l_nu[0][0] );
+        atomicAdd( &io_hu[l_ce], -i_scaling * l_nu[0][1] );
+        atomicAdd( &io_h[l_ceR], -i_scaling * l_nu[1][0] );
+        atomicAdd( &io_hu[l_ceR], -i_scaling * l_nu[1][1] );
+      }
+
+      /**
+       * Y-sweep kernel with atomic updates: one thread per edge.
+       *
+       * Computes net-updates from the Riemann solver and uses atomicAdd to
+       * accumulate them into the new buffers. Similar structure to CPU version.
+       *
+       * @param i_h old water heights
+       * @param i_hv old y-momentum
+       * @param i_b bathymetry
+       * @param io_h new water heights (modified in place with atomicAdd)
+       * @param io_hv new y-momentum (modified in place with atomicAdd)
+       * @param i_nCellsX number of interior cells in x-direction
+       * @param i_nCellsY number of interior cells in y-direction
+       * @param i_stride row stride in elements
+       * @param i_scaling time-step scaling dt/dx
+       * @param i_useFWave whether to use F-Wave solver
+       **/
+      TSUNAMI_CUDA_GLOBAL
+      void computeYSweepAtomicKernel( const t_real *i_h,
+                                      const t_real *i_hv,
+                                      const t_real *i_b,
+                                      t_real *io_h,
+                                      t_real *io_hv,
+                                      t_idx i_nCellsX,
+                                      t_idx i_nCellsY,
+                                      t_idx i_stride,
+                                      t_real i_scaling,
+                                      bool i_useFWave ) {
+        // One thread per y-edge: cx in [1, nCellsX], cy in [0, nCellsY]
+        t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;  // column index 1..nCellsX
+        t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;  // edge index 0..nCellsY
+
+        if( l_cx < 1 || l_cx > i_nCellsX || l_cy > i_nCellsY ) return;
+
+        t_idx l_ceB = l_cy * i_stride + l_cx;       // bottom cell
+        t_idx l_ceT = (l_cy + 1) * i_stride + l_cx; // top cell
+
+        bool l_bottomDry = (i_b[l_ceB] > 0);
+        bool l_topDry = (i_b[l_ceT] > 0);
+
+        if( l_bottomDry && l_topDry ) {
+          return;
+        }
+
+        bool l_reflectAtShore = (l_bottomDry != l_topDry);
+
+        t_real l_hB = i_h[l_ceB];
+        t_real l_hT = i_h[l_ceT];
+        t_real l_hvB = i_hv[l_ceB];
+        t_real l_hvT = i_hv[l_ceT];
+        t_real l_bB = i_b[l_ceB];
+        t_real l_bT = i_b[l_ceT];
+
+        // Mirror at wet/dry interface
+        if( l_reflectAtShore ) {
+          if( l_bottomDry ) {
+            l_hB = l_hT;
+            l_hvB = -l_hvT;
+            l_bB = l_bT;
+          }
+          else {
+            l_hT = l_hB;
+            l_hvT = -l_hvB;
+            l_bT = l_bB;
+          }
+        }
+
+        t_real l_nu[2][2];
+        if( i_useFWave ) {
+          solvers::F_wave::netUpdates( l_hB, l_hT, l_hvB, l_hvT, l_bB, l_bT,
+                                       l_nu[0], l_nu[1] );
+        }
+        else {
+          solvers::Roe::netUpdates( l_hB, l_hT, l_hvB, l_hvT,
+                                    l_nu[0], l_nu[1] );
+        }
+
+        if( l_reflectAtShore ) {
+          if( l_bottomDry ) {
+            l_nu[0][0] = 0;
+            l_nu[0][1] = 0;
+          }
+          else {
+            l_nu[1][0] = 0;
+            l_nu[1][1] = 0;
+          }
+        }
+
+        // Use atomicAdd to update both cells
+        atomicAdd( &io_h[l_ceB], -i_scaling * l_nu[0][0] );
+        atomicAdd( &io_hv[l_ceB], -i_scaling * l_nu[0][1] );
+        atomicAdd( &io_h[l_ceT], -i_scaling * l_nu[1][0] );
+        atomicAdd( &io_hv[l_ceT], -i_scaling * l_nu[1][1] );
+      }
     }
   }
 }

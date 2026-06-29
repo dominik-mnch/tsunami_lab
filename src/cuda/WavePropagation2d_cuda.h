@@ -137,6 +137,16 @@ class tsunami_lab::patches::cuda::WavePropagation2dCuda {
     void computeStep( t_real i_scaling );
 
     /**
+     * Perform one full time step using atomic operations (CPU-like structure).
+     * Initialize new buffers, then use atomicAdd in x-sweep and y-sweep kernels.
+     * Each thread processes one edge and accumulates updates atomically.
+     * Call swapBuffers() afterwards to make the result the new active state.
+     *
+     * @param i_scaling time-step scaling dt/dx.
+     **/
+    void computeStepAtomic( t_real i_scaling );
+
+    /**
      * Get pointer to current active water height array on GPU.
      * @return GPU pointer to active h array
      **/

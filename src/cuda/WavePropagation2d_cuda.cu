@@ -58,6 +58,42 @@ namespace tsunami_lab {
                                  t_idx i_stride,
                                  t_real i_scaling,
                                  bool i_useFWave );
+
+      __global__
+      void initNewCellsKernel( const t_real *i_h,
+                               const t_real *i_hu,
+                               const t_real *i_hv,
+                               t_real *o_h,
+                               t_real *o_hu,
+                               t_real *o_hv,
+                               t_idx i_nCellsX,
+                               t_idx i_nCellsY,
+                               t_idx i_stride );
+
+      __global__
+      void computeXSweepAtomicKernel( const t_real *i_h,
+                                      const t_real *i_hu,
+                                      const t_real *i_hv,
+                                      const t_real *i_b,
+                                      t_real *io_h,
+                                      t_real *io_hu,
+                                      t_idx i_nCellsX,
+                                      t_idx i_nCellsY,
+                                      t_idx i_stride,
+                                      t_real i_scaling,
+                                      bool i_useFWave );
+
+      __global__
+      void computeYSweepAtomicKernel( const t_real *i_h,
+                                      const t_real *i_hv,
+                                      const t_real *i_b,
+                                      t_real *io_h,
+                                      t_real *io_hv,
+                                      t_idx i_nCellsX,
+                                      t_idx i_nCellsY,
+                                      t_idx i_stride,
+                                      t_real i_scaling,
+                                      bool i_useFWave );
     }
   }
 }
@@ -259,5 +295,79 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStep( t_real i_sc
   cudaError_t l_syncErr = cudaDeviceSynchronize();
   if( l_syncErr != cudaSuccess ) {
     fprintf( stderr, "computeStep sync error: %s\n", cudaGetErrorString( l_syncErr ) );
+  }
+}
+
+void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStepAtomic( t_real i_scaling ) {
+  // Atomic-based implementation: one thread per edge, uses atomicAdd to accumulate
+  // updates into the new buffers. Follows the CPU reference structure more closely.
+  // Requires manual initialization of new buffers before each sweep.
+  
+  t_real *l_h_old  = m_d_h[m_step];
+  t_real *l_hu_old = m_d_hu[m_step];
+  t_real *l_hv_old = m_d_hv[m_step];
+
+  t_real *l_h_new  = m_d_h[1 - m_step];
+  t_real *l_hu_new = m_d_hu[1 - m_step];
+  t_real *l_hv_new = m_d_hv[1 - m_step];
+
+  dim3 l_blockDim( m_blockWidth, m_blockWidth );
+  
+  // Grid dimensions for 2D kernels (cell initialization)
+  dim3 l_gridDimCells(
+      (m_nCellsX + 2 + l_blockDim.x - 1) / l_blockDim.x,
+      (m_nCellsY + 2 + l_blockDim.y - 1) / l_blockDim.y
+  );
+
+  // Initialize new buffers with values from old buffers
+  initNewCellsKernel<<<l_gridDimCells, l_blockDim>>>(
+      l_h_old, l_hu_old, l_hv_old,
+      l_h_new, l_hu_new, l_hv_new,
+      m_nCellsX, m_nCellsY, m_stride );
+
+  cudaError_t l_initErr = cudaGetLastError();
+  if( l_initErr != cudaSuccess ) {
+    fprintf( stderr, "initNewCellsKernel launch error: %s\n", cudaGetErrorString( l_initErr ) );
+  }
+
+  // X-sweep: one thread per edge (nCellsX+1) * nCellsY edges
+  // Grid: x dimension = 0..nCellsX (nCellsX+1 threads), y dimension = 1..nCellsY
+  dim3 l_gridDimXSweep(
+      (m_nCellsX + 1 + l_blockDim.x - 1) / l_blockDim.x,
+      (m_nCellsY + l_blockDim.y - 1) / l_blockDim.y
+  );
+
+  computeXSweepAtomicKernel<<<l_gridDimXSweep, l_blockDim>>>(
+      l_h_old, l_hu_old, l_hv_old, m_d_b,
+      l_h_new, l_hu_new,
+      m_nCellsX, m_nCellsY, m_stride,
+      i_scaling, m_useFWaveSolver );
+
+  cudaError_t l_xErr = cudaGetLastError();
+  if( l_xErr != cudaSuccess ) {
+    fprintf( stderr, "computeXSweepAtomicKernel launch error: %s\n", cudaGetErrorString( l_xErr ) );
+  }
+
+  // Y-sweep: one thread per edge nCellsX * (nCellsY+1) edges
+  // Grid: x dimension = 1..nCellsX, y dimension = 0..nCellsY (nCellsY+1 threads)
+  dim3 l_gridDimYSweep(
+      (m_nCellsX + l_blockDim.x - 1) / l_blockDim.x,
+      (m_nCellsY + 1 + l_blockDim.y - 1) / l_blockDim.y
+  );
+
+  computeYSweepAtomicKernel<<<l_gridDimYSweep, l_blockDim>>>(
+      l_h_old, l_hv_old, m_d_b,
+      l_h_new, l_hv_new,
+      m_nCellsX, m_nCellsY, m_stride,
+      i_scaling, m_useFWaveSolver );
+
+  cudaError_t l_yErr = cudaGetLastError();
+  if( l_yErr != cudaSuccess ) {
+    fprintf( stderr, "computeYSweepAtomicKernel launch error: %s\n", cudaGetErrorString( l_yErr ) );
+  }
+
+  cudaError_t l_syncErr = cudaDeviceSynchronize();
+  if( l_syncErr != cudaSuccess ) {
+    fprintf( stderr, "computeStepAtomic sync error: %s\n", cudaGetErrorString( l_syncErr ) );
   }
 }
