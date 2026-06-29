@@ -529,6 +529,39 @@ namespace tsunami_lab {
         atomicAdd( &io_h[l_ceT], -i_scaling * l_nu[1][0] );
         atomicAdd( &io_hv[l_ceT], -i_scaling * l_nu[1][1] );
       }
+
+      /**
+       * Post-processing kernel: Apply wet/dry threshold to eliminate NaNs.
+       * Clamps water heights below WET_DRY_THRESHOLD to 0, and zeroes momentum for dry cells.
+       *
+       * @param io_h device height array (full grid with ghost cells)
+       * @param io_hu device x-momentum array
+       * @param io_hv device y-momentum array
+       * @param i_nCellsX number of interior cells in x-direction
+       * @param i_nCellsY number of interior cells in y-direction
+       * @param i_stride row stride in elements
+       **/
+      TSUNAMI_CUDA_GLOBAL
+      void applyWetDryThresholdKernel( t_real *io_h,
+                                       t_real *io_hu,
+                                       t_real *io_hv,
+                                       t_idx i_nCellsX,
+                                       t_idx i_nCellsY,
+                                       t_idx i_stride ) {
+        // One thread per cell (including ghost cells)
+        t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
+        t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
+
+        t_idx l_idx = l_cy * i_stride + l_cx;
+
+        if( io_h[l_idx] < tsunami_lab::WET_DRY_THRESHOLD ) {
+          io_h[l_idx] = 0.0;
+          io_hu[l_idx] = 0.0;
+          io_hv[l_idx] = 0.0;
+        }
+      }
     }
   }
 }

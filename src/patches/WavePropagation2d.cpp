@@ -231,6 +231,17 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
         l_hvNew[l_ceT] -= i_scaling * l_netUpdates[1][1];
       }
     }
+
+    // Post-processing: apply wet/dry threshold to eliminate NaNs
+    // Clamp water heights below threshold to 0, and zero momentum for dry cells
+#pragma omp for schedule(static)
+    for( t_idx l_ce = 0; l_ce < l_nValues; l_ce++ ) {
+      if( l_hNew[l_ce] < tsunami_lab::WET_DRY_THRESHOLD ) {
+        l_hNew[l_ce] = 0.0;
+        l_huNew[l_ce] = 0.0;
+        l_hvNew[l_ce] = 0.0;
+      }
+    }
   }
 }
 

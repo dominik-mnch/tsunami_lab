@@ -94,6 +94,14 @@ namespace tsunami_lab {
                                       t_idx i_stride,
                                       t_real i_scaling,
                                       bool i_useFWave );
+
+      __global__
+      void applyWetDryThresholdKernel( t_real *io_h,
+                                       t_real *io_hu,
+                                       t_real *io_hv,
+                                       t_idx i_nCellsX,
+                                       t_idx i_nCellsY,
+                                       t_idx i_stride );
     }
   }
 }
@@ -292,6 +300,17 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStep( t_real i_sc
   if( l_yErr != cudaSuccess ) {
     fprintf( stderr, "computeYSweepKernel launch error: %s\n", cudaGetErrorString( l_yErr ) );
   }
+
+  // Apply wet/dry threshold to eliminate NaNs in dry cells
+  applyWetDryThresholdKernel<<<l_gridDim, l_blockDim>>>(
+      l_h_new, l_hu_new, l_hv_new,
+      m_nCellsX, m_nCellsY, m_stride );
+
+  cudaError_t l_threshErr = cudaGetLastError();
+  if( l_threshErr != cudaSuccess ) {
+    fprintf( stderr, "applyWetDryThresholdKernel launch error: %s\n", cudaGetErrorString( l_threshErr ) );
+  }
+
   cudaError_t l_syncErr = cudaDeviceSynchronize();
   if( l_syncErr != cudaSuccess ) {
     fprintf( stderr, "computeStep sync error: %s\n", cudaGetErrorString( l_syncErr ) );
@@ -364,6 +383,20 @@ void tsunami_lab::patches::cuda::WavePropagation2dCuda::computeStepAtomic( t_rea
   cudaError_t l_yErr = cudaGetLastError();
   if( l_yErr != cudaSuccess ) {
     fprintf( stderr, "computeYSweepAtomicKernel launch error: %s\n", cudaGetErrorString( l_yErr ) );
+  }
+
+  // Apply wet/dry threshold to eliminate NaNs in dry cells
+  dim3 l_gridDimThresh(
+      (m_nCellsX + 2 + l_blockDim.x - 1) / l_blockDim.x,
+      (m_nCellsY + 2 + l_blockDim.y - 1) / l_blockDim.y
+  );
+  applyWetDryThresholdKernel<<<l_gridDimThresh, l_blockDim>>>(
+      l_h_new, l_hu_new, l_hv_new,
+      m_nCellsX, m_nCellsY, m_stride );
+
+  cudaError_t l_threshErr = cudaGetLastError();
+  if( l_threshErr != cudaSuccess ) {
+    fprintf( stderr, "applyWetDryThresholdKernel launch error: %s\n", cudaGetErrorString( l_threshErr ) );
   }
 
   cudaError_t l_syncErr = cudaDeviceSynchronize();
