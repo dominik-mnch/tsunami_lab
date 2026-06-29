@@ -213,3 +213,92 @@ TEST_CASE( "Multi-timestep: 25 steps on 1000x1000 with Roe", "[MultiTimestep_Roe
     REQUIRE( l_match );
     std::cout << "Max accumulated error (25 steps, 1000x1000, Roe): " << l_maxError << std::endl;
 }
+
+// ============================================================================
+// ATOMIC KERNEL CORRECTNESS TESTS
+// ============================================================================
+
+TEST_CASE( "GPU atomic kernel correctness: Roe solver on 128x128", "[AtomicKernelCorrectness_Roe_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsAtomic(
+        128, 128, false, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );  // Allow small numerical differences
+}
+
+TEST_CASE( "GPU atomic kernel correctness: F-Wave solver on 128x128", "[AtomicKernelCorrectness_FWave_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsAtomic(
+        128, 128, true, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "GPU atomic kernel correctness: Roe solver on 256x256", "[AtomicKernelCorrectness_Roe_256]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsAtomic(
+        256, 256, false, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "GPU atomic kernel correctness: Roe solver on 500x500", "[AtomicKernelCorrectness_Roe_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsAtomic(
+        500, 500, false, &l_maxError );
+    
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+// ============================================================================
+// ATOMIC MULTI-TIMESTEP TESTS
+// ============================================================================
+
+TEST_CASE( "Atomic multi-timestep: 50 steps on 128x128 with Roe", "[AtomicMultiTimestep_Roe_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsAtomic(
+        128, 128, 50, false, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (atomic, 50 steps, 128x128, Roe): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Atomic multi-timestep: 50 steps on 128x128 with F-Wave", "[AtomicMultiTimestep_FWave_128]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsAtomic(
+        128, 128, 50, true, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (atomic, 50 steps, 128x128, F-Wave): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Atomic multi-timestep: 100 steps on 256x256 with Roe", "[AtomicMultiTimestep_Roe_256]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsAtomic(
+        256, 256, 100, false, 10, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (atomic, 100 steps, 256x256, Roe): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Atomic multi-timestep: 50 steps on 500x500 with Roe", "[AtomicMultiTimestep_Roe_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsAtomic(
+        500, 500, 50, false, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (atomic, 50 steps, 500x500, Roe): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "Atomic multi-timestep: 25 steps on 1000x1000 with Roe", "[AtomicMultiTimestep_Roe_1000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsAtomic(
+        1000, 1000, 25, false, 5, &l_maxError );
+    
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (atomic, 25 steps, 1000x1000, Roe): " << l_maxError << std::endl;
+}

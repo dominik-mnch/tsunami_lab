@@ -321,5 +321,272 @@ bool CudaRegressionTest::compareMultipleTimesteps( t_idx i_nCellsX,
     return l_allMatch;
 }
 
+/**
+ * @brief Compare GPU and CPU solver results after one timestep (atomic kernels).
+ */
+bool CudaRegressionTest::compareKernelResultsAtomic( t_idx i_nCellsX,
+                                                     t_idx i_nCellsY,
+                                                     bool i_useFWave,
+                                                     t_real* o_maxError ) {
+    // --- Setup ---
+    patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpu( i_nCellsX, i_nCellsY, i_useFWave );
+
+    setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
+
+    t_real l_domainSize = 50.0;
+    t_real l_dx = l_domainSize / i_nCellsX;
+    t_real l_dy = l_domainSize / i_nCellsY;
+
+    // Initialize both solvers with identical data
+    for( t_idx l_iy = 0; l_iy < i_nCellsY; l_iy++ ) {
+        for( t_idx l_ix = 0; l_ix < i_nCellsX; l_ix++ ) {
+            t_real l_x = -l_domainSize / 2.0 + (l_ix + 0.5) * l_dx;
+            t_real l_y = -l_domainSize / 2.0 + (l_iy + 0.5) * l_dy;
+
+            t_real l_h  = l_setup.getHeight( l_x, l_y );
+            t_real l_hu = l_setup.getMomentumX( l_x, l_y );
+            t_real l_hv = l_setup.getMomentumY( l_x, l_y );
+            t_real l_b  = l_setup.getBathymetry( l_x, l_y );
+
+            l_wavePropCpu.setHeight( l_ix, l_iy, l_h );
+            l_wavePropCpu.setMomentumX( l_ix, l_iy, l_hu );
+            l_wavePropCpu.setMomentumY( l_ix, l_iy, l_hv );
+            l_wavePropCpu.setBathymetry( l_ix, l_iy, l_b );
+        }
+    }
+
+    // Apply outflow boundary on the CPU BEFORE copying so the GPU starts from
+    // an identical full (ghost-celled) grid. A single GPU step then only relies
+    // on ghost values that were fixed here, so every interior cell must match.
+    l_wavePropCpu.setGhostOutflow();
+
+    t_idx l_stride = l_wavePropCpu.getStride();        // nCellsX + 2
+    t_idx l_nFull  = (i_nCellsY + 2) * l_stride;
+
+    // Base pointers to the full ghost-celled CPU buffers.
+    const t_real* l_hBase  = l_wavePropCpu.getHeight()     - (l_stride + 1);
+    const t_real* l_huBase = l_wavePropCpu.getMomentumX()  - (l_stride + 1);
+    const t_real* l_hvBase = l_wavePropCpu.getMomentumY()  - (l_stride + 1);
+    const t_real* l_bBase  = l_wavePropCpu.getBathymetry() - (l_stride + 1);
+
+    // Copy the full grid to GPU.
+    l_wavePropGpu.copyToGpu( l_hBase, l_huBase, l_hvBase, l_bBase );
+
+    // --- Run one timestep on both ---
+    t_real l_scaling = 0.4;  // CFL scaling factor
+
+    // GPU step (atomic kernels)
+    l_wavePropGpu.computeStepAtomic( l_scaling );
+    l_wavePropGpu.swapBuffers();
+
+    // CPU step (ghost cells already applied above)
+    l_wavePropCpu.timeStep( l_scaling );
+
+    // Copy the full GPU grid back to host.
+    t_real* l_h_gpu_full  = new t_real[l_nFull];
+    t_real* l_hu_gpu_full = new t_real[l_nFull];
+    t_real* l_hv_gpu_full = new t_real[l_nFull];
+
+    l_wavePropGpu.copyToHost( l_h_gpu_full,
+                              l_hu_gpu_full,
+                              l_hv_gpu_full );
+
+    // Flatten interiors of both CPU and GPU grids for comparison.
+    t_real* l_h_gpu_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_gpu_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_gpu_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_h_cpu_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_cpu_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_cpu_result = new t_real[i_nCellsX * i_nCellsY];
+
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_h_gpu_full  + l_stride + 1, l_h_gpu_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hu_gpu_full + l_stride + 1, l_hu_gpu_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hv_gpu_full + l_stride + 1, l_hv_gpu_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_wavePropCpu.getHeight(),    l_h_cpu_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_wavePropCpu.getMomentumX(), l_hu_cpu_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_wavePropCpu.getMomentumY(), l_hv_cpu_result );
+
+    // --- Compare ---
+    bool l_hMatch = compareGrids( i_nCellsX, i_nCellsY,
+                                   l_h_cpu_result, l_h_gpu_result );
+    bool l_huMatch = compareGrids( i_nCellsX, i_nCellsY,
+                                    l_hu_cpu_result, l_hu_gpu_result );
+    bool l_hvMatch = compareGrids( i_nCellsX, i_nCellsY,
+                                    l_hv_cpu_result, l_hv_gpu_result );
+
+    if( o_maxError != nullptr ) {
+        t_real l_maxH = getMaxError( i_nCellsX, i_nCellsY,
+                                      l_h_cpu_result, l_h_gpu_result );
+        t_real l_maxHu = getMaxError( i_nCellsX, i_nCellsY,
+                                       l_hu_cpu_result, l_hu_gpu_result );
+        t_real l_maxHv = getMaxError( i_nCellsX, i_nCellsY,
+                                       l_hv_cpu_result, l_hv_gpu_result );
+        *o_maxError = std::max( { l_maxH, l_maxHu, l_maxHv } );
+    }
+
+    // Cleanup
+    delete[] l_h_gpu_full;
+    delete[] l_hu_gpu_full;
+    delete[] l_hv_gpu_full;
+    delete[] l_h_gpu_result;
+    delete[] l_hu_gpu_result;
+    delete[] l_hv_gpu_result;
+    delete[] l_h_cpu_result;
+    delete[] l_hu_cpu_result;
+    delete[] l_hv_cpu_result;
+
+    return l_hMatch && l_huMatch && l_hvMatch;
+}
+
+/**
+ * @brief Compare GPU and CPU solver results over multiple timesteps (atomic kernels).
+ */
+bool CudaRegressionTest::compareMultipleTimestepsAtomic( t_idx i_nCellsX,
+                                                         t_idx i_nCellsY,
+                                                         t_idx i_nTimesteps,
+                                                         bool i_useFWave,
+                                                         t_idx i_checkInterval,
+                                                         t_real* o_maxError ) {
+    // --- Setup ---
+    patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpu( i_nCellsX, i_nCellsY, i_useFWave );
+
+    setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
+
+    t_real l_domainSize = 50.0;
+    t_real l_dx = l_domainSize / i_nCellsX;
+    t_real l_dy = l_domainSize / i_nCellsY;
+
+    // Initialize both solvers with identical data
+    for( t_idx l_iy = 0; l_iy < i_nCellsY; l_iy++ ) {
+        for( t_idx l_ix = 0; l_ix < i_nCellsX; l_ix++ ) {
+            t_real l_x = -l_domainSize / 2.0 + (l_ix + 0.5) * l_dx;
+            t_real l_y = -l_domainSize / 2.0 + (l_iy + 0.5) * l_dy;
+
+            t_real l_h  = l_setup.getHeight( l_x, l_y );
+            t_real l_hu = l_setup.getMomentumX( l_x, l_y );
+            t_real l_hv = l_setup.getMomentumY( l_x, l_y );
+            t_real l_b  = l_setup.getBathymetry( l_x, l_y );
+
+            l_wavePropCpu.setHeight( l_ix, l_iy, l_h );
+            l_wavePropCpu.setMomentumX( l_ix, l_iy, l_hu );
+            l_wavePropCpu.setMomentumY( l_ix, l_iy, l_hv );
+            l_wavePropCpu.setBathymetry( l_ix, l_iy, l_b );
+        }
+    }
+
+    // Apply outflow boundary on the CPU before copying so the GPU starts from
+    // an identical full (ghost-celled) grid.
+    l_wavePropCpu.setGhostOutflow();
+
+    t_idx l_stride = l_wavePropCpu.getStride();   // nCellsX + 2
+    t_idx l_nFull  = (i_nCellsY + 2) * l_stride;
+
+    // Copy the full ghost-celled grid to the GPU.
+    l_wavePropGpu.copyToGpu( l_wavePropCpu.getHeight()     - (l_stride + 1),
+                             l_wavePropCpu.getMomentumX()  - (l_stride + 1),
+                             l_wavePropCpu.getMomentumY()  - (l_stride + 1),
+                             l_wavePropCpu.getBathymetry() - (l_stride + 1) );
+
+    // --- Time stepping ---
+    // Use a CFL-stable scaling (dt/dx). The maximum wave speed for this setup is
+    // ~sqrt(g*h) with h up to 10, i.e. ~10, so dt/dx must stay below ~0.1 to keep
+    // the explicit scheme stable. A larger value makes BOTH the CPU and GPU
+    // simulations diverge to non-physical magnitudes, which then cannot match.
+    t_real l_scaling = 0.04;
+    bool l_allMatch = true;
+    t_real l_maxErrorAccum = 0.0;
+
+    // Full-grid GPU result buffers (sized for the ghost-celled grid).
+    t_real* l_h_gpu_full  = new t_real[l_nFull];
+    t_real* l_hu_gpu_full = new t_real[l_nFull];
+    t_real* l_hv_gpu_full = new t_real[l_nFull];
+
+    // Flattened interior buffers for comparison.
+    t_real* l_h_gpu_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_gpu_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_gpu_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_h_cpu_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_cpu_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_cpu_result = new t_real[i_nCellsX * i_nCellsY];
+
+    for( t_idx l_step = 0; l_step < i_nTimesteps; l_step++ ) {
+        // GPU step (atomic kernels)
+        l_wavePropGpu.setGhostOutflow();
+        l_wavePropGpu.computeStepAtomic( l_scaling );
+        l_wavePropGpu.swapBuffers();
+
+        // CPU step
+        l_wavePropCpu.setGhostOutflow();
+        l_wavePropCpu.timeStep( l_scaling );
+
+        // Check at intervals
+        if( (l_step + 1) % i_checkInterval == 0 ) {
+            l_wavePropGpu.copyToHost( l_h_gpu_full,
+                                      l_hu_gpu_full,
+                                      l_hv_gpu_full );
+
+            // Flatten interiors of both CPU and GPU grids for comparison.
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_h_gpu_full  + l_stride + 1, l_h_gpu_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hu_gpu_full + l_stride + 1, l_hu_gpu_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hv_gpu_full + l_stride + 1, l_hv_gpu_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_wavePropCpu.getHeight(),    l_h_cpu_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_wavePropCpu.getMomentumX(), l_hu_cpu_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_wavePropCpu.getMomentumY(), l_hv_cpu_result );
+
+            // Relative tolerance for multi-step comparison. Both CPU and GPU use
+            // the identical per-edge solver and the same accumulation order, but
+            // floating-point round-off still differs slightly and is amplified
+            // near shocks/steep gradients over many explicit time steps, so CPU
+            // and GPU differ by a small relative amount (well below 2%).
+            // compareGrids scales this tolerance by magnitude.
+            const t_real l_multiStepTol = static_cast<t_real>(0.02);
+            bool l_hMatch = compareGrids( i_nCellsX, i_nCellsY,
+                                           l_h_cpu_result, l_h_gpu_result,
+                                           l_multiStepTol );
+            bool l_huMatch = compareGrids( i_nCellsX, i_nCellsY,
+                                            l_hu_cpu_result, l_hu_gpu_result,
+                                            l_multiStepTol );
+            bool l_hvMatch = compareGrids( i_nCellsX, i_nCellsY,
+                                            l_hv_cpu_result, l_hv_gpu_result,
+                                            l_multiStepTol );
+
+            if( !(l_hMatch && l_huMatch && l_hvMatch) ) {
+                std::cout << "Mismatch at timestep " << (l_step + 1) << std::endl;
+                l_allMatch = false;
+            }
+
+            t_real l_maxH = getMaxError( i_nCellsX, i_nCellsY,
+                                         l_h_cpu_result, l_h_gpu_result );
+            t_real l_maxHu = getMaxError( i_nCellsX, i_nCellsY,
+                                          l_hu_cpu_result, l_hu_gpu_result );
+            t_real l_maxHv = getMaxError( i_nCellsX, i_nCellsY,
+                                          l_hv_cpu_result, l_hv_gpu_result );
+            t_real l_stepMaxError = std::max( { l_maxH, l_maxHu, l_maxHv } );
+            if( l_stepMaxError > l_maxErrorAccum ) {
+                l_maxErrorAccum = l_stepMaxError;
+            }
+        }
+    }
+
+    if( o_maxError != nullptr ) {
+        *o_maxError = l_maxErrorAccum;
+    }
+
+    // Cleanup
+    delete[] l_h_gpu_full;
+    delete[] l_hu_gpu_full;
+    delete[] l_hv_gpu_full;
+    delete[] l_h_gpu_result;
+    delete[] l_hu_gpu_result;
+    delete[] l_hv_gpu_result;
+    delete[] l_h_cpu_result;
+    delete[] l_hu_cpu_result;
+    delete[] l_hv_cpu_result;
+
+    return l_allMatch;
+}
+
 } // namespace cuda
 } // namespace tsunami_lab

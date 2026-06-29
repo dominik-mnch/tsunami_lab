@@ -137,7 +137,7 @@ static void copyFromGPU( t_idx          i_nCellsX,
                                t_real* i_b );
 
     /**
-     * @brief Compare GPU and CPU solver results after one timestep.
+     * @brief Compare GPU and CPU solver results after one timestep (lock-free kernels).
      *
      * Runs a single x-sweep and y-sweep on both GPU and CPU, then compares results.
      *
@@ -153,7 +153,23 @@ static void copyFromGPU( t_idx          i_nCellsX,
                                       t_real* o_maxError = nullptr );
 
     /**
-     * @brief Compare GPU and CPU solver results over multiple timesteps.
+     * @brief Compare GPU and CPU solver results after one timestep (atomic kernels).
+     *
+     * Runs a single x-sweep and y-sweep using atomic operations on GPU and CPU, then compares results.
+     *
+     * @param i_nCellsX Number of cells in x direction.
+     * @param i_nCellsY Number of cells in y direction.
+     * @param i_useFWave Use F-Wave solver (true) or Roe solver (false).
+     * @param o_maxError Optional output: maximum absolute error across all cells.
+     * @return true if GPU and CPU results match within tolerance, false otherwise.
+     */
+    static bool compareKernelResultsAtomic( t_idx i_nCellsX,
+                                            t_idx i_nCellsY,
+                                            bool i_useFWave,
+                                            t_real* o_maxError = nullptr );
+
+    /**
+     * @brief Compare GPU and CPU solver results over multiple timesteps (lock-free kernels).
      *
      * Runs both solvers for the specified number of timesteps and periodically
      * compares their results. Allows accumulated error from floating-point operations.
@@ -172,6 +188,27 @@ static void copyFromGPU( t_idx          i_nCellsX,
                                           bool i_useFWave,
                                           t_idx i_checkInterval = 1,
                                           t_real* o_maxError = nullptr );
+
+    /**
+     * @brief Compare GPU and CPU solver results over multiple timesteps (atomic kernels).
+     *
+     * Runs both solvers for the specified number of timesteps using atomic operations
+     * and periodically compares their results. Allows accumulated error from floating-point operations.
+     *
+     * @param i_nCellsX Number of cells in x direction.
+     * @param i_nCellsY Number of cells in y direction.
+     * @param i_nTimesteps Number of timesteps to run.
+     * @param i_useFWave Use F-Wave solver (true) or Roe solver (false).
+     * @param i_checkInterval Compare results every N timesteps (default: 1).
+     * @param o_maxError Optional output: maximum error across all checks.
+     * @return true if all comparisons are within tolerance, false otherwise.
+     */
+    static bool compareMultipleTimestepsAtomic( t_idx i_nCellsX,
+                                                t_idx i_nCellsY,
+                                                t_idx i_nTimesteps,
+                                                bool i_useFWave,
+                                                t_idx i_checkInterval = 1,
+                                                t_real* o_maxError = nullptr );
 
     /**
      * @brief Calculate maximum absolute error across all cells in three arrays.
