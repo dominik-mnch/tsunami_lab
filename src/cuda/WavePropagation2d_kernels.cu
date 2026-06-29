@@ -56,8 +56,9 @@ namespace tsunami_lab {
         o_updA_h = 0; o_updA_q = 0;
         o_updB_h = 0; o_updB_q = 0;
 
-        bool l_aDry = (i_bA > 0);
-        bool l_bDry = (i_bB > 0);
+        // Check bathymetry-based dryness AND water height threshold
+        bool l_aDry = (i_bA > 0) || (i_hA < tsunami_lab::WET_DRY_THRESHOLD);
+        bool l_bDry = (i_bB > 0) || (i_hB < tsunami_lab::WET_DRY_THRESHOLD);
 
         // Both dry: no flux across this edge.
         if( l_aDry && l_bDry ) {
