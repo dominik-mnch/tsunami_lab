@@ -84,9 +84,9 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
         t_idx l_ce  = l_cy * l_stride + l_cx;
         t_idx l_ceR = l_ce + 1;
 
-        // Check both bathymetry and water height threshold (catch NaN and negative h)
-        bool l_leftDry = (m_b[l_ce] > 0) || (l_hOld[l_ce] <= tsunami_lab::WET_DRY_THRESHOLD) || (l_hOld[l_ce] != l_hOld[l_ce]);
-        bool l_rightDry = (m_b[l_ceR] > 0) || (l_hOld[l_ceR] <= tsunami_lab::WET_DRY_THRESHOLD) || (l_hOld[l_ceR] != l_hOld[l_ceR]);
+        // Check both bathymetry and catch NaN values
+        bool l_leftDry = (m_b[l_ce] > 0) || (l_hOld[l_ce] != l_hOld[l_ce]);
+        bool l_rightDry = (m_b[l_ceR] > 0) || (l_hOld[l_ceR] != l_hOld[l_ceR]);
 
         if( l_leftDry && l_rightDry ) {
           continue;
@@ -165,9 +165,9 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
         t_idx l_ceB = l_cy * l_stride + l_cx;
         t_idx l_ceT = (l_cy + 1) * l_stride + l_cx;
 
-        // Check both bathymetry and water height threshold (catch NaN and negative h)
-        bool l_bottomDry = (m_b[l_ceB] > 0) || (l_hOld[l_ceB] <= tsunami_lab::WET_DRY_THRESHOLD) || (l_hOld[l_ceB] != l_hOld[l_ceB]);
-        bool l_topDry = (m_b[l_ceT] > 0) || (l_hOld[l_ceT] <= tsunami_lab::WET_DRY_THRESHOLD) || (l_hOld[l_ceT] != l_hOld[l_ceT]);
+        // Check both bathymetry and catch NaN values
+        bool l_bottomDry = (m_b[l_ceB] > 0) || (l_hOld[l_ceB] != l_hOld[l_ceB]);
+        bool l_topDry = (m_b[l_ceT] > 0) || (l_hOld[l_ceT] != l_hOld[l_ceT]);
 
         if( l_bottomDry && l_topDry ) {
           continue;
@@ -235,11 +235,10 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     }
 
     // Post-processing: apply wet/dry threshold to eliminate NaNs
-    // Clamp water heights below threshold to 0, and zero momentum for dry cells
+    // Post-processing: Clear NaN values to prevent propagation through timesteps
 #pragma omp for schedule(static)
     for( t_idx l_ce = 0; l_ce < l_nValues; l_ce++ ) {
-      if( l_hNew[l_ce] <= tsunami_lab::WET_DRY_THRESHOLD || 
-          l_hNew[l_ce] != l_hNew[l_ce] ||  // NaN check for h
+      if( l_hNew[l_ce] != l_hNew[l_ce] ||  // NaN check for h
           l_huNew[l_ce] != l_huNew[l_ce] ||  // NaN check for hu
           l_hvNew[l_ce] != l_hvNew[l_ce] ) {  // NaN check for hv
         l_hNew[l_ce] = 0.0;

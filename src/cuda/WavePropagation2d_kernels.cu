@@ -56,9 +56,9 @@ namespace tsunami_lab {
         o_updA_h = 0; o_updA_q = 0;
         o_updB_h = 0; o_updB_q = 0;
 
-        // Check bathymetry-based dryness AND water height threshold (also catch NaN and negative h)
-        bool l_aDry = (i_bA > 0) || (i_hA <= tsunami_lab::WET_DRY_THRESHOLD) || (i_hA != i_hA);
-        bool l_bDry = (i_bB > 0) || (i_hB <= tsunami_lab::WET_DRY_THRESHOLD) || (i_hB != i_hB);
+        // Check bathymetry-based dryness AND catch NaN values
+        bool l_aDry = (i_bA > 0) || (i_hA != i_hA);
+        bool l_bDry = (i_bB > 0) || (i_hB != i_hB);
 
         // Both dry: no flux across this edge.
         if( l_aDry && l_bDry ) {
@@ -532,8 +532,9 @@ namespace tsunami_lab {
       }
 
       /**
-       * Post-processing kernel: Apply wet/dry threshold to eliminate NaNs.
-       * Clamps water heights below WET_DRY_THRESHOLD to 0, and zeroes momentum for dry cells.
+       * Post-processing kernel: Clear NaN values in state variables.
+       * Cells with NaN in any state variable (h, hu, hv) are zeroed to prevent
+       * NaN propagation through subsequent timesteps.
        *
        * @param io_h device height array (full grid with ghost cells)
        * @param io_hu device x-momentum array
@@ -557,9 +558,8 @@ namespace tsunami_lab {
 
         t_idx l_idx = l_cy * i_stride + l_cx;
 
-        // Clamp values: set to 0 if h <= threshold, or if any value is NaN or negative
-        if( io_h[l_idx] <= tsunami_lab::WET_DRY_THRESHOLD || 
-            io_h[l_idx] != io_h[l_idx] ||  // NaN check for h
+        // Clear cells with NaN values to prevent propagation
+        if( io_h[l_idx] != io_h[l_idx] ||  // NaN check for h
             io_hu[l_idx] != io_hu[l_idx] ||  // NaN check for hu
             io_hv[l_idx] != io_hv[l_idx] ) {  // NaN check for hv
           io_h[l_idx] = 0.0;
