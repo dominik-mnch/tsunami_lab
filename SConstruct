@@ -96,7 +96,10 @@ if cuda_available:
     '-Isrc',
     '-Isrc/cuda',
     '-DCUDA_ENABLED',
-    '--fmad=false'
+    '--fmad=false',
+    '--ftz=false',
+    '--prec-div=true',
+    '--prec-sqrt=true'
   ]
 
   # CUDA runtime library linking
