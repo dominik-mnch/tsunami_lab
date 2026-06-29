@@ -212,16 +212,17 @@
   - [ ] Handle each neighbor cell update with atomic
   - [ ] Test correctness with regression tests
   - [ ] Verify all values update correctly
-- [ ] Implement alternative (lock-free buffer)
-  - [ ] Create kernel that uses thread-local buffers
-  - [ ] Each thread computes updates to local array
-  - [ ] After kernel, merge local buffers to global memory
-  - [ ] Test correctness with regression tests
+- [x] Implement alternative (lock-free operator-split)
+  - [x] Create x-sweep kernel: one thread per cell, reads OLD buffers, writes to NEW buffer
+  - [x] Create y-sweep kernel: one thread per cell, reads OLD h/hv, accumulates y-updates onto x-swept h
+  - [x] Use double-buffered GPU memory for h, hu, hv (two buffers each)
+  - [x] Stream-serialized kernel launches guarantee sequential consistency (no sync needed between sweeps)
+  - [x] Test correctness with regression tests (all 53 test cases pass deterministically)
 - [ ] Benchmark both approaches
   - [ ] Test on block sizes from Task 4
-  - [ ] Test on 500×500 grid
-  - [ ] Test on 1000×1000 grid
-  - [ ] Test on 4000×4000 grid
+  - [ ] Test on 2000m resolution grid
+  - [ ] Test on 1000m resolution grid
+  - [ ] Test on 500m resolution grid
   - [ ] Record execution time for each
 - [ ] Measure atomic contention
   - [ ] Use nsys to profile atomic operations
