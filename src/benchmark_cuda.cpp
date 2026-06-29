@@ -113,7 +113,8 @@ namespace {
                           tsunami_lab::t_real i_endTime,
                           std::string const & i_bathymetryPath,
                           std::string const & i_displacementPath,
-                          int i_blockWidth ) {
+                          int i_blockWidth,
+                          std::string const & i_syncStrategy = "lock-free" ) {
     std::unique_ptr<tsunami_lab::setups::TsunamiEvent2d> l_setup(
       new tsunami_lab::setups::TsunamiEvent2d( i_bathymetryPath,
                                                i_displacementPath )
@@ -209,7 +210,11 @@ namespace {
       auto const l_stepStart = std::chrono::steady_clock::now();
 
       l_wavePropGpu->setGhostOutflow();
-      l_wavePropGpu->computeStep( l_scaling );
+      if( i_syncStrategy == "atomic" ) {
+        l_wavePropGpu->computeStepAtomic( l_scaling );
+      } else {
+        l_wavePropGpu->computeStep( l_scaling );
+      }
       l_wavePropGpu->swapBuffers();
 
       auto const l_stepEnd = std::chrono::steady_clock::now();
@@ -236,7 +241,8 @@ namespace {
                                        tsunami_lab::t_real i_endTime,
                                        std::string const & i_bathymetryPath,
                                        std::string const & i_displacementPath,
-                                       int i_blockWidth ) {
+                                       int i_blockWidth,
+                                       std::string const & i_syncStrategy = "lock-free" ) {
     std::unique_ptr<tsunami_lab::setups::TsunamiEvent2d> l_setup(
       new tsunami_lab::setups::TsunamiEvent2d( i_bathymetryPath,
                                                i_displacementPath )
@@ -301,13 +307,17 @@ namespace {
     tsunami_lab::t_real l_dt      = static_cast<tsunami_lab::t_real>( 0.25 ) * l_dMin / l_speedMax;
     tsunami_lab::t_real l_scaling = l_dt / l_dMin;
 
-    std::cout << "Running CPU + GPU in lock-step..." << std::endl;
+    std::cout << "Running CPU + GPU in lock-step with sync strategy: " << i_syncStrategy << "..." << std::endl;
 
     VerificationResult l_result;
     tsunami_lab::t_real l_simTime = 0;
     while( l_simTime < i_endTime ) {
       l_gpuSolver->setGhostOutflow();
-      l_gpuSolver->computeStep( l_scaling );
+      if( i_syncStrategy == "atomic" ) {
+        l_gpuSolver->computeStepAtomic( l_scaling );
+      } else {
+        l_gpuSolver->computeStep( l_scaling );
+      }
       l_gpuSolver->swapBuffers();
 
       l_cpuSolver->setGhostOutflow();
@@ -372,18 +382,19 @@ namespace {
 
   void printUsage() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N] [--resolution R]" << std::endl;
+    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N] [--resolution R] [--sync-strategy STRAT]" << std::endl;
     std::cerr << "" << std::endl;
-    std::cerr << "RUNS:           number of repeated benchmark runs" << std::endl;
-    std::cerr << "END_TIME:       optional simulation end time in seconds, default 10800" << std::endl;
-    std::cerr << "BATHY_NC:       optional path to bathymetry NetCDF file" << std::endl;
-    std::cerr << "DISPL_NC:       optional path to displacement NetCDF file" << std::endl;
-    std::cerr << "--verify:       after GPU runs, also run once on CPU and compare final state" << std::endl;
-    std::cerr << "--block-size N: CUDA block width (threads per block = N*N for sweeps, default 16)" << std::endl;
-    std::cerr << "                valid values: 1, 2, 4, 8, 16, 32  (N*N must be <= 1024)" << std::endl;
-    std::cerr << "--resolution R: cell size in metres (default 1250 m -> 2160x1200 cells)" << std::endl;
-    std::cerr << "                nx = round(2700000 / R),  ny = round(1500000 / R)" << std::endl;
-    std::cerr << "                e.g. 250 -> 10800x6000,  500 -> 5400x3000,  1000 -> 2700x1500" << std::endl;
+    std::cerr << "RUNS:              number of repeated benchmark runs" << std::endl;
+    std::cerr << "END_TIME:          optional simulation end time in seconds, default 10800" << std::endl;
+    std::cerr << "BATHY_NC:          optional path to bathymetry NetCDF file" << std::endl;
+    std::cerr << "DISPL_NC:          optional path to displacement NetCDF file" << std::endl;
+    std::cerr << "--verify:          after GPU runs, also run once on CPU and compare final state" << std::endl;
+    std::cerr << "--block-size N:    CUDA block width (threads per block = N*N for sweeps, default 16)" << std::endl;
+    std::cerr << "                   valid values: 1, 2, 4, 8, 16, 32  (N*N must be <= 1024)" << std::endl;
+    std::cerr << "--resolution R:    cell size in metres (default 1250 m -> 2160x1200 cells)" << std::endl;
+    std::cerr << "                   nx = round(2700000 / R),  ny = round(1500000 / R)" << std::endl;
+    std::cerr << "                   e.g. 250 -> 10800x6000,  500 -> 5400x3000,  1000 -> 2700x1500" << std::endl;
+    std::cerr << "--sync-strategy ST: synchronization strategy: 'lock-free' (default) or 'atomic'" << std::endl;
   }
 }
 
@@ -397,9 +408,10 @@ int main( int i_argc,
 
   // Scan for named flags; remove them from the positional argument list so the
   // positional-arg parser below is unaffected.
-  bool   l_verify     = false;
-  int    l_blockWidth = 16;
-  double l_resolution = 0.0;   // 0 means "use default nx/ny"
+  bool   l_verify       = false;
+  int    l_blockWidth   = 16;
+  double l_resolution   = 0.0;   // 0 means "use default nx/ny"
+  std::string l_syncStrategy = "lock-free";  // "lock-free" or "atomic"
   std::vector<char*> l_args;
   l_args.reserve( i_argc );
   for( int l_i = 0; l_i < i_argc; l_i++ ) {
@@ -409,6 +421,8 @@ int main( int i_argc,
       l_blockWidth = std::stoi( i_argv[++l_i] );
     } else if( std::string( i_argv[l_i] ) == "--resolution" && l_i + 1 < i_argc ) {
       l_resolution = std::stod( i_argv[++l_i] );
+    } else if( std::string( i_argv[l_i] ) == "--sync-strategy" && l_i + 1 < i_argc ) {
+      l_syncStrategy = i_argv[++l_i];
     } else {
       l_args.push_back( i_argv[l_i] );
     }
@@ -463,6 +477,10 @@ int main( int i_argc,
       throw std::runtime_error( "--block-size N must satisfy 1 <= N <= 32 and N*N <= 1024" );
     }
 
+    if( l_syncStrategy != "lock-free" && l_syncStrategy != "atomic" ) {
+      throw std::runtime_error( "--sync-strategy must be 'lock-free' or 'atomic'" );
+    }
+
     std::cout << "benchmark_cuda configuration" << std::endl;
     std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
     std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
@@ -472,6 +490,7 @@ int main( int i_argc,
     std::cout << "  block width:                    " << l_blockWidth
               << "  (" << l_blockWidth << "x" << l_blockWidth
               << " = " << l_blockWidth * l_blockWidth << " threads/block)" << std::endl;
+    std::cout << "  sync strategy:                  " << l_syncStrategy << std::endl;
     std::cout << "  bathymetry:                     " << l_bathymetryPath << std::endl;
     std::cout << "  displacement:                   " << l_displacementPath << std::endl;
     std::cout << "  verify (CPU vs GPU):            " << (l_verify ? "yes" : "no") << std::endl;
@@ -491,7 +510,8 @@ int main( int i_argc,
                                        l_endTime,
                                        l_bathymetryPath,
                                        l_displacementPath,
-                                       l_blockWidth );
+                                       l_blockWidth,
+                                       l_syncStrategy );
 
       double const l_timePerCellIteration = l_results[l_run].timeSteppingSeconds /
         ( static_cast<double>( l_nx ) * static_cast<double>( l_ny ) *
@@ -534,7 +554,8 @@ int main( int i_argc,
                                                   l_endTime,
                                                   l_bathymetryPath,
                                                   l_displacementPath,
-                                                  l_blockWidth );
+                                                  l_blockWidth,
+                                                  l_syncStrategy );
       tsunami_lab::t_idx const l_totalCells = static_cast<tsunami_lab::t_idx>( l_nx ) *
                                                static_cast<tsunami_lab::t_idx>( l_ny );
 
