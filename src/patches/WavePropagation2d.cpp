@@ -166,7 +166,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
         t_idx l_ceT = (l_cy + 1) * l_stride + l_cx;
 
         // Check both bathymetry and water height threshold
-        bool l_bottomDry = (m_b[l_ce] > 0) || (l_hOld[l_ce] < tsunami_lab::WET_DRY_THRESHOLD);
+        bool l_bottomDry = (m_b[l_ceB] > 0) || (l_hOld[l_ceB] < tsunami_lab::WET_DRY_THRESHOLD);
         bool l_topDry = (m_b[l_ceT] > 0) || (l_hOld[l_ceT] < tsunami_lab::WET_DRY_THRESHOLD);
 
         if( l_bottomDry && l_topDry ) {
