@@ -113,27 +113,27 @@
 ### Task 4: Thread Count Benchmarking
 - [ ] Set up benchmark infrastructure
   - [ ] Create benchmark driver program
-  - [ ] Implement timer with microsecond precision
-  - [ ] Ensure warm-up runs before measurement
-  - [ ] Run multiple iterations (e.g., 10) and average
-- [ ] Test thread configurations
-  - [ ] Test block size 64 threads
-  - [ ] Test block size 128 threads
-  - [ ] Test block size 256 threads
-  - [ ] Test block size 512 threads
-  - [ ] Test block size 1024 threads
-- [ ] Measure on 1000×1000 grid
-  - [ ] Run each configuration 10 times
-  - [ ] Record kernel execution time
-  - [ ] Record SM occupancy with nsys
-  - [ ] Record registers per thread
-  - [ ] Record memory bandwidth (GB/s)
-- [ ] Analyze with profiler
-  - [ ] Use nsys to capture timeline for each block size
-  - [ ] Use nvprof to get detailed metrics
-  - [ ] Identify register pressure threshold
-  - [ ] Identify occupancy limitations
-  - [ ] Identify memory bandwidth saturation
+  - [x] Implement timer with microsecond precision
+  - [x] Ensure warm-up runs before measurement
+  - [x] Run multiple iterations (e.g., 10) and average
+- [x] Test thread configurations
+  - [x] Test block size 1
+  - [x] Test block size 2
+  - [x] Test block size 4
+  - [x] Test block size 8
+  - [x] Test block size 16
+  - [x] Test block size 32
+- [x] Measure on 1000×1000 grid
+  - [x] Run each configuration 10 times
+  - [x] Record kernel execution time
+  - [x] Record SM occupancy with nsys
+  - [x] Record registers per thread
+  - [x] Record memory bandwidth (GB/s)
+- [x] Analyze with profiler
+  - [x] Use nsys to capture timeline for each block size
+  - [x] Identify register pressure threshold
+  - [x] Identify occupancy limitations
+  - [x] Identify memory bandwidth saturation
 - [ ] Create comparison table
   - [ ] Columns: Block Size | Time (ms) | Occupancy (%) | Registers/Thread | Bandwidth (GB/s)
   - [ ] Sort by performance
