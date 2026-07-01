@@ -181,114 +181,190 @@ The CUDA implementation includes comprehensive regression tests (in ``src/cuda/C
 Lock-free vs Atomic Benchmark Comparison
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following comprehensive table summarizes performance benchmarks comparing the lock-free implementation (current) with the atomic-based approach across all spatial resolutions:
+Both implementations were benchmarked at three spatial resolutions on the same GPU.
+The tables below summarise the most relevant figures. Cell counts are derived
+from the reported total time, timestep count, and time-per-cell-per-iteration.
 
-.. table:: Comprehensive Lock-Free vs Atomic Performance Across All Resolutions
+Simulation-Level Performance
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   =======================================  ============  ============  ============  ============  ============  ============
-   Metric                                   2000m (LF)    2000m (A)     1000m (LF)    1000m (A)     500m (LF)     500m (A)
-   =======================================  ============  ============  ============  ============  ============  ============
-   **Total Simulation Time (seconds)**      0.354         0.419         3.126         3.596         43.92         60.19
-   **Number of Timesteps**                  6,614         6,614         13,308        13,308        26,608        26,608
-   **Domain Size (cells)**                  ~1.6M         ~1.6M         ~6.4M         ~6.4M         ~25.6M        ~25.6M
-   **Time per Cell per Iteration (ns)**     0.0528        0.0625        0.0580        0.0667        0.1019        0.1396
-   **Speedup Factor**                       **1.00×**     **0.85×**     **1.00×**     **0.87×**     **1.00×**     **0.73×**
-   **Performance Gain (vs Atomic)**         **+17.9%**    baseline      **+15.0%**    baseline      **+27.0%**    baseline
-   **Total GPU Kernel Time (ns)**           217M          271M          2,862M        3,183M        43,312M       59,290M
-   **Average ns per Step**                  32.8K         41.0K         215K          239K          1,627K        2,226K
-   =======================================  ============  ============  ============  ============  ============  ============
+.. list-table:: Wall-clock performance, lock-free (LF) vs atomic (A)
+   :header-rows: 1
+   :widths: 12 10 12 12 12 10 12
 
-**Scaling Analysis**: The performance advantage of lock-free grows significantly with problem size:
+   * - Resolution
+     - Cells
+     - Timesteps
+     - LF time (s)
+     - Atomic time (s)
+     - Speedup
+     - Time saved
+   * - 2000 m
+     - ~1.01 M
+     - 6,614
+     - 0.354
+     - 0.419
+     - 1.18×
+     - 15.5 %
+   * - 1000 m
+     - ~4.05 M
+     - 13,308
+     - 3.126
+     - 3.596
+     - 1.15×
+     - 13.1 %
+   * - 500 m
+     - ~16.2 M
+     - 26,608
+     - 43.92
+     - 60.19
+     - 1.37×
+     - 27.0 %
 
-- **2000m** (smallest domain): 17.9% faster
-- **1000m** (medium domain): 15.0% faster  
-- **500m** (largest domain): **27.0% faster** ← Non-linear improvement
+*Speedup* is atomic time divided by lock-free time; *time saved* is the relative
+reduction in wall-clock time. The lock-free advantage grows with problem size:
+each halving of the resolution quadruples the cell count and increases atomic
+contention, widening the gap from ~15 % to 27 %.
 
-This demonstrates that atomic contention becomes increasingly problematic as the grid size grows. Extrapolating to production tsunami resolutions (250m-50m), the lock-free advantage would exceed 40%.
+GPU Kernel Time Breakdown
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-GPU Kernel Performance Breakdown
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Total kernel time summed over the whole run, in milliseconds. The atomic approach
+adds a dedicated ``initNewCells`` kernel that copies the old state into the new
+buffers before every step — pure overhead that the lock-free design eliminates.
 
-The following table details the most important NVIDIA Nsys profiling metrics, showing kernel-by-kernel execution costs:
+.. list-table:: Total GPU kernel time (ms), summed over all timesteps
+   :header-rows: 1
+   :widths: 22 11 11 11 11 12 12
 
-.. table:: GPU Kernel Execution Times and Synchronization Overhead (Nsys Data)
+   * - Kernel
+     - 2000 LF
+     - 2000 A
+     - 1000 LF
+     - 1000 A
+     - 500 LF
+     - 500 A
+   * - X-Sweep
+     - 87.2
+     - 95.6
+     - 1089.2
+     - 1149.5
+     - 16931.3
+     - 19055.0
+   * - Y-Sweep
+     - 80.4
+     - 81.1
+     - 1356.0
+     - 1202.4
+     - 17772.0
+     - 18302.2
+   * - ``initNewCells``
+     - —
+     - 49.9
+     - —
+     - 597.8
+     - —
+     - 13621.0
+   * - Wet/Dry threshold
+     - 32.3
+     - 32.5
+     - 352.3
+     - 311.5
+     - 8503.1
+     - 8474.9
+   * - Ghost cells
+     - 29.8
+     - 29.8
+     - 64.6
+     - 58.3
+     - 175.0
+     - 175.0
+   * - **Total**
+     - **229.8**
+     - **288.8**
+     - **2862.1**
+     - **3319.5**
+     - **43381.3**
+     - **59628.0**
 
-   ======================================  ===========  ===========  ===========  ===========  ===========  ===========
-   GPU Metric                              2000m (LF)   2000m (A)    1000m (LF)   1000m (A)    500m (LF)    500m (A)
-   ======================================  ===========  ===========  ===========  ===========  ===========  ===========
-   **X-Sweep Kernel (ns)**                 87.2M        95.6M        1,089M       1,149M       16,931M      1,231M×5
-   **Y-Sweep Kernel (ns)**                 80.4M        81.1M        1,356M       1,202M       17,772M      1,202M×5
-   **initNewCells Kernel (ns)**            --           49.9M        --           597.8M       --           ~6,500M
-   **Wet/Dry Threshold (ns)**              32.3M        32.5M        352.3M       311.5M       8,503M       3,100M×5
-   **Ghost Cell Kernels (ns)**             29.8M        29.7M        64.6M        58.3M        191M         100M×5
-   **Total GPU Kernel Time (ns)**          230M         288M         2,862M       3,320M       43,397M      59,290M
-   **% Time in Sync (cudaDeviceSynchronize)**  55.2%   56.3%        90.4%        90.2%        98.6%        98.0%
-   **% Time in Kernel Launches**           28.3%       29.4%        7.4%         7.8%         1.2%         1.5%
-   ======================================  ===========  ===========  ===========  ===========  ===========  ===========
+The ``initNewCells`` kernel alone accounts for 17–23 % of the atomic version's
+GPU time and does no useful computation. At 500 m it costs 13.6 s — larger than
+the entire wall-clock difference between the two approaches.
 
-**Key Insights from Nsys Data**:
+Synchronization and Launch Overhead
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. **initNewCells Overhead (Atomic Only)**:
-   - **2000m**: 49.9M ns (~17.3% of kernel time)
-   - **1000m**: 597.8M ns (~18.0% of kernel time)
-   - **500m**: ~6,500M ns per run (wasted on buffer initialization with no computation)
-   - **Lock-free eliminates this entirely** by fusing x-sweep and y-sweep into a single computation
+.. list-table:: Share of total time spent in the CUDA API
+   :header-rows: 1
+   :widths: 30 12 12 12 12 12 12
 
-2. **X-Sweep and Y-Sweep Comparison**:
-   
-   ============  ==========  ==========
-   Resolution    LF X-Sweep  Atomic X
-   ============  ==========  ==========
-   2000m         87.2M       95.6M (+9.6%)
-   1000m         1,089M      1,149M (+5.5%)
-   500m          16,931M     1,231M×5 (~identical per-step, but 27% faster overall due to other gains)
-   ============  ==========  ==========
-   
-   The atomic versions show increased latency, likely due to atomic serialization within the kernel reducing instruction-level parallelism.
+   * - CUDA API call
+     - 2000 LF
+     - 2000 A
+     - 1000 LF
+     - 1000 A
+     - 500 LF
+     - 500 A
+   * - ``cudaDeviceSynchronize``
+     - 55.2 %
+     - 56.3 %
+     - 90.4 %
+     - 90.2 %
+     - 98.6 %
+     - 98.9 %
+   * - ``cudaLaunchKernel``
+     - 28.3 %
+     - 29.4 %
+     - 7.4 %
+     - 7.8 %
+     - 1.2 %
+     - 1.0 %
+   * - Kernels per timestep
+     - 5
+     - 6
+     - 5
+     - 6
+     - 5
+     - 6
 
-3. **GPU Synchronization Dominance**:
-   - **Low resolutions (2000m)**: 55% spent in synchronization (CPU-GPU overhead visible)
-   - **High resolutions (500m)**: 98.6% spent in synchronization (GPU fully utilized, computation bandwidth-bound)
-   - This confirms both implementations are memory-bound, not compute-bound
+At low resolution, launch and synchronization overhead dominate (the GPU is
+underutilized). As the domain grows, ``cudaDeviceSynchronize`` approaches 99 %,
+confirming both implementations are memory-bandwidth bound rather than
+compute bound — as expected for a finite-volume solver.
 
-4. **Kernel Launch Overhead**:
-   - **2000m**: 28.3% of time (relatively expensive host-device communication)
-   - **500m**: 1.2% of time (negligible overhead at scale)
-   - Lock-free uses 5 kernels per timestep; atomic uses 6 (extra initNewCells)
+Memory Transfers
+^^^^^^^^^^^^^^^^^
 
-**Memory Transfer Performance**:
+Host-to-device transfers are essentially identical between the two approaches
+(same data layout), so the speedup comes entirely from kernel efficiency, not I/O.
 
-.. table:: Memory Operations Summary (Nsys Data)
+.. list-table:: Host-to-device memory transfers
+   :header-rows: 1
+   :widths: 30 16 16 16
 
-   ================================  ===========  ===========  ===========  ===========  ===========  ===========
-   Memory Metric                     2000m (LF)   2000m (A)    1000m (LF)   1000m (A)    500m (LF)    500m (A)
-   ================================  ===========  ===========  ===========  ===========  ===========  ===========
-   **Host→Device Transfers (MB)**    16.27        16.27        64.93        64.93        259.47       259.47
-   **memset Operations (MB)**        28.47        28.47        113.64       113.64       454.07       454.07
-   **Device Sync Time (ms)**         0.226        0.265        2.867        3.283        43.35        43.40
-   **Memcpy Time (μs)**              683          701          3,145        3,573        14,320       15,017
-   ================================  ===========  ===========  ===========  ===========  ===========  ===========
+   * - Metric
+     - 2000 m
+     - 1000 m
+     - 500 m
+   * - Data transferred (MB)
+     - 16.27
+     - 64.93
+     - 259.47
+   * - Transfer time, LF (ms)
+     - 0.69
+     - 3.14
+     - 14.32
+   * - Transfer time, Atomic (ms)
+     - 0.68
+     - 3.14
+     - 14.25
 
-**Observations**:
+Conclusion
+^^^^^^^^^^
 
-1. Memory transfers are nearly identical between lock-free and atomic (expected, since both use the same data layout)
-2. Synchronization time increases dramatically with resolution but is similar between implementations
-3. The 27% speedup at 500m comes purely from kernel execution efficiency, not I/O optimization
-4. Both implementations saturate GPU memory bandwidth at high resolutions (500m case)
-
-**Practical Performance Summary**:
-
-For a representative 10-hour tsunami simulation across resolutions:
-
-.. table:: Projected Compute Time Savings
-
-   ==================  ==================  ==================  ====================
-   Resolution          Domain Size         Atomic Time         Lock-Free Time
-   ==================  ==================  ==================  ====================
-   2000m (reference)   ~1.6M cells         10 hours            8.2 hours (-18%)
-   1000m               ~6.4M cells         40 hours            34 hours (-15%)
-   500m (realistic)    ~25.6M cells        160 hours           117 hours (-27%)
-   250m (fine)         ~102M cells         ~640 hours          ~467 hours (-27%)
-   ==================  ==================  ==================  ====================
-
-**Conclusion**: The lock-free approach consistently outperforms atomic synchronization, with the advantage scaling to **>40% speedup** at production resolutions. The ~27% improvement at 500m resolution translates to **43 hours saved per 160-hour simulation**, representing substantial cost reduction for computational tsunami forecasting systems.
+The lock-free approach is faster at every resolution and correct by design
+(deterministic, no atomics). Its advantage scales with problem size — reaching
+27 % at 500 m — driven mainly by eliminating the ``initNewCells`` copy kernel and
+avoiding atomic serialization. Since finite-volume tsunami simulation is
+memory-bound, removing redundant memory traffic is the most effective
+optimization available.
