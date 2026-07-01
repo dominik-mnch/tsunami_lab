@@ -25,6 +25,7 @@ This is the documentation for the Tsunami Lab project by Magdalena Schwarzkopf (
    chapters/draft_individual_phase
    chapters/plan_individual_phase
    chapters/plan_individual_phase_full
+   chapters/cuda
 
 You can find the source code documentation (generated with Doxygen and hosted with GitHub Pages) `here <https://dominik-mnch.github.io/tsunami_lab/doxygen/>`_.
 
