@@ -59,10 +59,10 @@ api_pct() {
 NEW_HEADER="h2d_ms,h2d_mb,h2d_gbps,sync_pct,launch_pct"
 
 {
-  read -r header
+  read -r header <&3
   echo "${header},${NEW_HEADER}"
 
-  while IFS= read -r line || [ -n "$line" ]; do
+  while IFS= read -r line <&3 || [ -n "$line" ]; do
     [ -z "$line" ] && continue
 
     N="${line%%,*}"                       # block_size is the first CSV field
@@ -83,7 +83,7 @@ NEW_HEADER="h2d_ms,h2d_mb,h2d_gbps,sync_pct,launch_pct"
 
     echo "${line},${MS},${MB},${GBPS},${SYNC},${LAUNCH}"
   done
-} < "$CSV" > "$OUT"
+} 3< "$CSV" > "$OUT"
 
 echo "=== augmented: $OUT ==="
 if command -v column >/dev/null 2>&1; then
