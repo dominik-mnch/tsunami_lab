@@ -111,8 +111,8 @@
 ## Week 2: Performance Benchmarking & Strategies
 
 ### Task 4: Thread Count Benchmarking
-- [ ] Set up benchmark infrastructure
-  - [ ] Create benchmark driver program
+- [x] Set up benchmark infrastructure
+  - [x] Create benchmark driver program
   - [x] Implement timer with microsecond precision
   - [x] Ensure warm-up runs before measurement
   - [x] Run multiple iterations (e.g., 10) and average
@@ -134,24 +134,24 @@
   - [x] Identify register pressure threshold
   - [x] Identify occupancy limitations
   - [x] Identify memory bandwidth saturation
-- [ ] Create comparison table
-  - [ ] Columns: Block Size | Time (ms) | Occupancy (%) | Registers/Thread | Bandwidth (GB/s)
-  - [ ] Sort by performance
-  - [ ] Highlight optimal configuration
-  - [ ] Document tradeoffs
-- [ ] Document findings
-  - [ ] Write analysis of results
-  - [ ] Explain when occupancy becomes limiting
-  - [ ] Explain when registers become limiting
-  - [ ] Document warp efficiency for each configuration
+- [x] Create comparison table
+  - [x] Columns: Block Size | Time (ms) | Occupancy (%) | Registers/Thread | Bandwidth (GB/s)
+  - [x] Sort by performance
+  - [x] Highlight optimal configuration
+  - [x] Document tradeoffs
+- [x] Document findings
+  - [x] Write analysis of results
+  - [x] Explain when occupancy becomes limiting
+  - [x] Explain when registers become limiting
+  - [x] Document warp efficiency for each configuration
 
 **Validation Checklist:**
-- [ ] All 5 block sizes tested successfully
-- [ ] Benchmark table complete with all metrics
-- [ ] Best-performing block size identified
-- [ ] Profiler output collected for analysis
-- [ ] Clear recommendation provided
-- [ ] Results reproducible
+- [x] All 5 block sizes tested successfully
+- [x] Benchmark table complete with all metrics
+- [x] Best-performing block size identified
+- [x] Profiler output collected for analysis
+- [x] Clear recommendation provided
+- [x] Results reproducible
 
 ---
 
