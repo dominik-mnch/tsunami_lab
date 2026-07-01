@@ -84,7 +84,7 @@ for N in $BLOCK_SIZES; do
       >/dev/null
 
   # 3) pull the per-kernel totals out of the nsys report as CSV.
-  KERN_CSV=$(nsys stats --report cuda_gpu_kern_sum --format csv "${REP}.nsys-rep" 2>/dev/null || true)
+  KERN_CSV=$(nsys stats --force-export=true --report cuda_gpu_kern_sum --format csv "${REP}.nsys-rep" 2>/dev/null || true)
 
   if [ -z "$KERN_CSV" ]; then
     echo "warning: could not read cuda_gpu_kern_sum for block size $N" >&2
