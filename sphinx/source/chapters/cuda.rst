@@ -61,32 +61,42 @@ An earlier version of the implementation used **atomic operations** (specificall
 
 **Atomic implementation structure**:
 
-1. **Initialization kernel** (``initNewCells``): A separate kernel copies the old state (h, hu, hv) to the new buffers, effectively resetting the new buffer to the previous timestep's values.
+The atomic approach is *edge-parallel*: it launches one thread per cell edge, closely mirroring the structure of the CPU reference. Each time step runs three kernels, all in the same CUDA stream:
 
-2. **X-sweep kernel**: For each x-direction edge, the kernel computes net updates using the Riemann solver and uses ``atomicAdd()`` to accumulate the updates into the new buffer:
-    
-    .. code-block:: cuda
-    
-        atomicAdd(&d_h_new[idx], netUpdateH);
-        atomicAdd(&d_hu_new[idx], netUpdateHu);
-    
-   This approach allows multiple threads to safely modify the same cell by serializing writes at the hardware level.
+1. **Initialization kernel** (``initNewCells``): copies the old state (h, hu, hv) into the new buffers.
 
-3. **Y-sweep kernel**: Similarly uses ``atomicAdd()`` to accumulate y-direction updates onto the already-modified new buffer.
+2. **X-sweep kernel**: one thread per vertical edge. It reads the old state, calls the Riemann solver, and accumulates the scaled net-updates into the new buffer for *both* adjacent cells using ``atomicAdd``:
 
-**Why atomic operations are problematic for this application**:
+   .. code-block:: cuda
 
-- **Inherent serialization**: Each ``atomicAdd()`` operation serializes updates to a single memory location. When multiple threads in the same warp attempt to update the same cell (which is common at grid points where four cells meet), only one thread executes the atomic operation while others stall. This serialization defeats much of the parallelism gained by using a GPU.
+       atomicAdd( &io_h[l_ce],   -i_scaling * l_nu[0][0] );  // left cell
+       atomicAdd( &io_hu[l_ce],  -i_scaling * l_nu[0][1] );
+       atomicAdd( &io_h[l_ceR],  -i_scaling * l_nu[1][0] );  // right cell
+       atomicAdd( &io_hu[l_ceR], -i_scaling * l_nu[1][1] );
 
-- **Memory bandwidth bottleneck**: Atomic operations are extremely expensive on modern GPUs. While a regular global memory write costs ~400-500 cycles (hidden by other warp activity), an ``atomicAdd()`` can cost 1000+ cycles. In a finite-volume solver where each cell receives multiple updates (left, right, bottom, top), the overhead multiplies.
+3. **Y-sweep kernel**: the same pattern for horizontal edges, accumulating onto the buffer already updated by the x-sweep.
 
-- **Race condition hazards**: The initialization-then-atomicAdd pattern creates potential inter-kernel data races that are **intermittent and nondeterministic**:
-    
-    - **Write-after-write (WAW) hazard**: If ``initNewCells`` completes but its writes haven't fully propagated to all cache levels when the x-sweep begins, threads may see partially-updated data. However, this doesn't happen deterministically every run.
-    - **Read-after-write (RAW) hazard**: The x-sweep reads from the old buffers and writes to the new buffer with atomics. If the GPU's memory system doesn't guarantee visibility between kernels, the y-sweep might read stale values from the x-sweep's updates.
-    - **Intermittent manifestation**: The race conditions manifest only probabilistically across multiple timesteps. A particular simulation run may complete successfully (same binary produces correct output), but other runs of the exact same code may produce different, incorrect results. This unpredictability makes the bug extremely difficult to track down—individual test runs often pass, but running the same test hundreds of times reveals failures. Testing under compute-sanitizer (which serializes kernel execution by inserting explicit synchronization) always passes, masking the underlying race condition. Only after running many timesteps does the race become apparent and reproducible.
+**Why the initialization kernel is required**:
 
-- **Floating-point atomics are not universally supported**: ``atomicAdd()`` on 32-bit floats (``t_real``) is supported on modern architectures, but performance varies. 64-bit double atomics are not natively supported on many GPUs, requiring software fallbacks or workarounds.
+The edge-parallel design is exactly what forces ``initNewCells`` to exist. Every cell lies between two edges in each sweep, so several different threads contribute to the same cell. A plain write (``h_new[i] = h_old[i] + delta``) would let those threads overwrite one another (a lost update), so the contributions must instead be *accumulated* with ``atomicAdd`` — a read-modify-write. But accumulation only adds the deltas; it needs the base value ``h_old[i]`` to already be present in the destination. Since the new buffer is one half of a double buffer, before initialization it still holds stale data from two steps ago, not ``h_old``. ``initNewCells`` seeds the destination with the old state so the subsequent atomic accumulations land on the correct base:
+
+.. math::
+
+   Q_{\text{new}}[i] = \underbrace{Q_{\text{old}}[i]}_{\text{initNewCells}} \; - \; \frac{\Delta t}{\Delta x} \sum_{\text{edges around } i} \text{netUpdate}
+
+The lock-free design removes this kernel because it is *cell-parallel*: one thread owns one cell, gathers the contributions from all surrounding edges itself, and writes the complete result — base term included — exactly once. With no accumulation into memory, there is nothing to pre-seed.
+
+**Why the atomic approach is slower**:
+
+- **Redundant initialization pass**: ``initNewCells`` reads and writes the entire grid every step while doing no physics. Profiling shows it consumes 17–23 % of the atomic version's GPU kernel time (13.6 s at 500 m resolution), which by itself is larger than the total wall-clock gap between the two approaches.
+
+- **Atomic contention**: adjacent edges share a cell, so multiple threads issue ``atomicAdd`` to the same address. The hardware serializes these conflicting updates, and the extra read-modify-write traffic to global memory lowers effective bandwidth. This is why the atomic x- and y-sweep kernels are measurably slower than their lock-free counterparts even though they perform the same arithmetic.
+
+- **Non-reproducible results**: ``atomicAdd`` accumulates in whatever order the scheduler happens to run the threads, and floating-point addition is *not* associative, so ``(a + b) + c`` need not equal ``a + (b + c)`` at the bit level. The same binary can therefore produce slightly different results from one run to the next. These ULP-scale differences are harmless in a single step but can accumulate over thousands of steps — particularly near shocks — making the output non-reproducible. The lock-free kernel accumulates each cell in a fixed order inside a single thread, so its results are bit-for-bit deterministic.
+
+**A note on correctness (what is *not* a problem)**:
+
+The atomic kernels are **not** affected by classic inter-kernel race conditions. All kernels are launched into the same (default) CUDA stream, and CUDA guarantees that each kernel completes — with its memory writes visible — before the next one begins. So ``initNewCells`` always finishes before the x-sweep reads the buffers, and the x-sweep always finishes before the y-sweep. Within a single sweep, concurrent ``atomicAdd`` calls to a shared cell are also safe: atomics guarantee no lost updates. The only genuine correctness concern is the floating-point non-determinism described above — not memory-visibility hazards.
 
 **Comparison with lock-free approach**:
 
@@ -94,17 +104,17 @@ The lock-free, operator-split design avoids these pitfalls entirely:
 
 - **No serialization**: Each thread is the sole writer of its assigned cell, so there are no conflicts, no atomic operations, and no thread stalls waiting for other threads.
 
-- **Deterministic execution**: The sequential kernel launches (x-sweep, then y-sweep in a CUDA stream) provide implicit synchronization and eliminate inter-kernel race conditions. All x-sweep threads complete before any y-sweep thread begins.
+- **Deterministic execution**: Each cell's net-updates are summed in a fixed order inside one thread, so the result is bit-for-bit reproducible across runs. This is a genuine advantage over the atomic version, whose ``atomicAdd`` accumulation order (and therefore floating-point result) varies from run to run.
 
-- **Higher throughput**: Without atomic overhead, memory bandwidth is used efficiently. Reads and writes to the same cell from different kernels are ordered by stream semantics, avoiding the memory consistency issues that plagued the atomic version.
+- **Higher throughput**: Without the redundant ``initNewCells`` pass and without atomic read-modify-write traffic, global-memory bandwidth is used more efficiently — the dominant cost in this memory-bound solver.
 
 - **Simpler debugging**: Deterministic output makes correctness easier to verify. If GPU and CPU results differ, the difference is reproducible and localized.
 
-**Trade-off: Extra passes over the domain**:
+**Trade-off: redundant edge computation**:
 
-The lock-free approach requires that the entire x-sweep completes before the y-sweep begins, whereas the atomic version could theoretically overlap sweeps (in practice, it couldn't due to atomics' latency). The lock-free approach uses slightly more device memory (because all intermediate cell updates must be held in the new buffers) and makes two full passes over the grid instead of one. However, the elimination of atomic overhead and the improvement in cache locality far outweigh these costs.
+The lock-free (cell-parallel) design is not free of costs. Because each thread owns one cell and reads all of its surrounding edges, every interior edge's Riemann problem is solved **twice** — once by the cell on each side — whereas the edge-parallel atomic kernel solves it only once. The lock-free version therefore does roughly twice the flux arithmetic. In this solver that trade is clearly worth it: the redundant arithmetic is cheap compared with the memory traffic it saves (no ``initNewCells`` copy, no atomic read-modify-write), and the problem is memory-bound, so eliminating memory operations matters far more than reducing compute. Both approaches use the same double-buffered memory footprint.
 
-**Summary**: The atomic-based approach was abandoned because it introduced nondeterminism, suffered from massive atomic serialization overhead, and created memory ordering bugs. The lock-free, operator-split approach is both faster and correct by design.
+**Summary**: The atomic-based approach was abandoned because it required a redundant per-step initialization kernel, incurred atomic-contention overhead, and produced non-reproducible (run-to-run varying) results due to non-associative floating-point accumulation. It was *not*, however, affected by inter-kernel memory races — same-stream launches are safely ordered. The lock-free, operator-split approach is faster and deterministic by design.
 
 Solver Integration with Header-Only Design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -179,24 +189,37 @@ The CUDA implementation includes comprehensive regression tests (in ``src/cuda/C
 
 
 Lock-free vs Atomic Benchmark Comparison
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------
 
 Both implementations were benchmarked at three spatial resolutions on the same GPU.
 The tables below summarise the most relevant figures. Cell counts are derived
 from the reported total time, timestep count, and time-per-cell-per-iteration.
 
+.. note::
+
+   These runs use the **default block size** of 16×16, i.e. **256 threads per
+   block**. The number of blocks scales with the domain: the grid is launched with
+   ``ceil((nCellsX + 2) / 16) × ceil((nCellsY + 2) / 16)`` blocks, so the total
+   thread count is roughly one thread per cell (plus a partial block of padding
+   threads on the trailing edges, which return early). The block size was not
+   tuned for these measurements — a different block width could shift the absolute
+   timings, but the lock-free vs atomic *comparison* holds since both variants use
+   the identical launch configuration.
+
 Simulation-Level Performance
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table:: Wall-clock performance, lock-free (LF) vs atomic (A)
    :header-rows: 1
-   :widths: 12 10 12 12 12 10 12
+   :widths: 10 8 9 10 10 12 12 8 10
 
    * - Resolution
      - Cells
      - Timesteps
      - LF time (s)
      - Atomic time (s)
+     - LF ns/cell/iter
+     - A ns/cell/iter
      - Speedup
      - Time saved
    * - 2000 m
@@ -204,6 +227,8 @@ Simulation-Level Performance
      - 6,614
      - 0.354
      - 0.419
+     - 0.0528
+     - 0.0625
      - 1.18×
      - 15.5 %
    * - 1000 m
@@ -211,6 +236,8 @@ Simulation-Level Performance
      - 13,308
      - 3.126
      - 3.596
+     - 0.0580
+     - 0.0667
      - 1.15×
      - 13.1 %
    * - 500 m
@@ -218,16 +245,19 @@ Simulation-Level Performance
      - 26,608
      - 43.92
      - 60.19
+     - 0.1019
+     - 0.1396
      - 1.37×
      - 27.0 %
 
 *Speedup* is atomic time divided by lock-free time; *time saved* is the relative
-reduction in wall-clock time. The lock-free advantage grows with problem size:
+reduction in wall-clock time; *ns/cell/iter* is the time per cell per iteration.
+The lock-free advantage grows with problem size:
 each halving of the resolution quadruples the cell count and increases atomic
 contention, widening the gap from ~15 % to 27 %.
 
 GPU Kernel Time Breakdown
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Total kernel time summed over the whole run, in milliseconds. The atomic approach
 adds a dedicated ``initNewCells`` kernel that copies the old state into the new
@@ -292,7 +322,7 @@ GPU time and does no useful computation. At 500 m it costs 13.6 s — larger tha
 the entire wall-clock difference between the two approaches.
 
 Synchronization and Launch Overhead
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table:: Share of total time spent in the CUDA API
    :header-rows: 1
@@ -319,6 +349,13 @@ Synchronization and Launch Overhead
      - 7.8 %
      - 1.2 %
      - 1.0 %
+   * - Other (one-time setup/teardown)
+     - 16.5 %
+     - 14.3 %
+     - 2.2 %
+     - 2.0 %
+     - 0.2 %
+     - 0.1 %
    * - Kernels per timestep
      - 5
      - 6
@@ -330,10 +367,15 @@ Synchronization and Launch Overhead
 At low resolution, launch and synchronization overhead dominate (the GPU is
 underutilized). As the domain grows, ``cudaDeviceSynchronize`` approaches 99 %,
 confirming both implementations are memory-bandwidth bound rather than
-compute bound — as expected for a finite-volume solver.
+compute bound — as expected for a finite-volume solver. The *other* row is
+almost entirely the one-time ``cudaDeviceReset`` at shutdown (plus ``cudaMalloc``
+/ ``cudaFree`` / ``cudaMemcpy``); it is a fixed cost that does not scale with the
+simulation, which is why it looks large at 2000 m (a 0.35 s run) but vanishes to
+~0.1 % at 500 m. The first three rows sum to 100 %; the last row is a count, not
+a percentage.
 
 Memory Transfers
-^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 Host-to-device transfers are essentially identical between the two approaches
 (same data layout), so the speedup comes entirely from kernel efficiency, not I/O.
@@ -360,7 +402,7 @@ Host-to-device transfers are essentially identical between the two approaches
      - 14.25
 
 Conclusion
-^^^^^^^^^^
+~~~~~~~~~~
 
 The lock-free approach is faster at every resolution and correct by design
 (deterministic, no atomics). Its advantage scales with problem size — reaching
