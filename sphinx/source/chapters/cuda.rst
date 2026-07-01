@@ -211,6 +211,74 @@ avoids symbol clashes (such as a duplicate ``freeGPUMemory()``) that would arise
 CPU and GPU code shared one translation unit.
 
 
+The Benchmark Harness
+---------------------
+
+Every timing in the sections that follow comes from a single driver,
+``src/benchmark_cuda.cpp``, which runs the GPU solver on a realistic scenario and
+reports normalised throughput. This section describes what it measures and how, so
+the later tables can be read with confidence.
+
+Scenario and grid
+~~~~~~~~~~~~~~~~~~
+
+The benchmark runs the Tohoku 2011 ``TsunamiEvent2d`` setup on a fixed physical
+domain of :math:`2700\,\text{km} \times 1500\,\text{km}`
+(:math:`x \in [-200, 2500]\,\text{km}`, :math:`y \in [-750, 750]\,\text{km}`). The
+``--resolution R`` flag sets the cell size :math:`R` in metres, from which the grid
+is derived as :math:`n_x = 2\,700\,000 / R` and
+:math:`n_y = 1\,500\,000 / R`. So :math:`R = 1000\,\text{m}` gives
+:math:`2700 \times 1500 \approx 4.05\,\text{M}` cells,
+:math:`R = 500\,\text{m}` quadruples that to :math:`\approx 16.2\,\text{M}`, and so
+on. The initial state is first staged on a CPU solver — which also fills the ghost
+cells correctly — and uploaded to the device once with ``copyToGpu``; the staging
+memory is then released. The time-step size follows the CFL condition,
+:math:`\Delta t = 0.25 \cdot \min(\Delta x, \Delta y) / c` with wave speed
+:math:`c = \sqrt{g \cdot h_\text{max}}`, and the run advances to a fixed simulated
+end time (default three hours), which fixes the number of steps for a given
+resolution and makes runs reproducible.
+
+What is timed
+~~~~~~~~~~~~~
+
+Only the time-stepping loop is measured. Each step — set ghost cells,
+``computeStep`` (or ``computeStepAtomic``), swap buffers — is bracketed with
+``std::chrono::steady_clock`` and the per-step durations are accumulated. Setup,
+the host-to-device upload, and any output are deliberately excluded, so the figure
+reflects solver throughput rather than one-off costs. The host-to-device transfer
+is instead measured separately by the profiler and reported in the
+*Memory Transfers* table.
+
+The headline number is the time per cell per iteration,
+
+.. math::
+
+   t_\text{cell} = \frac{t_\text{stepping}}{n_x \cdot n_y \cdot n_\text{steps}}
+
+reported in nanoseconds. Dividing out the grid size and the step count makes runs
+at different resolutions directly comparable and cancels the effect of the
+CFL-driven step count. The whole benchmark is repeated a configurable number of
+times (ten in our runs); the per-run and averaged values are both printed, and
+averaging over several runs damps cold-start effects such as the first kernel
+launch.
+
+Configuration and data sources
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same driver produces every configuration in this chapter through command-line
+flags: ``--block-size N`` sets the block width (used for the thread-count sweep),
+``--resolution R`` sets the grid, and ``--sync-strategy lock-free|atomic`` selects
+between ``computeStep`` and ``computeStepAtomic``. A ``--verify`` mode additionally
+runs the CPU solver on the same inputs and reports the maximum absolute difference
+and the number of mismatching cells — how GPU correctness is confirmed on the
+full-size problem, in addition to the regression tests.
+
+Two complementary measurements feed the tables. The wall-clock time per cell per
+iteration comes from the driver's own ``chrono`` timer. The per-kernel millisecond
+breakdown and the CUDA-API percentages come from wrapping the same run in NVIDIA
+Nsight Systems (``nsys``) and reading its ``cuda_gpu_kern_sum`` and
+``cuda_api_sum`` reports.
+
 Thread-Count (Block-Size) Benchmarking
 --------------------------------------
 
