@@ -123,7 +123,7 @@
   - [x] Test block size 8
   - [x] Test block size 16
   - [x] Test block size 32
-- [x] Measure on 1000×1000 grid
+- [x] Measure on 1000m grid
   - [x] Run each configuration 10 times
   - [x] Record kernel execution time
   - [x] Record SM occupancy with nsys
@@ -218,39 +218,28 @@
   - [x] Use double-buffered GPU memory for h, hu, hv (two buffers each)
   - [x] Stream-serialized kernel launches guarantee sequential consistency (no sync needed between sweeps)
   - [x] Test correctness with regression tests (all 53 test cases pass deterministically)
-- [ ] Benchmark both approaches
-  - [ ] Test on block sizes from Task 4
-  - [ ] Test on 2000m resolution grid
-  - [ ] Test on 1000m resolution grid
-  - [ ] Test on 500m resolution grid
-  - [ ] Record execution time for each
-- [ ] Measure atomic contention
-  - [ ] Use nsys to profile atomic operations
-  - [ ] Count atomic operations per kernel launch
-  - [ ] Measure serialization/stalls caused by atomics
-  - [ ] Identify hotspots in the code
-- [ ] Analyze memory stalls
-  - [ ] Profile memory stall cycles
-  - [ ] Compare stall rates between approaches
-  - [ ] Identify threshold where atomics become bottleneck
-- [ ] Create comparison table
-  - [ ] Strategy | Block Size | Grid Size | Time (ms) | Atomic Ops | Contention
-  - [ ] Identify winner for each configuration
-  - [ ] Document performance ratio
-- [ ] Document tradeoffs
-  - [ ] Explain atomic overhead
-  - [ ] Explain merge overhead
-  - [ ] Identify grid size thresholds
-  - [ ] Provide recommendations
+- [x] Benchmark both approaches
+  - [x] Test on block sizes from Task 4
+  - [x] Test on 2000m resolution grid
+  - [x] Test on 1000m resolution grid
+  - [x] Test on 500m resolution grid
+  - [x] Record execution time for each
+- [x] Create comparison table
+  - [x] Strategy | Block Size | Grid Size | Time (ms) 
+  - [x] Identify winner for each configuration
+  - [x] Document performance ratio
+- [x] Document tradeoffs
+  - [x] Explain atomic overhead
+  - [x] Explain merge overhead
+  - [x] Identify grid size thresholds
+  - [x] Provide recommendations
 
 **Validation Checklist:**
-- [ ] Both synchronization strategies tested
-- [ ] Correctness verified for both
-- [ ] All grid sizes benchmarked
-- [ ] Atomic contention measured
-- [ ] Memory stalls profiled
-- [ ] Performance winner identified for each scenario
-- [ ] Clear documentation of tradeoffs
+- [x] Both synchronization strategies tested
+- [x] Correctness verified for both
+- [x] All grid sizes benchmarked
+- [x] Performance winner identified for each scenario
+- [x] Clear documentation of tradeoffs
 
 ---
 

@@ -6,11 +6,6 @@
 # nsys, and extracts the relevant kernel timings into a single CSV that can be
 # pasted straight into the Task 4 comparison table.
 #
-# Run it from the repository root, inside the nix-shell (which provides nsys and
-# the CUDA toolkit), e.g.:
-#
-#   nix-shell --run 'scripts/bench_blocksizes.sh'
-#
 # Configuration can be overridden via environment variables:
 #
 #   BLOCK_SIZES   block widths to test           (default "1 2 4 8 16 32")
