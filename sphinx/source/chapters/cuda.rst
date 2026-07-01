@@ -1,5 +1,5 @@
-Tsunami Simulations
-===================
+GPU Parallelization with CUDA
+=============================
 
 **Authors:** Magdalena Schwarzkopf, Dominik Münch
 
