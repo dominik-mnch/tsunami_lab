@@ -207,11 +207,11 @@
 ---
 
 ### Task 6: Atomic vs Non-Atomic Synchronization
-- [ ] Implement atomic-based version
-  - [ ] Create kernel using `atomicAdd()` for edge updates
-  - [ ] Handle each neighbor cell update with atomic
-  - [ ] Test correctness with regression tests
-  - [ ] Verify all values update correctly
+- [x] Implement atomic-based version
+  - [x] Create kernel using `atomicAdd()` for edge updates
+  - [x] Handle each neighbor cell update with atomic
+  - [x] Test correctness with regression tests
+  - [x] Verify all values update correctly
 - [x] Implement alternative (lock-free operator-split)
   - [x] Create x-sweep kernel: one thread per cell, reads OLD buffers, writes to NEW buffer
   - [x] Create y-sweep kernel: one thread per cell, reads OLD h/hv, accumulates y-updates onto x-swept h
