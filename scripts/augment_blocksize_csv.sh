@@ -39,19 +39,22 @@ command -v nsys >/dev/null 2>&1 || {
 # Sum of host-to-device copy time (ns).
 h2d_ns() {
   nsys stats --report cuda_gpu_mem_time_sum --format csv "$1" 2>/dev/null \
-    | awk -F',' '/Host-to-Device/ { gsub(/"/, "", $2); s += $2 } END { printf "%.0f", s + 0 }'
+    | awk -F',' '/Host-to-Device/ { gsub(/"/, "", $2); s += $2 } END { printf "%.0f", s + 0 }' \
+    || true
 }
 
 # Sum of host-to-device volume (MB).
 h2d_mb() {
   nsys stats --report cuda_gpu_mem_size_sum --format csv "$1" 2>/dev/null \
-    | awk -F',' '/Host-to-Device/ { gsub(/"/, "", $1); s += $1 } END { printf "%.3f", s + 0 }'
+    | awk -F',' '/Host-to-Device/ { gsub(/"/, "", $1); s += $1 } END { printf "%.3f", s + 0 }' \
+    || true
 }
 
 # Time (%) column for the API call whose name matches the given pattern.
 api_pct() {
   nsys stats --report cuda_api_sum --format csv "$1" 2>/dev/null \
-    | awk -F',' -v pat="$2" '$0 ~ pat { gsub(/"/, "", $1); v = $1 } END { printf "%.1f", v + 0 }'
+    | awk -F',' -v pat="$2" '$0 ~ pat { gsub(/"/, "", $1); v = $1 } END { printf "%.1f", v + 0 }' \
+    || true
 }
 
 # --- join the extra columns onto every row of the existing CSV --------------
