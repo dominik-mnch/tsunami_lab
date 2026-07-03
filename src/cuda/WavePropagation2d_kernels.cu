@@ -8,6 +8,7 @@
 #include "../constants.h"
 #include "../solvers/Roe.h"
 #include "../solvers/F_wave.h"
+#include "CudaLayout.h"
 
 // CUDA annotations for kernel functions
 #ifdef __CUDACC__
@@ -206,8 +207,8 @@ namespace tsunami_lab {
 
         if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
 
-        t_idx l_ce = l_cy * i_stride + l_cx;
-
+        t_idx l_ce = ROW_MAJOR(l_cy, l_cx, i_stride);
+   
         // Ghost cells: copy through unchanged.
         if( l_cx < 1 || l_cx > i_nCellsX || l_cy < 1 || l_cy > i_nCellsY ) {
           o_h[l_ce]  = i_h[l_ce];
@@ -271,7 +272,7 @@ namespace tsunami_lab {
 
         if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
 
-        t_idx l_ce = l_cy * i_stride + l_cx;
+        t_idx l_ce = ROW_MAJOR(l_cy, l_cx, i_stride);
 
         // Ghost cells: copy hv through (h was already handled by x-sweep).
         if( l_cx < 1 || l_cx > i_nCellsX || l_cy < 1 || l_cy > i_nCellsY ) {
@@ -333,7 +334,7 @@ namespace tsunami_lab {
 
         if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
 
-        t_idx l_ce = l_cy * i_stride + l_cx;
+        t_idx l_ce = ROW_MAJOR(l_cy, l_cx, i_stride);
         o_h[l_ce]  = i_h[l_ce];
         o_hu[l_ce] = i_hu[l_ce];
         o_hv[l_ce] = i_hv[l_ce];
@@ -375,7 +376,7 @@ namespace tsunami_lab {
 
         if( l_cx > i_nCellsX || l_cy < 1 || l_cy > i_nCellsY ) return;
 
-        t_idx l_ce = l_cy * i_stride + l_cx;    // left cell
+        t_idx l_ce = ROW_MAJOR(l_cy, l_cx, i_stride);   // left cell
         t_idx l_ceR = l_ce + 1;                   // right cell
 
         bool l_leftDry = (i_b[l_ce] > 0);
@@ -470,8 +471,8 @@ namespace tsunami_lab {
 
         if( l_cx < 1 || l_cx > i_nCellsX || l_cy > i_nCellsY ) return;
 
-        t_idx l_ceB = l_cy * i_stride + l_cx;       // bottom cell
-        t_idx l_ceT = (l_cy + 1) * i_stride + l_cx; // top cell
+        t_idx l_ceB = ROW_MAJOR(l_cy, l_cx, i_stride);      // bottom cell
+        t_idx l_ceT = ROW_MAJOR(l_cy + 1, l_cx, i_stride); // top cell
 
         bool l_bottomDry = (i_b[l_ceB] > 0);
         bool l_topDry = (i_b[l_ceT] > 0);
@@ -556,7 +557,7 @@ namespace tsunami_lab {
 
         if( l_cx >= i_nCellsX + 2 || l_cy >= i_nCellsY + 2 ) return;
 
-        t_idx l_idx = l_cy * i_stride + l_cx;
+        t_idx l_idx = ROW_MAJOR( l_cy, l_cx, i_stride );
 
         // Clear cells with NaN values to prevent propagation
         if( io_h[l_idx] != io_h[l_idx] ||  // NaN check for h

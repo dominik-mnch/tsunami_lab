@@ -382,7 +382,7 @@ namespace {
 
   void printUsage() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N] [--resolution R] [--sync-strategy STRAT]" << std::endl;
+    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N] [--resolution R] [--nx N] [--ny N] [--sync-strategy STRAT]" << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "RUNS:              number of repeated benchmark runs" << std::endl;
     std::cerr << "END_TIME:          optional simulation end time in seconds, default 10800" << std::endl;
@@ -394,6 +394,8 @@ namespace {
     std::cerr << "--resolution R:    cell size in metres (default 1250 m -> 2160x1200 cells)" << std::endl;
     std::cerr << "                   nx = round(2700000 / R),  ny = round(1500000 / R)" << std::endl;
     std::cerr << "                   e.g. 250 -> 10800x6000,  500 -> 5400x3000,  1000 -> 2700x1500" << std::endl;
+    std::cerr << "--nx N:            explicit number of cells in x-direction (overrides resolution-derived nx)" << std::endl;
+    std::cerr << "--ny N:            explicit number of cells in y-direction (overrides resolution-derived ny)" << std::endl;
     std::cerr << "--sync-strategy ST: synchronization strategy: 'lock-free' (default) or 'atomic'" << std::endl;
   }
 }
@@ -411,6 +413,8 @@ int main( int i_argc,
   bool   l_verify       = false;
   int    l_blockWidth   = 16;
   double l_resolution   = 0.0;   // 0 means "use default nx/ny"
+  unsigned int l_nxOverride = 0;
+  unsigned int l_nyOverride = 0;
   std::string l_syncStrategy = "lock-free";  // "lock-free" or "atomic"
   std::vector<char*> l_args;
   l_args.reserve( i_argc );
@@ -421,6 +425,10 @@ int main( int i_argc,
       l_blockWidth = std::stoi( i_argv[++l_i] );
     } else if( std::string( i_argv[l_i] ) == "--resolution" && l_i + 1 < i_argc ) {
       l_resolution = std::stod( i_argv[++l_i] );
+    } else if( std::string( i_argv[l_i] ) == "--nx" && l_i + 1 < i_argc ) {
+      l_nxOverride = parsePositiveInt( i_argv[++l_i], "--nx" );
+    } else if( std::string( i_argv[l_i] ) == "--ny" && l_i + 1 < i_argc ) {
+      l_nyOverride = parsePositiveInt( i_argv[++l_i], "--ny" );
     } else if( std::string( i_argv[l_i] ) == "--sync-strategy" && l_i + 1 < i_argc ) {
       l_syncStrategy = i_argv[++l_i];
     } else {
@@ -446,7 +454,24 @@ int main( int i_argc,
     tsunami_lab::t_idx l_nx = 2160;
     tsunami_lab::t_idx l_ny = 1200;
 
-    if( l_resolution > 0.0 ) {
+    if( l_nxOverride > 0 || l_nyOverride > 0 ) {
+      if( l_nxOverride > 0 ) {
+        l_nx = static_cast<tsunami_lab::t_idx>( l_nxOverride );
+      }
+      if( l_nyOverride > 0 ) {
+        l_ny = static_cast<tsunami_lab::t_idx>( l_nyOverride );
+      }
+      if( l_nxOverride > 0 && l_nyOverride == 0 ) {
+        l_ny = static_cast<tsunami_lab::t_idx>( std::round(
+          static_cast<double>( l_nx ) * l_domainSizeY / l_domainSizeX ) );
+      }
+      if( l_nyOverride > 0 && l_nxOverride == 0 ) {
+        l_nx = static_cast<tsunami_lab::t_idx>( std::round(
+          static_cast<double>( l_ny ) * l_domainSizeX / l_domainSizeY ) );
+      }
+      if( l_nx < 1 ) l_nx = 1;
+      if( l_ny < 1 ) l_ny = 1;
+    } else if( l_resolution > 0.0 ) {
       if( l_resolution > l_domainSizeX || l_resolution > l_domainSizeY ) {
         throw std::runtime_error( "--resolution R is larger than the domain" );
       }

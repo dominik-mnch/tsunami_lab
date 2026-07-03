@@ -12,6 +12,7 @@
 #include "../patches/WavePropagation2d.h"
 #include "../setups/CircularDamBreak2d/CircularDamBreak2d.h"
 #include <iostream>
+#include "CudaLayout.h"
 
 /**
  * Helper: allocate, fill, and run regression check for a given grid size.
@@ -301,4 +302,19 @@ TEST_CASE( "Atomic multi-timestep: 25 steps on 1000x1000 with Roe", "[AtomicMult
     
     REQUIRE( l_match );
     std::cout << "Max accumulated error (atomic, 25 steps, 1000x1000, Roe): " << l_maxError << std::endl;
+}
+
+// ============================================================================
+// ROW-MAJOR INDEXING MACRO TEST
+// ============================================================================
+
+TEST_CASE( "Row-major indexing macro", "[RowMajorIndexing]" ) {
+    tsunami_lab::t_idx stride = 10;
+    tsunami_lab::t_idx row = 3;
+    tsunami_lab::t_idx col = 5;
+
+    tsunami_lab::t_idx expectedIndex = row * stride + col;
+    tsunami_lab::t_idx macroIndex = ROW_MAJOR(row, col, stride);
+
+    REQUIRE( expectedIndex == macroIndex );
 }
