@@ -170,7 +170,7 @@
   - [x] Create memory allocation for tiled format
   - [x] Adjust indexing for tile calculations
   - [x] Create kernel that works with tiled layout
-  - [ ] Verify correctness with regression tests
+  - [x] Verify correctness with regression tests
 - [ ] Benchmark each layout
   - [x] Test on 500×500 grid
   - [x] Test on 1000×1000 grid
