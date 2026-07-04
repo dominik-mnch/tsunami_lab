@@ -1,5 +1,4 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
  *
  * @section DESCRIPTION
  * CUDA kernels for two-dimensional wave propagation.
@@ -116,12 +115,13 @@ namespace tsunami_lab {
        * @param i_stride row stride in elements (nCellsX + 2).
        **/
       TSUNAMI_CUDA_GLOBAL
-      void setGhostOutflowLeftRightKernel( t_real *io_h,
-                                           t_real *io_hu,
-                                           t_real *io_hv,
-                                           t_idx i_nCellsX,
-                                           t_idx i_nCellsY,
-                                           t_idx i_stride ) {
+      void setGhostOutflowLeftRightKernelRowMajor( t_real *io_h,
+                                                    t_real *io_hu,
+                                                    t_real *io_hv,
+                                                    t_real *io_b,
+                                                    t_idx i_nCellsX,
+                                                    t_idx i_nCellsY,
+                                                    t_idx i_stride ) {
 
         t_idx l_idx = blockIdx.x * blockDim.x + threadIdx.x;
         if( l_idx >= i_nCellsY + 2 ) {
@@ -134,11 +134,13 @@ namespace tsunami_lab {
         io_h[l_row]  = io_h[l_row + 1];
         io_hu[l_row] = io_hu[l_row + 1];
         io_hv[l_row] = io_hv[l_row + 1];
+        io_b[l_row] = io_b[l_row + 1];
 
         // right ghost <- last interior column
         io_h[l_row + i_nCellsX + 1]  = io_h[l_row + i_nCellsX];
         io_hu[l_row + i_nCellsX + 1] = io_hu[l_row + i_nCellsX];
         io_hv[l_row + i_nCellsX + 1] = io_hv[l_row + i_nCellsX];
+        io_b[l_row + i_nCellsX + 1] = io_b[l_row + i_nCellsX];
       }
 
       /**
@@ -156,12 +158,13 @@ namespace tsunami_lab {
        * @param i_stride row stride in elements (nCellsX + 2).
        **/
       TSUNAMI_CUDA_GLOBAL
-      void setGhostOutflowBottomTopKernel( t_real *io_h,
-                                           t_real *io_hu,
-                                           t_real *io_hv,
-                                           t_idx i_nCellsX,
-                                           t_idx i_nCellsY,
-                                           t_idx i_stride ) {
+      void setGhostOutflowBottomTopKernelRowMajor( t_real *io_h,
+                                                    t_real *io_hu,
+                                                    t_real *io_hv,
+                                                    t_real *io_b,
+                                                    t_idx i_nCellsX,
+                                                    t_idx i_nCellsY,
+                                                    t_idx i_stride ) {
 
         t_idx l_idx = blockIdx.x * blockDim.x + threadIdx.x;
         if( l_idx >= i_nCellsX + 2 ) {
@@ -172,6 +175,7 @@ namespace tsunami_lab {
         io_h[l_idx]  = io_h[i_stride + l_idx];
         io_hu[l_idx] = io_hu[i_stride + l_idx];
         io_hv[l_idx] = io_hv[i_stride + l_idx];
+        io_b[l_idx] = io_b[i_stride + l_idx];
 
         // top ghost <- last interior row
         t_idx l_top      = (i_nCellsY + 1) * i_stride + l_idx;
@@ -179,6 +183,7 @@ namespace tsunami_lab {
         io_h[l_top]  = io_h[l_topInner];
         io_hu[l_top] = io_hu[l_topInner];
         io_hv[l_top] = io_hv[l_topInner];
+        io_b[l_top] = io_b[l_topInner];
       }
 
       /**
@@ -190,18 +195,18 @@ namespace tsunami_lab {
        * Mirrors the x-sweep pass of the CPU operator-split reference.
        **/
       TSUNAMI_CUDA_GLOBAL
-      void computeXSweepKernel( const t_real *i_h,
-                                 const t_real *i_hu,
-                                 const t_real *i_hv,
-                                 const t_real *i_b,
-                                 t_real *o_h,
-                                 t_real *o_hu,
-                                 t_real *o_hv,
-                                 t_idx i_nCellsX,
-                                 t_idx i_nCellsY,
-                                 t_idx i_stride,
-                                 t_real i_scaling,
-                                 bool i_useFWave ) {
+      void computeXSweepKernelRowMajor( const t_real *i_h,
+                                         const t_real *i_hu,
+                                         const t_real *i_hv,
+                                         const t_real *i_b,
+                                         t_real *o_h,
+                                         t_real *o_hu,
+                                         t_real *o_hv,
+                                         t_idx i_nCellsX,
+                                         t_idx i_nCellsY,
+                                         t_idx i_stride,
+                                         t_real i_scaling,
+                                         bool i_useFWave ) {
         t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
         t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -257,16 +262,16 @@ namespace tsunami_lab {
        * No atomics are required: each thread is the sole writer of its cell.
        **/
       TSUNAMI_CUDA_GLOBAL
-      void computeYSweepKernel( const t_real *i_h,
-                                 const t_real *i_hv,
-                                 const t_real *i_b,
-                                 t_real *io_h,
-                                 t_real *o_hv,
-                                 t_idx i_nCellsX,
-                                 t_idx i_nCellsY,
-                                 t_idx i_stride,
-                                 t_real i_scaling,
-                                 bool i_useFWave ) {
+      void computeYSweepKernelRowMajor( const t_real *i_h,
+                                         const t_real *i_hv,
+                                         const t_real *i_b,
+                                         t_real *io_h,
+                                         t_real *o_hv,
+                                         t_idx i_nCellsX,
+                                         t_idx i_nCellsY,
+                                         t_idx i_stride,
+                                         t_real i_scaling,
+                                         bool i_useFWave ) {
         t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
         t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -320,15 +325,15 @@ namespace tsunami_lab {
        * @param i_stride row stride in elements
        **/
       TSUNAMI_CUDA_GLOBAL
-      void initNewCellsKernel( const t_real *i_h,
-                               const t_real *i_hu,
-                               const t_real *i_hv,
-                               t_real *o_h,
-                               t_real *o_hu,
-                               t_real *o_hv,
-                               t_idx i_nCellsX,
-                               t_idx i_nCellsY,
-                               t_idx i_stride ) {
+      void initNewCellsKernelRowMajor( const t_real *i_h,
+                                        const t_real *i_hu,
+                                        const t_real *i_hv,
+                                        t_real *o_h,
+                                        t_real *o_hu,
+                                        t_real *o_hv,
+                                        t_idx i_nCellsX,
+                                        t_idx i_nCellsY,
+                                        t_idx i_stride ) {
         t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
         t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -359,17 +364,17 @@ namespace tsunami_lab {
        * @param i_useFWave whether to use F-Wave solver
        **/
       TSUNAMI_CUDA_GLOBAL
-      void computeXSweepAtomicKernel( const t_real *i_h,
-                                      const t_real *i_hu,
-                                      const t_real *i_hv,
-                                      const t_real *i_b,
-                                      t_real *io_h,
-                                      t_real *io_hu,
-                                      t_idx i_nCellsX,
-                                      t_idx i_nCellsY,
-                                      t_idx i_stride,
-                                      t_real i_scaling,
-                                      bool i_useFWave ) {
+      void computeXSweepAtomicKernelRowMajor( const t_real *i_h,
+                                               const t_real *i_hu,
+                                               const t_real *i_hv,
+                                               const t_real *i_b,
+                                               t_real *io_h,
+                                               t_real *io_hu,
+                                               t_idx i_nCellsX,
+                                               t_idx i_nCellsY,
+                                               t_idx i_stride,
+                                               t_real i_scaling,
+                                               bool i_useFWave ) {
         // One thread per x-edge: cy in [1, nCellsY], cx in [0, nCellsX]
         t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;  // edge index 0..nCellsX
         t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;  // row index 1..nCellsY
@@ -455,16 +460,16 @@ namespace tsunami_lab {
        * @param i_useFWave whether to use F-Wave solver
        **/
       TSUNAMI_CUDA_GLOBAL
-      void computeYSweepAtomicKernel( const t_real *i_h,
-                                      const t_real *i_hv,
-                                      const t_real *i_b,
-                                      t_real *io_h,
-                                      t_real *io_hv,
-                                      t_idx i_nCellsX,
-                                      t_idx i_nCellsY,
-                                      t_idx i_stride,
-                                      t_real i_scaling,
-                                      bool i_useFWave ) {
+      void computeYSweepAtomicKernelRowMajor( const t_real *i_h,
+                                               const t_real *i_hv,
+                                               const t_real *i_b,
+                                               t_real *io_h,
+                                               t_real *io_hv,
+                                               t_idx i_nCellsX,
+                                               t_idx i_nCellsY,
+                                               t_idx i_stride,
+                                               t_real i_scaling,
+                                               bool i_useFWave ) {
         // One thread per y-edge: cx in [1, nCellsX], cy in [0, nCellsY]
         t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;  // column index 1..nCellsX
         t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;  // edge index 0..nCellsY
@@ -545,12 +550,12 @@ namespace tsunami_lab {
        * @param i_stride row stride in elements
        **/
       TSUNAMI_CUDA_GLOBAL
-      void applyWetDryThresholdKernel( t_real *io_h,
-                                       t_real *io_hu,
-                                       t_real *io_hv,
-                                       t_idx i_nCellsX,
-                                       t_idx i_nCellsY,
-                                       t_idx i_stride ) {
+      void applyWetDryThresholdKernelRowMajor( t_real *io_h,
+                                                t_real *io_hu,
+                                                t_real *io_hv,
+                                                t_idx i_nCellsX,
+                                                t_idx i_nCellsY,
+                                                t_idx i_stride ) {
         // One thread per cell (including ghost cells)
         t_idx l_cx = blockIdx.x * blockDim.x + threadIdx.x;
         t_idx l_cy = blockIdx.y * blockDim.y + threadIdx.y;

@@ -42,7 +42,9 @@ l_tests = [ 'tests.cpp',
 if 'CUDA_ENABLED' in env['CPPDEFINES']:
     l_sources.extend([
               'cuda/WavePropagation2d_cuda.cu',
-              'cuda/WavePropagation2d_kernels.cu',
+              'cuda/WavePropagation2d_kernels_row_major.cu',
+              'cuda/WavePropagation2d_kernels_column_major.cu',
+              'cuda/WavePropagation2d_kernels_tiles.cu',
               'cuda/CudaRegressionTest.cu'
             ])
 
