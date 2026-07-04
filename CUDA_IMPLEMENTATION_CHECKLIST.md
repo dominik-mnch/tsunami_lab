@@ -156,25 +156,25 @@
 ---
 
 ### Task 5: Memory Layout Experimentation
-- [] Implement row-major layout
+- [x] Implement row-major layout
   - [x] Keep existing natural layout
   - [x] Document layout: `m_h[row * nCellsX + col]`
-  - [ ] Verify correctness with regression tests
-- [ ] Implement column-major layout
+  - [x] Verify correctness with regression tests
+- [x] Implement column-major layout
   - [x] Create alternative memory allocation
   - [x] Adjust indexing for column-major: `m_h[col * nCellsY + row]`
   - [x] Create kernel that works with column-major
-  - [ ] Verify correctness with regression tests
-- [ ] Implement blocked/tiled layout
+  - [x] Verify correctness with regression tests
+- [x] Implement blocked/tiled layout
   - [x] Decide on tile size (32×32 or 64×64)
   - [x] Create memory allocation for tiled format
   - [x] Adjust indexing for tile calculations
   - [x] Create kernel that works with tiled layout
-  - [ ] Verify correctness with regression tests
+  - [x] Verify correctness with regression tests
 - [ ] Benchmark each layout
-  - [ ] Test on 500×500 grid
-  - [ ] Test on 1000×1000 grid
-  - [ ] Test on 4000×4000 grid
+  - [x] Test on 500×500 grid
+  - [x] Test on 1000×1000 grid
+  - [x] Test on 4000×4000 grid
   - [ ] For each: measure time, memory bandwidth, L1/L2 cache hit rates
   - [ ] Run 10 iterations per configuration, average results
 - [ ] Profile memory behavior
