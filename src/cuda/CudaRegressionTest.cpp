@@ -871,5 +871,262 @@ bool CudaRegressionTest::compareMultipleTimestepsColumnMajor( t_idx i_nCellsX,
     return l_allMatch;
 }
 
+/**
+ * @brief Compare GPU row-major kernel results against GPU tiled (Tile32)
+ *        kernel results after one timestep. Both instances share the same
+ *        public API (copyToGpu/computeStep/copyToHost); layout dispatch and
+ *        tiling/un-tiling happen internally via m_memoryLayout, so both
+ *        host-side result buffers come back in identical row-major layout.
+ */
+bool CudaRegressionTest::compareKernelResultsTile( t_idx i_nCellsX,
+                                                   t_idx i_nCellsY,
+                                                   bool i_useFWave,
+                                                   t_real* o_maxError ) {
+    patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuRow( i_nCellsX,
+                                                           i_nCellsY,
+                                                           i_useFWave,
+                                                           16,
+                                                           MemoryLayout::RowMajor );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuTile( i_nCellsX,
+                                                            i_nCellsY,
+                                                            i_useFWave,
+                                                            32,
+                                                            MemoryLayout::Tile32 );
+
+    setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
+
+    t_real l_domainSize = 50.0;
+    t_real l_dx = l_domainSize / i_nCellsX;
+    t_real l_dy = l_domainSize / i_nCellsY;
+
+    for( t_idx l_iy = 0; l_iy < i_nCellsY; l_iy++ ) {
+        for( t_idx l_ix = 0; l_ix < i_nCellsX; l_ix++ ) {
+            t_real l_x = -l_domainSize / 2.0 + (l_ix + 0.5) * l_dx;
+            t_real l_y = -l_domainSize / 2.0 + (l_iy + 0.5) * l_dy;
+
+            t_real l_h  = l_setup.getHeight( l_x, l_y );
+            t_real l_hu = l_setup.getMomentumX( l_x, l_y );
+            t_real l_hv = l_setup.getMomentumY( l_x, l_y );
+            t_real l_b  = l_setup.getBathymetry( l_x, l_y );
+
+            l_wavePropCpu.setHeight( l_ix, l_iy, l_h );
+            l_wavePropCpu.setMomentumX( l_ix, l_iy, l_hu );
+            l_wavePropCpu.setMomentumY( l_ix, l_iy, l_hv );
+            l_wavePropCpu.setBathymetry( l_ix, l_iy, l_b );
+        }
+    }
+
+    // Identical, already-correct ghost cells for both GPU instances.
+    l_wavePropCpu.setGhostOutflow();
+
+    t_idx l_stride = l_wavePropCpu.getStride();   // nCellsX + 2
+    t_idx l_nFull  = (i_nCellsY + 2) * l_stride;
+
+    const t_real* l_hBase  = l_wavePropCpu.getHeight()     - (l_stride + 1);
+    const t_real* l_huBase = l_wavePropCpu.getMomentumX()  - (l_stride + 1);
+    const t_real* l_hvBase = l_wavePropCpu.getMomentumY()  - (l_stride + 1);
+    const t_real* l_bBase  = l_wavePropCpu.getBathymetry() - (l_stride + 1);
+
+    // Same host buffer, same call — copyToGpu internally tiles for Tile32.
+    l_wavePropGpuRow.copyToGpu( l_hBase, l_huBase, l_hvBase, l_bBase );
+    l_wavePropGpuTile.copyToGpu( l_hBase, l_huBase, l_hvBase, l_bBase );
+
+    t_real l_scaling = 0.4;
+
+    l_wavePropGpuRow.computeStep( l_scaling );
+    l_wavePropGpuRow.swapBuffers();
+
+    l_wavePropGpuTile.computeStep( l_scaling );
+    l_wavePropGpuTile.swapBuffers();
+
+    t_real* l_h_row_full   = new t_real[l_nFull];
+    t_real* l_hu_row_full  = new t_real[l_nFull];
+    t_real* l_hv_row_full  = new t_real[l_nFull];
+    t_real* l_h_tile_full  = new t_real[l_nFull];
+    t_real* l_hu_tile_full = new t_real[l_nFull];
+    t_real* l_hv_tile_full = new t_real[l_nFull];
+
+    l_wavePropGpuRow.copyToHost( l_h_row_full, l_hu_row_full, l_hv_row_full );
+    // copyToHost un-tiles internally for Tile32, so this comes back row-major.
+    l_wavePropGpuTile.copyToHost( l_h_tile_full, l_hu_tile_full, l_hv_tile_full );
+
+    t_real* l_h_row_result   = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_row_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_row_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_h_tile_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_tile_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_tile_result = new t_real[i_nCellsX * i_nCellsY];
+
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_h_row_full   + l_stride + 1, l_h_row_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hu_row_full  + l_stride + 1, l_hu_row_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hv_row_full  + l_stride + 1, l_hv_row_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_h_tile_full  + l_stride + 1, l_h_tile_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hu_tile_full + l_stride + 1, l_hu_tile_result );
+    flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hv_tile_full + l_stride + 1, l_hv_tile_result );
+
+    bool l_hMatch  = compareGrids( i_nCellsX, i_nCellsY, l_h_row_result,  l_h_tile_result );
+    bool l_huMatch = compareGrids( i_nCellsX, i_nCellsY, l_hu_row_result, l_hu_tile_result );
+    bool l_hvMatch = compareGrids( i_nCellsX, i_nCellsY, l_hv_row_result, l_hv_tile_result );
+
+    if( o_maxError != nullptr ) {
+        t_real l_maxH  = getMaxError( i_nCellsX, i_nCellsY, l_h_row_result,  l_h_tile_result );
+        t_real l_maxHu = getMaxError( i_nCellsX, i_nCellsY, l_hu_row_result, l_hu_tile_result );
+        t_real l_maxHv = getMaxError( i_nCellsX, i_nCellsY, l_hv_row_result, l_hv_tile_result );
+        *o_maxError = std::max( { l_maxH, l_maxHu, l_maxHv } );
+    }
+
+    delete[] l_h_row_full;
+    delete[] l_hu_row_full;
+    delete[] l_hv_row_full;
+    delete[] l_h_tile_full;
+    delete[] l_hu_tile_full;
+    delete[] l_hv_tile_full;
+    delete[] l_h_row_result;
+    delete[] l_hu_row_result;
+    delete[] l_hv_row_result;
+    delete[] l_h_tile_result;
+    delete[] l_hu_tile_result;
+    delete[] l_hv_tile_result;
+
+    return l_hMatch && l_huMatch && l_hvMatch;
+}
+
+/**
+ * @brief Compare GPU row-major vs GPU tiled (Tile32) kernel results over
+ *        multiple timesteps, checking at a fixed interval.
+ */
+bool CudaRegressionTest::compareMultipleTimestepsTile( t_idx i_nCellsX,
+                                                       t_idx i_nCellsY,
+                                                       t_idx i_nTimesteps,
+                                                       bool i_useFWave,
+                                                       t_idx i_checkInterval,
+                                                       t_real* o_maxError ) {
+    patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuRow( i_nCellsX,
+                                                           i_nCellsY,
+                                                           i_useFWave,
+                                                           16,
+                                                           MemoryLayout::RowMajor );
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuTile( i_nCellsX,
+                                                            i_nCellsY,
+                                                            i_useFWave,
+                                                            32,
+                                                            MemoryLayout::Tile32 );
+
+    setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
+
+    t_real l_domainSize = 50.0;
+    t_real l_dx = l_domainSize / i_nCellsX;
+    t_real l_dy = l_domainSize / i_nCellsY;
+
+    for( t_idx l_iy = 0; l_iy < i_nCellsY; l_iy++ ) {
+        for( t_idx l_ix = 0; l_ix < i_nCellsX; l_ix++ ) {
+            t_real l_x = -l_domainSize / 2.0 + (l_ix + 0.5) * l_dx;
+            t_real l_y = -l_domainSize / 2.0 + (l_iy + 0.5) * l_dy;
+
+            t_real l_h  = l_setup.getHeight( l_x, l_y );
+            t_real l_hu = l_setup.getMomentumX( l_x, l_y );
+            t_real l_hv = l_setup.getMomentumY( l_x, l_y );
+            t_real l_b  = l_setup.getBathymetry( l_x, l_y );
+
+            l_wavePropCpu.setHeight( l_ix, l_iy, l_h );
+            l_wavePropCpu.setMomentumX( l_ix, l_iy, l_hu );
+            l_wavePropCpu.setMomentumY( l_ix, l_iy, l_hv );
+            l_wavePropCpu.setBathymetry( l_ix, l_iy, l_b );
+        }
+    }
+
+    l_wavePropCpu.setGhostOutflow();
+
+    t_idx l_stride = l_wavePropCpu.getStride();
+    t_idx l_nFull  = (i_nCellsY + 2) * l_stride;
+
+    const t_real* l_hBase  = l_wavePropCpu.getHeight()     - (l_stride + 1);
+    const t_real* l_huBase = l_wavePropCpu.getMomentumX()  - (l_stride + 1);
+    const t_real* l_hvBase = l_wavePropCpu.getMomentumY()  - (l_stride + 1);
+    const t_real* l_bBase  = l_wavePropCpu.getBathymetry() - (l_stride + 1);
+
+    l_wavePropGpuRow.copyToGpu( l_hBase, l_huBase, l_hvBase, l_bBase );
+    l_wavePropGpuTile.copyToGpu( l_hBase, l_huBase, l_hvBase, l_bBase );
+
+    t_real l_scaling = 0.04;
+    bool l_allMatch = true;
+    t_real l_maxErrorAccum = 0.0;
+
+    t_real* l_h_row_full   = new t_real[l_nFull];
+    t_real* l_hu_row_full  = new t_real[l_nFull];
+    t_real* l_hv_row_full  = new t_real[l_nFull];
+    t_real* l_h_tile_full  = new t_real[l_nFull];
+    t_real* l_hu_tile_full = new t_real[l_nFull];
+    t_real* l_hv_tile_full = new t_real[l_nFull];
+
+    t_real* l_h_row_result   = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_row_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_row_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_h_tile_result  = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hu_tile_result = new t_real[i_nCellsX * i_nCellsY];
+    t_real* l_hv_tile_result = new t_real[i_nCellsX * i_nCellsY];
+
+    for( t_idx l_step = 0; l_step < i_nTimesteps; l_step++ ) {
+        l_wavePropGpuRow.setGhostOutflow();
+        l_wavePropGpuRow.computeStep( l_scaling );
+        l_wavePropGpuRow.swapBuffers();
+
+        l_wavePropGpuTile.setGhostOutflow();
+        l_wavePropGpuTile.computeStep( l_scaling );
+        l_wavePropGpuTile.swapBuffers();
+
+        if( (l_step + 1) % i_checkInterval == 0 ) {
+            l_wavePropGpuRow.copyToHost( l_h_row_full, l_hu_row_full, l_hv_row_full );
+            l_wavePropGpuTile.copyToHost( l_h_tile_full, l_hu_tile_full, l_hv_tile_full );
+
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_h_row_full   + l_stride + 1, l_h_row_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hu_row_full  + l_stride + 1, l_hu_row_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hv_row_full  + l_stride + 1, l_hv_row_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_h_tile_full  + l_stride + 1, l_h_tile_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hu_tile_full + l_stride + 1, l_hu_tile_result );
+            flattenInterior( i_nCellsX, i_nCellsY, l_stride, l_hv_tile_full + l_stride + 1, l_hv_tile_result );
+
+            const t_real l_multiStepTol = static_cast<t_real>(0.02);
+            bool l_hMatch  = compareGrids( i_nCellsX, i_nCellsY, l_h_row_result,  l_h_tile_result,  l_multiStepTol );
+            bool l_huMatch = compareGrids( i_nCellsX, i_nCellsY, l_hu_row_result, l_hu_tile_result, l_multiStepTol );
+            bool l_hvMatch = compareGrids( i_nCellsX, i_nCellsY, l_hv_row_result, l_hv_tile_result, l_multiStepTol );
+
+            if( !(l_hMatch && l_huMatch && l_hvMatch) ) {
+                std::cout << "Row-major/tiled mismatch at timestep " << (l_step + 1) << std::endl;
+                l_allMatch = false;
+            }
+
+            t_real l_maxH  = getMaxError( i_nCellsX, i_nCellsY, l_h_row_result,  l_h_tile_result );
+            t_real l_maxHu = getMaxError( i_nCellsX, i_nCellsY, l_hu_row_result, l_hu_tile_result );
+            t_real l_maxHv = getMaxError( i_nCellsX, i_nCellsY, l_hv_row_result, l_hv_tile_result );
+            t_real l_stepMaxError = std::max( { l_maxH, l_maxHu, l_maxHv } );
+            if( l_stepMaxError > l_maxErrorAccum ) {
+                l_maxErrorAccum = l_stepMaxError;
+            }
+        }
+    }
+
+    if( o_maxError != nullptr ) {
+        *o_maxError = l_maxErrorAccum;
+    }
+
+    delete[] l_h_row_full;
+    delete[] l_hu_row_full;
+    delete[] l_hv_row_full;
+    delete[] l_h_tile_full;
+    delete[] l_hu_tile_full;
+    delete[] l_hv_tile_full;
+    delete[] l_h_row_result;
+    delete[] l_hu_row_result;
+    delete[] l_hv_row_result;
+    delete[] l_h_tile_result;
+    delete[] l_hu_tile_result;
+    delete[] l_hv_tile_result;
+
+    return l_allMatch;
+}
+
 } // namespace cuda
 } // namespace tsunami_lab

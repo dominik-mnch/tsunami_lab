@@ -376,3 +376,61 @@ TEST_CASE( "Multi-timestep: row-major vs column-major, 50 steps on 4000x4000 wit
     REQUIRE( l_match );
     std::cout << "Max accumulated error (50 steps, 4000x4000, F-Wave): " << l_maxError << std::endl;
 }
+
+// ============================================================================
+// TILE INDEXING CORRECTNESS TEST
+// ============================================================================
+
+TEST_CASE( "GPU kernel correctness: tile (F-Wave solver) on 500*500 grid", "[KernelCorrectness_Tile_FWave_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsTile(
+        500, 500, true, &l_maxError );
+
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "Multi-timestep: tile, 50 steps on 500x500 with F-Wave", "[MultiTimestep_Tile_FWave_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsTile(
+        500, 500, 50, true, 5, &l_maxError );
+
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 500x500, F-Wave): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "GPU kernel correctness: tile (F-Wave solver) on 1000*1000 grid", "[KernelCorrectness_Tile_FWave_1000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsTile(
+        1000, 1000, true, &l_maxError );
+
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "Multi-timestep: tile, 50 steps on 1000x1000 with F-Wave", "[MultiTimestep_Tile_FWave_1000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsTile(
+        1000, 1000, 50, true, 5, &l_maxError );
+
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 1000x1000, F-Wave): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "GPU kernel correctness: tile (F-Wave solver) on 4000*4000 grid", "[KernelCorrectness_Tile_FWave_4000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsTile(
+        4000, 4000, true, &l_maxError );
+
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "Multi-timestep: tile, 50 steps on 4000x4000 with F-Wave", "[MultiTimestep_Tile_FWave_4000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsTile(
+        4000, 4000, 50, true, 5, &l_maxError );
+
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 4000x4000, F-Wave): " << l_maxError << std::endl;
+}
