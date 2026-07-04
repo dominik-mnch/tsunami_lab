@@ -309,6 +309,7 @@ TEST_CASE( "Atomic multi-timestep: 25 steps on 1000x1000 with Roe", "[AtomicMult
 // ============================================================================
 
 TEST_CASE( "Row-major indexing macro", "[RowMajorIndexing]" ) {
+    tsunami_lab::t_idx row = 3;
    tsunami_lab::t_idx stride = 10;
    tsunami_lab::t_idx col = 5;
 

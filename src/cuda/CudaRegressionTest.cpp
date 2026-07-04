@@ -6,6 +6,7 @@
 #include "../patches/WavePropagation2d.h"
 #include "WavePropagation2d_cuda.h"
 #include "../setups/CircularDamBreak2d/CircularDamBreak2d.h"
+#include "CudaLayout.h"
 
 namespace tsunami_lab {
 namespace cuda {
@@ -615,10 +616,18 @@ bool CudaRegressionTest::compareKernelResultsColumnMajor( t_idx i_nCellsX,
                                                           bool i_useFWave,
                                                           t_real* o_maxError ) {
     patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
-    patches::cuda::WavePropagation2dCuda l_wavePropGpuRow( i_nCellsX, i_nCellsY, i_useFWave,
-                                                           patches::cuda::MemoryLayout::RowMajor );
-    patches::cuda::WavePropagation2dCuda l_wavePropGpuCol( i_nCellsX, i_nCellsY, i_useFWave,
-                                                           patches::cuda::MemoryLayout::ColumnMajor );
+
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuRow( i_nCellsX,
+                                                        i_nCellsY,
+                                                        i_useFWave,
+                                                        16,
+                                                        MemoryLayout::RowMajor );
+
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuCol( i_nCellsX,
+                                                        i_nCellsY,
+                                                        i_useFWave,
+                                                        16,
+                                                        MemoryLayout::ColumnMajor );
 
     setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
 
@@ -733,10 +742,18 @@ bool CudaRegressionTest::compareMultipleTimestepsColumnMajor( t_idx i_nCellsX,
                                                               t_idx i_checkInterval,
                                                               t_real* o_maxError ) {
     patches::WavePropagation2d l_wavePropCpu( i_nCellsX, i_nCellsY, i_useFWave );
-    patches::cuda::WavePropagation2dCuda l_wavePropGpuRow( i_nCellsX, i_nCellsY, i_useFWave,
-                                                           patches::cuda::MemoryLayout::RowMajor );
-    patches::cuda::WavePropagation2dCuda l_wavePropGpuCol( i_nCellsX, i_nCellsY, i_useFWave,
-                                                           patches::cuda::MemoryLayout::ColumnMajor );
+
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuRow( i_nCellsX,
+                                                       i_nCellsY,
+                                                       i_useFWave,
+                                                       16,
+                                                       MemoryLayout::RowMajor );
+
+    patches::cuda::WavePropagation2dCuda l_wavePropGpuCol( i_nCellsX,
+                                                       i_nCellsY,
+                                                       i_useFWave,
+                                                       16,
+                                                       MemoryLayout::ColumnMajor );
 
     setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
 

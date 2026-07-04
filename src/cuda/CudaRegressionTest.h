@@ -225,19 +225,19 @@ static void copyFromGPU( t_idx          i_nCellsX,
                                t_idx i_nCellsY,
                                t_real const* i_cpu,
                                t_real const* i_gpu );
-};
 
-static bool compareKernelResultsColumnMajor( t_idx i_nCellsX,
+    static bool compareKernelResultsColumnMajor( t_idx i_nCellsX,
                                              t_idx i_nCellsY,
                                              bool i_useFWave,
                                              t_real* o_maxError = nullptr );
 
-static bool compareMultipleTimestepsColumnMajor( t_idx i_nCellsX,
+    static bool compareMultipleTimestepsColumnMajor( t_idx i_nCellsX,
                                                  t_idx i_nCellsY,
                                                  t_idx i_nTimesteps,
                                                  bool i_useFWave,
                                                  t_idx i_checkInterval,
                                                  t_real* o_maxError = nullptr );
+};
 
 } // namespace cuda
 } // namespace tsunami_lab
