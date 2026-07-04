@@ -309,12 +309,69 @@ TEST_CASE( "Atomic multi-timestep: 25 steps on 1000x1000 with Roe", "[AtomicMult
 // ============================================================================
 
 TEST_CASE( "Row-major indexing macro", "[RowMajorIndexing]" ) {
-    tsunami_lab::t_idx stride = 10;
-    tsunami_lab::t_idx row = 3;
-    tsunami_lab::t_idx col = 5;
+   tsunami_lab::t_idx stride = 10;
+   tsunami_lab::t_idx col = 5;
 
-    tsunami_lab::t_idx expectedIndex = row * stride + col;
-    tsunami_lab::t_idx macroIndex = ROW_MAJOR(row, col, stride);
+   tsunami_lab::t_idx expectedIndex = row * stride + col;
+   tsunami_lab::t_idx macroIndex = ROW_MAJOR(row, col, stride);
 
-    REQUIRE( expectedIndex == macroIndex );
+   REQUIRE( expectedIndex == macroIndex );
+}
+
+// ============================================================================
+// COLUMN-MAJOR INDEXING CORRECTNESS TEST
+// ============================================================================
+
+TEST_CASE( "GPU kernel correctness: column-major (F-Wave solver) on 500*500 grid", "[KernelCorrectness_ColumnMajor_FWave_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsColumnMajor(
+        500, 500, true, &l_maxError );
+
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "Multi-timestep: row-major vs column-major, 50 steps on 500x500 with F-Wave", "[MultiTimestep_ColumnMajor_FWave_500]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsColumnMajor(
+        500, 500, 50, true, 5, &l_maxError );
+
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 500x500, F-Wave): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "GPU kernel correctness: column-major (F-Wave solver) on 1000*1000 grid", "[KernelCorrectness_ColumnMajor_FWave_1000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsColumnMajor(
+        1000, 1000, true, &l_maxError );
+
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "Multi-timestep: row-major vs column-major, 50 steps on 1000x1000 with F-Wave", "[MultiTimestep_ColumnMajor_FWave_1000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsColumnMajor(
+        1000, 1000, 50, true, 5, &l_maxError );
+
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 1000x1000, F-Wave): " << l_maxError << std::endl;
+}
+
+TEST_CASE( "GPU kernel correctness: column-major (F-Wave solver) on 4000*4000 grid", "[KernelCorrectness_ColumnMajor_FWave_4000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareKernelResultsColumnMajor(
+        4000, 4000, true, &l_maxError );
+
+    REQUIRE( l_match );
+    REQUIRE( l_maxError < 1e-3 );
+}
+
+TEST_CASE( "Multi-timestep: row-major vs column-major, 50 steps on 4000x4000 with F-Wave", "[MultiTimestep_ColumnMajor_FWave_4000]" ) {
+    tsunami_lab::t_real l_maxError = 0.0;
+    bool l_match = tsunami_lab::cuda::CudaRegressionTest::compareMultipleTimestepsColumnMajor(
+        4000, 4000, 50, true, 5, &l_maxError );
+
+    REQUIRE( l_match );
+    std::cout << "Max accumulated error (50 steps, 4000x4000, F-Wave): " << l_maxError << std::endl;
 }
