@@ -161,14 +161,14 @@
   - [x] Document layout: `m_h[row * nCellsX + col]`
   - [ ] Verify correctness with regression tests
 - [ ] Implement column-major layout
-  - [ ] Create alternative memory allocation
+  - [x] Create alternative memory allocation
   - [x] Adjust indexing for column-major: `m_h[col * nCellsY + row]`
   - [x] Create kernel that works with column-major
   - [ ] Verify correctness with regression tests
 - [ ] Implement blocked/tiled layout
   - [x] Decide on tile size (32×32 or 64×64)
-  - [ ] Create memory allocation for tiled format
-  - [ ] Adjust indexing for tile calculations
+  - [x] Create memory allocation for tiled format
+  - [x] Adjust indexing for tile calculations
   - [x] Create kernel that works with tiled layout
   - [ ] Verify correctness with regression tests
 - [ ] Benchmark each layout
