@@ -176,7 +176,7 @@
   - [x] Test on 1000×1000 grid
   - [x] Test on 4000×4000 grid
   - [ ] For each: measure time, memory bandwidth, L1/L2 cache hit rates
-  - [ ] Run 10 iterations per configuration, average results
+  - [x] Run 10 iterations per configuration, average results
 - [ ] Profile memory behavior
   - [ ] Use nsys to analyze cache hit rates
   - [ ] Analyze memory coalescing efficiency
