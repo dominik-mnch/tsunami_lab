@@ -6,7 +6,7 @@
 #include "../patches/WavePropagation2d.h"
 #include "WavePropagation2d_cuda.h"
 #include "../setups/CircularDamBreak2d/CircularDamBreak2d.h"
-#include "CudaLayout.h"
+
 
 namespace tsunami_lab {
 namespace cuda {

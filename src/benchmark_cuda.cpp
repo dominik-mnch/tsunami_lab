@@ -6,11 +6,14 @@
 #include "cuda/WavePropagation2d_cuda.h"
 #include "patches/WavePropagation2d.h"
 #include "setups/TsunamiEvent2d/TsunamiEvent2d.h"
+#include "setups/CircularDamBreak2d/CircularDamBreak2d.h"
+#include "cuda/CudaLayout.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -380,9 +383,166 @@ namespace {
     return l_result;
   }
 
+  // ==========================================================================
+  // LAYOUT BENCHMARK (RowMajor / ColumnMajor / Tile32 comparison)
+  // ==========================================================================
+
+  struct LayoutBenchmarkResult {
+    tsunami_lab::t_idx nx = 0;
+    tsunami_lab::t_idx ny = 0;
+    std::string        layoutName;
+    double             layoutConversionSeconds = 0.0;  // copyToGpu (incl. transpose/tiling)
+    double             computeSeconds          = 0.0;  // one timestep, computeStep only
+    double             totalSeconds            = 0.0;  // conversion + compute
+    double             paddingOverheadPct      = 0.0;  // allocated vs. useful bytes
+  };
+
+  /**
+   * Benchmark layout conversion time, compute time, total time, and memory
+   * padding overhead for a single grid size and memory layout, using a
+   * lightweight synthetic setup (CircularDamBreak2d) rather than the full
+   * Tohoku dataset, so multiple grid sizes/layouts can be swept quickly.
+   **/
+  LayoutBenchmarkResult runLayoutBenchmark( tsunami_lab::t_idx i_nx,
+                                            tsunami_lab::t_idx i_ny,
+                                            int i_blockWidth,
+                                            MemoryLayout i_layout,
+                                            std::string const & i_layoutName ) {
+    // --- CPU-side staging: build a valid initial + ghost-celled grid once ---
+    tsunami_lab::setups::CircularDamBreak2d l_setup( 10.0, 5.0, 0, 0, 0, 0, 0, 0, 10 );
+
+    tsunami_lab::t_real l_domainSize = 50.0;
+    tsunami_lab::t_real l_dx = l_domainSize / i_nx;
+    tsunami_lab::t_real l_dy = l_domainSize / i_ny;
+
+    std::unique_ptr<tsunami_lab::patches::WavePropagation2d> l_cpuInit(
+      new tsunami_lab::patches::WavePropagation2d( i_nx, i_ny, true )
+    );
+
+    for( tsunami_lab::t_idx l_cy = 0; l_cy < i_ny; l_cy++ ) {
+      for( tsunami_lab::t_idx l_cx = 0; l_cx < i_nx; l_cx++ ) {
+        tsunami_lab::t_real l_x = -l_domainSize / 2.0 + (l_cx + 0.5) * l_dx;
+        tsunami_lab::t_real l_y = -l_domainSize / 2.0 + (l_cy + 0.5) * l_dy;
+
+        l_cpuInit->setHeight(     l_cx, l_cy, l_setup.getHeight( l_x, l_y ) );
+        l_cpuInit->setMomentumX(  l_cx, l_cy, l_setup.getMomentumX( l_x, l_y ) );
+        l_cpuInit->setMomentumY(  l_cx, l_cy, l_setup.getMomentumY( l_x, l_y ) );
+        l_cpuInit->setBathymetry( l_cx, l_cy, l_setup.getBathymetry( l_x, l_y ) );
+      }
+    }
+    l_cpuInit->setGhostOutflow();
+
+    tsunami_lab::t_idx const l_stride = l_cpuInit->getStride();  // nx + 2
+    tsunami_lab::t_real const* l_hBase  = l_cpuInit->getHeight()     - (l_stride + 1);
+    tsunami_lab::t_real const* l_huBase = l_cpuInit->getMomentumX()  - (l_stride + 1);
+    tsunami_lab::t_real const* l_hvBase = l_cpuInit->getMomentumY()  - (l_stride + 1);
+    tsunami_lab::t_real const* l_bBase  = l_cpuInit->getBathymetry() - (l_stride + 1);
+
+    // --- GPU instance under test ---
+    std::unique_ptr<tsunami_lab::patches::cuda::WavePropagation2dCuda> l_waveProp(
+      new tsunami_lab::patches::cuda::WavePropagation2dCuda( i_nx, i_ny, true,
+                                                             i_blockWidth, i_layout )
+    );
+
+    // --- Layout conversion time: copyToGpu (transpose for ColumnMajor,
+    //     tiling for Tile32, plain memcpy for RowMajor) ---
+    auto const l_copyStart = std::chrono::steady_clock::now();
+    l_waveProp->copyToGpu( l_hBase, l_huBase, l_hvBase, l_bBase );
+    auto const l_copyEnd = std::chrono::steady_clock::now();
+    double const l_layoutConversionSeconds =
+      std::chrono::duration<double>( l_copyEnd - l_copyStart ).count();
+
+    l_cpuInit.reset();  // free CPU staging memory, matches existing style
+
+    // --- Compute time: one timestep ---
+    tsunami_lab::t_real const l_scaling = static_cast<tsunami_lab::t_real>( 0.4 );
+
+    l_waveProp->setGhostOutflow();
+    auto const l_computeStart = std::chrono::steady_clock::now();
+    l_waveProp->computeStep( l_scaling );
+    auto const l_computeEnd = std::chrono::steady_clock::now();
+    double const l_computeSeconds =
+      std::chrono::duration<double>( l_computeEnd - l_computeStart ).count();
+
+    l_waveProp->swapBuffers();
+
+    // --- Memory padding overhead: allocated bytes vs. useful (interior) bytes ---
+    double const l_usefulBytes    = static_cast<double>( i_nx ) * static_cast<double>( i_ny )
+                                     * sizeof( tsunami_lab::t_real );
+    double const l_allocatedBytes = static_cast<double>( l_waveProp->getNValues() )
+                                     * sizeof( tsunami_lab::t_real );
+    double const l_paddingOverheadPct =
+      ( l_allocatedBytes - l_usefulBytes ) / l_usefulBytes * 100.0;
+
+    LayoutBenchmarkResult l_result;
+    l_result.nx = i_nx;
+    l_result.ny = i_ny;
+    l_result.layoutName = i_layoutName;
+    l_result.layoutConversionSeconds = l_layoutConversionSeconds;
+    l_result.computeSeconds = l_computeSeconds;
+    l_result.totalSeconds = l_layoutConversionSeconds + l_computeSeconds;
+    l_result.paddingOverheadPct = l_paddingOverheadPct;
+
+    return l_result;
+  }
+
+  /**
+   * Sweep RowMajor / ColumnMajor / Tile32 layouts across a fixed set of
+   * synthetic grid sizes (500x500, 1000x1000, 4000x4000), printing layout
+   * conversion time, compute time, total time, and padding overhead for
+   * each grid size / layout combination.
+   **/
+  void runLayoutBenchmarkSweep() {
+    std::vector<std::pair<tsunami_lab::t_idx, tsunami_lab::t_idx>> const l_gridSizes = {
+      { 500, 500 },
+      { 1000, 1000 },
+      { 4000, 4000 }
+    };
+
+    struct LayoutSpec {
+      MemoryLayout layout;
+      std::string name;
+      int blockWidth;
+    };
+    std::vector<LayoutSpec> const l_layouts = {
+      { MemoryLayout::RowMajor,    "RowMajor",    16 },
+      { MemoryLayout::ColumnMajor, "ColumnMajor", 16 },
+      { MemoryLayout::Tile32,      "Tile32",      32 }
+    };
+
+    std::cout << std::left
+               << std::setw(10) << "GridX"
+               << std::setw(10) << "GridY"
+               << std::setw(14) << "Layout"
+               << std::setw(22) << "ConversionSec"
+               << std::setw(18) << "ComputeSec"
+               << std::setw(16) << "TotalSec"
+               << std::setw(16) << "PaddingPct"
+               << std::endl;
+
+    for( auto const & l_size : l_gridSizes ) {
+      for( auto const & l_layoutSpec : l_layouts ) {
+        LayoutBenchmarkResult const l_result = runLayoutBenchmark(
+          l_size.first, l_size.second,
+          l_layoutSpec.blockWidth, l_layoutSpec.layout, l_layoutSpec.name
+        );
+
+        std::cout << std::left
+                   << std::setw(10) << l_result.nx
+                   << std::setw(10) << l_result.ny
+                   << std::setw(14) << l_result.layoutName
+                   << std::setw(22) << l_result.layoutConversionSeconds
+                   << std::setw(18) << l_result.computeSeconds
+                   << std::setw(16) << l_result.totalSeconds
+                   << std::setw(16) << l_result.paddingOverheadPct
+                   << std::endl;
+      }
+    }
+  }
+
   void printUsage() {
     std::cerr << "usage:" << std::endl;
-    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N] [--resolution R] [--nx N] [--ny N] [--sync-strategy STRAT]" << std::endl;
+    std::cerr << "  ./build/benchmark_cuda RUNS [END_TIME] [BATHY_NC] [DISPL_NC] [--verify] [--block-size N] [--resolution R] [--nx N] [--ny N] [--sync-strategy STRAT] [--layout-benchmark]" << std::endl;
     std::cerr << "" << std::endl;
     std::cerr << "RUNS:              number of repeated benchmark runs" << std::endl;
     std::cerr << "END_TIME:          optional simulation end time in seconds, default 10800" << std::endl;
@@ -397,6 +557,9 @@ namespace {
     std::cerr << "--nx N:            explicit number of cells in x-direction (overrides resolution-derived nx)" << std::endl;
     std::cerr << "--ny N:            explicit number of cells in y-direction (overrides resolution-derived ny)" << std::endl;
     std::cerr << "--sync-strategy ST: synchronization strategy: 'lock-free' (default) or 'atomic'" << std::endl;
+    std::cerr << "--layout-benchmark: run a standalone layout comparison sweep (RowMajor/ColumnMajor/Tile32" << std::endl;
+    std::cerr << "                   across 500x500, 1000x1000, 4000x4000 synthetic grids) and exit; ignores" << std::endl;
+    std::cerr << "                   all other positional/dataset arguments" << std::endl;
   }
 }
 
@@ -411,6 +574,7 @@ int main( int i_argc,
   // Scan for named flags; remove them from the positional argument list so the
   // positional-arg parser below is unaffected.
   bool   l_verify       = false;
+  bool   l_layoutBenchmark = false;
   int    l_blockWidth   = 16;
   double l_resolution   = 0.0;   // 0 means "use default nx/ny"
   unsigned int l_nxOverride = 0;
@@ -421,6 +585,8 @@ int main( int i_argc,
   for( int l_i = 0; l_i < i_argc; l_i++ ) {
     if( std::string( i_argv[l_i] ) == "--verify" ) {
       l_verify = true;
+    } else if( std::string( i_argv[l_i] ) == "--layout-benchmark" ) {
+      l_layoutBenchmark = true;
     } else if( std::string( i_argv[l_i] ) == "--block-size" && l_i + 1 < i_argc ) {
       l_blockWidth = std::stoi( i_argv[++l_i] );
     } else if( std::string( i_argv[l_i] ) == "--resolution" && l_i + 1 < i_argc ) {
@@ -437,6 +603,26 @@ int main( int i_argc,
   }
   int    l_argc = static_cast<int>( l_args.size() );
   char** l_argv = l_args.data();
+
+  // --layout-benchmark bypasses the normal RUNS/dataset argument requirements
+  // entirely, so check for it before the positional-argument-count validation.
+  if( l_layoutBenchmark ) {
+    try {
+      if( !tsunami_lab::patches::cuda::WavePropagation2dCuda::initialize( 0 ) ) {
+        throw std::runtime_error( "CUDA initialization failed" );
+      }
+      std::cout << "Running layout benchmark sweep (500x500, 1000x1000, 4000x4000)..." << std::endl;
+      runLayoutBenchmarkSweep();
+      tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize();
+      std::cout << "finished, exiting" << std::endl;
+    }
+    catch( std::exception const & i_ex ) {
+      std::cerr << "benchmark_cuda failed: " << i_ex.what() << std::endl;
+      printUsage();
+      return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+  }
 
   if( l_argc < 2 || l_argc > 5 ) {
     printUsage();
