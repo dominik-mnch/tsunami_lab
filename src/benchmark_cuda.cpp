@@ -7,7 +7,6 @@
 #include "patches/WavePropagation2d.h"
 #include "setups/TsunamiEvent2d/TsunamiEvent2d.h"
 #include "setups/CircularDamBreak2d/CircularDamBreak2d.h"
-#include "cuda/CudaLayout.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -402,6 +401,10 @@ namespace {
    * padding overhead for a single grid size and memory layout, using a
    * lightweight synthetic setup (CircularDamBreak2d) rather than the full
    * Tohoku dataset, so multiple grid sizes/layouts can be swept quickly.
+   *
+   * NOTE: MemoryLayout is declared at global scope in
+   * "cuda/WavePropagation2d_cuda.h" (not nested under any namespace),
+   * so it is used here unqualified.
    **/
   LayoutBenchmarkResult runLayoutBenchmark( tsunami_lab::t_idx i_nx,
                                             tsunami_lab::t_idx i_ny,
@@ -488,9 +491,10 @@ namespace {
 
   /**
    * Sweep RowMajor / ColumnMajor / Tile32 layouts across a fixed set of
-   * synthetic grid sizes (500x500, 1000x1000, 4000x4000), printing layout
-   * conversion time, compute time, total time, and padding overhead for
-   * each grid size / layout combination.
+   * synthetic grid sizes (500x500, 1000x1000, 4000x4000). Each grid
+   * size/layout combination is run l_numRepeats times and the timing
+   * results are averaged; padding overhead is static per combination and
+   * is not averaged (it is identical on every repeat).
    **/
   void runLayoutBenchmarkSweep() {
     std::vector<std::pair<tsunami_lab::t_idx, tsunami_lab::t_idx>> const l_gridSizes = {
@@ -510,31 +514,49 @@ namespace {
       { MemoryLayout::Tile32,      "Tile32",      32 }
     };
 
+    constexpr unsigned int l_numRepeats = 10;
+
     std::cout << std::left
                << std::setw(10) << "GridX"
                << std::setw(10) << "GridY"
                << std::setw(14) << "Layout"
-               << std::setw(22) << "ConversionSec"
-               << std::setw(18) << "ComputeSec"
-               << std::setw(16) << "TotalSec"
+               << std::setw(22) << "AvgConversionSec"
+               << std::setw(18) << "AvgComputeSec"
+               << std::setw(16) << "AvgTotalSec"
                << std::setw(16) << "PaddingPct"
                << std::endl;
 
     for( auto const & l_size : l_gridSizes ) {
       for( auto const & l_layoutSpec : l_layouts ) {
-        LayoutBenchmarkResult const l_result = runLayoutBenchmark(
-          l_size.first, l_size.second,
-          l_layoutSpec.blockWidth, l_layoutSpec.layout, l_layoutSpec.name
-        );
+        double l_sumConversion = 0.0;
+        double l_sumCompute    = 0.0;
+        double l_sumTotal      = 0.0;
+        double l_paddingPct    = 0.0;  // static per grid size/layout, keep last value
+
+        for( unsigned int l_rep = 0; l_rep < l_numRepeats; l_rep++ ) {
+          LayoutBenchmarkResult const l_result = runLayoutBenchmark(
+            l_size.first, l_size.second,
+            l_layoutSpec.blockWidth, l_layoutSpec.layout, l_layoutSpec.name
+          );
+
+          l_sumConversion += l_result.layoutConversionSeconds;
+          l_sumCompute    += l_result.computeSeconds;
+          l_sumTotal      += l_result.totalSeconds;
+          l_paddingPct     = l_result.paddingOverheadPct;
+        }
+
+        double const l_avgConversion = l_sumConversion / static_cast<double>( l_numRepeats );
+        double const l_avgCompute    = l_sumCompute    / static_cast<double>( l_numRepeats );
+        double const l_avgTotal      = l_sumTotal      / static_cast<double>( l_numRepeats );
 
         std::cout << std::left
-                   << std::setw(10) << l_result.nx
-                   << std::setw(10) << l_result.ny
-                   << std::setw(14) << l_result.layoutName
-                   << std::setw(22) << l_result.layoutConversionSeconds
-                   << std::setw(18) << l_result.computeSeconds
-                   << std::setw(16) << l_result.totalSeconds
-                   << std::setw(16) << l_result.paddingOverheadPct
+                   << std::setw(10) << l_size.first
+                   << std::setw(10) << l_size.second
+                   << std::setw(14) << l_layoutSpec.name
+                   << std::setw(22) << l_avgConversion
+                   << std::setw(18) << l_avgCompute
+                   << std::setw(16) << l_avgTotal
+                   << std::setw(16) << l_paddingPct
                    << std::endl;
       }
     }
@@ -558,8 +580,8 @@ namespace {
     std::cerr << "--ny N:            explicit number of cells in y-direction (overrides resolution-derived ny)" << std::endl;
     std::cerr << "--sync-strategy ST: synchronization strategy: 'lock-free' (default) or 'atomic'" << std::endl;
     std::cerr << "--layout-benchmark: run a standalone layout comparison sweep (RowMajor/ColumnMajor/Tile32" << std::endl;
-    std::cerr << "                   across 500x500, 1000x1000, 4000x4000 synthetic grids) and exit; ignores" << std::endl;
-    std::cerr << "                   all other positional/dataset arguments" << std::endl;
+    std::cerr << "                   across 500x500, 1000x1000, 4000x4000 synthetic grids, averaged over" << std::endl;
+    std::cerr << "                   10 repeats) and exit; ignores all other positional/dataset arguments" << std::endl;
   }
 }
 
@@ -611,7 +633,7 @@ int main( int i_argc,
       if( !tsunami_lab::patches::cuda::WavePropagation2dCuda::initialize( 0 ) ) {
         throw std::runtime_error( "CUDA initialization failed" );
       }
-      std::cout << "Running layout benchmark sweep (500x500, 1000x1000, 4000x4000)..." << std::endl;
+      std::cout << "Running layout benchmark sweep (500x500, 1000x1000, 4000x4000, 10 repeats each)..." << std::endl;
       runLayoutBenchmarkSweep();
       tsunami_lab::patches::cuda::WavePropagation2dCuda::finalize();
       std::cout << "finished, exiting" << std::endl;
