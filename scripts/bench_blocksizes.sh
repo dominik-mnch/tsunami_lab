@@ -17,6 +17,11 @@
 #   BIN           benchmark binary                (default ./build/benchmark_cuda)
 #   OUTDIR        output directory                (default data/blocksize_sweep)
 #   BUILD         set to 1 to build first         (default 0)
+#   NCU           set to 0 to skip ncu profiling  (default 1)
+#   NCU_BIN       ncu binary                      (default ncu)
+#   NCU_END_TIME  sim end time for ncu pass       (default 60)
+#   NCU_SKIP      kernel launches to skip         (default 6)
+#   NCU_LAUNCHES  kernel launches to profile      (default 12)
 #
 set -euo pipefail
 
@@ -29,12 +34,26 @@ SYNC="${SYNC:-lock-free}"
 BIN="${BIN:-./build/benchmark_cuda}"
 OUTDIR="${OUTDIR:-data/blocksize_sweep}"
 BUILD="${BUILD:-0}"
+NCU="${NCU:-1}"
+NCU_BIN="${NCU_BIN:-ncu}"
+NCU_END_TIME="${NCU_END_TIME:-60}"
+NCU_SKIP="${NCU_SKIP:-6}"
+NCU_LAUNCHES="${NCU_LAUNCHES:-12}"
+
+# occupancy + registers/thread metrics collected by ncu.
+NCU_OCC_METRIC="sm__warps_active.avg.pct_of_peak_sustained_active"
+NCU_REG_METRIC="launch__registers_per_thread"
 
 # --- sanity checks ----------------------------------------------------------
 command -v nsys >/dev/null 2>&1 || {
   echo "error: nsys not found on PATH (are you inside the nix-shell?)" >&2
   exit 1
 }
+
+if [ "$NCU" = "1" ] && ! command -v "$NCU_BIN" >/dev/null 2>&1; then
+  echo "warning: '$NCU_BIN' not found on PATH; disabling ncu profiling." >&2
+  NCU=0
+fi
 
 if [ "$BUILD" = "1" ]; then
   echo ">> building (scons mode=release) ..."
@@ -49,7 +68,7 @@ fi
 
 mkdir -p "$OUTDIR"
 CSV="$OUTDIR/blocksize_results.csv"
-echo "block_size,threads_per_block,ns_per_cell_iter,total_kernel_ms_per_run,xsweep_ms_per_run,ysweep_ms_per_run,wetdry_ms_per_run" > "$CSV"
+echo "block_size,threads_per_block,ns_per_cell_iter,total_kernel_ms_per_run,xsweep_ms_per_run,ysweep_ms_per_run,wetdry_ms_per_run,xsweep_occ_pct,xsweep_regs,ysweep_occ_pct,ysweep_regs,wetdry_occ_pct,wetdry_regs" > "$CSV"
 
 # Extract "Total Time (ns)" (column 2 of the CSV report) for rows whose kernel
 # name matches the given regex; sum them and divide by PROFILE_RUNS.
@@ -58,6 +77,29 @@ sum_kernel_ns() {
   echo "$csv" | awk -F',' -v pat="$pattern" '
     NR > 1 && $0 ~ pat { gsub(/"/, "", $2); s += $2 }
     END { printf "%.0f", s + 0 }'
+}
+
+# Average an ncu metric over all profiled launches of kernels whose name matches
+# the given regex. Handles quoted CSV fields (gawk FPAT). Prints NA if missing.
+ncu_metric() {
+  local csv="$1" kpat="$2" mname="$3"
+  echo "$csv" | awk -v FPAT='([^,]*)|("[^"]*")' -v kpat="$kpat" -v mname="$mname" '
+    NR == 1 {
+      for (i = 1; i <= NF; i++) {
+        g = $i; gsub(/"/, "", g)
+        if (g == "Kernel Name")  kc = i
+        if (g == "Metric Name")  mc = i
+        if (g == "Metric Value") vc = i
+      }
+      next
+    }
+    kc && mc && vc {
+      kn = $kc; gsub(/"/, "", kn)
+      mn = $mc; gsub(/"/, "", mn)
+      mv = $vc; gsub(/[",]/, "", mv)
+      if (kn ~ kpat && mn == mname) { s += mv; c++ }
+    }
+    END { if (c > 0) printf "%.2f", s / c; else printf "NA" }'
 }
 
 for N in $BLOCK_SIZES; do
@@ -88,7 +130,7 @@ for N in $BLOCK_SIZES; do
 
   if [ -z "$KERN_CSV" ]; then
     echo "warning: could not read cuda_gpu_kern_sum for block size $N" >&2
-    echo "${N},${TPB},${NS_PER_CELL:-NA},NA,NA,NA,NA" >> "$CSV"
+    echo "${N},${TPB},${NS_PER_CELL:-NA},NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$CSV"
     continue
   fi
 
@@ -104,7 +146,32 @@ for N in $BLOCK_SIZES; do
   YS_MS=$(to_ms_per_run "$YS_NS")
   WD_MS=$(to_ms_per_run "$WD_NS")
 
-  echo "${N},${TPB},${NS_PER_CELL:-NA},${TOTAL_MS},${XS_MS},${YS_MS},${WD_MS}" >> "$CSV"
+  # 4) ncu profile: achieved occupancy + registers/thread per kernel.
+  XS_OCC=NA; XS_REG=NA; YS_OCC=NA; YS_REG=NA; WD_OCC=NA; WD_REG=NA
+  if [ "$NCU" = "1" ]; then
+    echo ">> profiling with ncu (skip $NCU_SKIP, count $NCU_LAUNCHES launches) ..."
+    NCU_OUT=$("$NCU_BIN" --csv --target-processes all \
+        --metrics "${NCU_OCC_METRIC},${NCU_REG_METRIC}" \
+        --launch-skip "$NCU_SKIP" --launch-count "$NCU_LAUNCHES" \
+        "$BIN" 1 "$NCU_END_TIME" \
+        --resolution "$RESOLUTION" --block-size "$N" --sync-strategy "$SYNC" \
+        2>/dev/null || true)
+
+    if [ -z "$NCU_OUT" ]; then
+      echo "warning: ncu produced no output for block size $N" >&2
+    else
+      # strip everything before the CSV header ncu prints ("ID",...).
+      NCU_CSV=$(echo "$NCU_OUT" | sed -n '/"ID"/,$p')
+      XS_OCC=$(ncu_metric "$NCU_CSV" 'computeXSweep'        "$NCU_OCC_METRIC")
+      XS_REG=$(ncu_metric "$NCU_CSV" 'computeXSweep'        "$NCU_REG_METRIC")
+      YS_OCC=$(ncu_metric "$NCU_CSV" 'computeYSweep'        "$NCU_OCC_METRIC")
+      YS_REG=$(ncu_metric "$NCU_CSV" 'computeYSweep'        "$NCU_REG_METRIC")
+      WD_OCC=$(ncu_metric "$NCU_CSV" 'applyWetDryThreshold' "$NCU_OCC_METRIC")
+      WD_REG=$(ncu_metric "$NCU_CSV" 'applyWetDryThreshold' "$NCU_REG_METRIC")
+    fi
+  fi
+
+  echo "${N},${TPB},${NS_PER_CELL:-NA},${TOTAL_MS},${XS_MS},${YS_MS},${WD_MS},${XS_OCC},${XS_REG},${YS_OCC},${YS_REG},${WD_OCC},${WD_REG}" >> "$CSV"
 done
 
 echo
@@ -116,7 +183,11 @@ else
 fi
 
 echo
-echo "note: occupancy and registers/thread are NOT available from nsys stats."
-echo "      registers/thread: rebuild with nvcc '-Xptxas -v' and read 'Used N registers'."
-echo "      occupancy:        use 'ncu --metrics sm__warps_active.avg.pct_of_peak_sustained_active'"
-echo "                        (falls back to nsys --gpu-metrics if ncu is blocked on WDDM)."
+if [ "$NCU" = "1" ]; then
+  echo "note: occupancy_pct is achieved occupancy (${NCU_OCC_METRIC}),"
+  echo "      *_regs is registers/thread (${NCU_REG_METRIC}), both averaged over the"
+  echo "      profiled ncu launches. Set NCU=0 to skip the ncu pass."
+else
+  echo "note: ncu profiling was skipped (NCU=0 or ncu unavailable); occupancy and"
+  echo "      registers/thread columns are NA. Re-run with NCU=1 and ncu on PATH."
+fi
