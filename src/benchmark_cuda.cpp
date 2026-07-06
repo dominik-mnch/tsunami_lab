@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include <nvtx3/nvToolsExt.h>
-#include <cstudio>
+#include <cstdio>
 
 namespace {
   struct RunResult {
