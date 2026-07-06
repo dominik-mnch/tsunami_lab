@@ -539,7 +539,7 @@ namespace {
 
           // unique tag of nvtx3
           char rangeName[64];
-          sprintf(rangeName, sizeof(rangeName), "Bench_%d_%s_%d", l_size.first, l_layoutSpec.name, l_rep); 
+          snprintf(rangeName, sizeof(rangeName), "Bench_%d_%s_%d", l_size.first, l_layoutSpec.name, l_rep); 
 
           nvtxRangePushA(rangeName);
 
