@@ -732,6 +732,143 @@ Host-to-device transfers are essentially identical between the two approaches
      - 3.14
      - 14.25
 
+Kernel-Level Occupancy and DRAM Bandwidth (ncu)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same runs were re-profiled with Nsight Compute (``ncu``) to capture achieved
+occupancy and DRAM bandwidth for every kernel of both variants. Registers per
+thread are fixed by design and independent of resolution: the lock-free
+*cell-parallel* sweeps need more registers because each thread gathers all of its
+surrounding edges itself (**x-sweep 35, y-sweep 33**), whereas the atomic
+*edge-parallel* sweeps need only **25**; the wet/dry and ``initNewCells`` kernels
+use **16**. Occupancy stays comparable (~78–87 %) across both variants, so the
+extra lock-free registers do not throttle it on this GPU.
+
+.. list-table:: Per-kernel occupancy and DRAM bandwidth, lock-free (LF) vs atomic (A)
+   :header-rows: 1
+   :widths: 10 16 10 10 10 10 10 10
+
+   * - Resolution
+     - Kernel
+     - LF occ %
+     - LF DRAM %
+     - LF GB/s
+     - A occ %
+     - A DRAM %
+     - A GB/s
+   * - 2000 m
+     - X-sweep
+     - 84.5
+     - 85.3
+     - 735.2
+     - 77.9
+     - 90.0
+     - 776.2
+   * - 2000 m
+     - Y-sweep
+     - 79.8
+     - 72.0
+     - 620.3
+     - 80.6
+     - 89.9
+     - 774.7
+   * - 2000 m
+     - Wet/Dry
+     - 85.3
+     - 85.6
+     - 737.0
+     - 84.6
+     - 86.2
+     - 742.7
+   * - 2000 m
+     - ``initNewCells``
+     - —
+     - —
+     - —
+     - 84.8
+     - 86.7
+     - 746.9
+   * - 1000 m
+     - X-sweep
+     - 84.5
+     - 94.5
+     - 815.8
+     - 77.8
+     - 95.0
+     - 819.6
+   * - 1000 m
+     - Y-sweep
+     - 83.2
+     - 81.1
+     - 700.1
+     - 80.7
+     - 95.0
+     - 819.7
+   * - 1000 m
+     - Wet/Dry
+     - 87.2
+     - 94.7
+     - 816.8
+     - 87.1
+     - 94.8
+     - 818.0
+   * - 1000 m
+     - ``initNewCells``
+     - —
+     - —
+     - —
+     - 85.5
+     - 95.3
+     - 822.1
+   * - 500 m
+     - X-sweep
+     - 78.4
+     - 90.1
+     - 777.5
+     - 78.9
+     - 94.8
+     - 818.2
+   * - 500 m
+     - Y-sweep
+     - 83.9
+     - 84.9
+     - 732.7
+     - 81.1
+     - 94.7
+     - 817.6
+   * - 500 m
+     - Wet/Dry
+     - 87.0
+     - 96.9
+     - 836.3
+     - 87.3
+     - 97.1
+     - 838.4
+   * - 500 m
+     - ``initNewCells``
+     - —
+     - —
+     - —
+     - 79.4
+     - 90.3
+     - 779.8
+
+**Higher DRAM utilization does not mean faster.** The atomic sweeps consistently
+reach a *higher* fraction of peak DRAM bandwidth than their lock-free
+counterparts — most visibly the y-sweep (e.g. at 1000 m, 95.0 % vs 81.1 %, and at
+2000 m, 89.9 % vs 72.0 %). This is not a point in the atomic version's favour: it
+saturates the memory bus more precisely because it *moves more bytes* — each
+interior edge is read by two threads and ``atomicAdd`` accumulates into both
+adjacent cells. The lock-free y-sweep reads a strided, less-coalesced pattern in
+the row-major layout, which is why its DRAM efficiency is the lowest cell in the
+table, yet it still wins on wall-clock time because it does far less total work.
+
+**``initNewCells`` is pure bandwidth waste.** The atomic-only copy kernel runs at
+86–95 % of peak DRAM bandwidth while performing no computation — it merely shovels
+the old state into the new buffers. Its high bandwidth number is exactly the
+overhead the lock-free design removes, and it lines up with the 17–23 % of GPU
+time it consumed in the kernel-time breakdown above.
+
 Conclusion
 ~~~~~~~~~~
 
