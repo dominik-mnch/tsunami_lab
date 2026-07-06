@@ -40,9 +40,11 @@ NCU_END_TIME="${NCU_END_TIME:-60}"
 NCU_SKIP="${NCU_SKIP:-6}"
 NCU_LAUNCHES="${NCU_LAUNCHES:-12}"
 
-# occupancy + registers/thread metrics collected by ncu.
+# occupancy + registers/thread + DRAM bandwidth metrics collected by ncu.
 NCU_OCC_METRIC="sm__warps_active.avg.pct_of_peak_sustained_active"
 NCU_REG_METRIC="launch__registers_per_thread"
+NCU_BW_PCT_METRIC="dram__throughput.avg.pct_of_peak_sustained_elapsed"
+NCU_BW_BPS_METRIC="dram__bytes.sum.per_second"
 
 # --- sanity checks ----------------------------------------------------------
 command -v nsys >/dev/null 2>&1 || {
@@ -68,7 +70,7 @@ fi
 
 mkdir -p "$OUTDIR"
 CSV="$OUTDIR/blocksize_results.csv"
-echo "block_size,threads_per_block,ns_per_cell_iter,total_kernel_ms_per_run,xsweep_ms_per_run,ysweep_ms_per_run,wetdry_ms_per_run,xsweep_occ_pct,xsweep_regs,ysweep_occ_pct,ysweep_regs,wetdry_occ_pct,wetdry_regs" > "$CSV"
+echo "block_size,threads_per_block,ns_per_cell_iter,total_kernel_ms_per_run,xsweep_ms_per_run,ysweep_ms_per_run,wetdry_ms_per_run,xsweep_occ_pct,xsweep_regs,xsweep_dram_pct,xsweep_dram_gbps,ysweep_occ_pct,ysweep_regs,ysweep_dram_pct,ysweep_dram_gbps,wetdry_occ_pct,wetdry_regs,wetdry_dram_pct,wetdry_dram_gbps" > "$CSV"
 
 # Extract "Total Time (ns)" (column 2 of the CSV report) for rows whose kernel
 # name matches the given regex; sum them and divide by PROFILE_RUNS.
@@ -130,7 +132,7 @@ for N in $BLOCK_SIZES; do
 
   if [ -z "$KERN_CSV" ]; then
     echo "warning: could not read cuda_gpu_kern_sum for block size $N" >&2
-    echo "${N},${TPB},${NS_PER_CELL:-NA},NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$CSV"
+    echo "${N},${TPB},${NS_PER_CELL:-NA},NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$CSV"
     continue
   fi
 
@@ -146,12 +148,14 @@ for N in $BLOCK_SIZES; do
   YS_MS=$(to_ms_per_run "$YS_NS")
   WD_MS=$(to_ms_per_run "$WD_NS")
 
-  # 4) ncu profile: achieved occupancy + registers/thread per kernel.
-  XS_OCC=NA; XS_REG=NA; YS_OCC=NA; YS_REG=NA; WD_OCC=NA; WD_REG=NA
+  # 4) ncu profile: achieved occupancy + registers/thread + DRAM bandwidth per kernel.
+  XS_OCC=NA; XS_REG=NA; XS_BWP=NA; XS_BWG=NA
+  YS_OCC=NA; YS_REG=NA; YS_BWP=NA; YS_BWG=NA
+  WD_OCC=NA; WD_REG=NA; WD_BWP=NA; WD_BWG=NA
   if [ "$NCU" = "1" ]; then
     echo ">> profiling with ncu (skip $NCU_SKIP, count $NCU_LAUNCHES launches) ..."
     NCU_OUT=$("$NCU_BIN" --csv --target-processes all \
-        --metrics "${NCU_OCC_METRIC},${NCU_REG_METRIC}" \
+        --metrics "${NCU_OCC_METRIC},${NCU_REG_METRIC},${NCU_BW_PCT_METRIC},${NCU_BW_BPS_METRIC}" \
         --launch-skip "$NCU_SKIP" --launch-count "$NCU_LAUNCHES" \
         "$BIN" 1 "$NCU_END_TIME" \
         --resolution "$RESOLUTION" --block-size "$N" --sync-strategy "$SYNC" \
@@ -162,16 +166,26 @@ for N in $BLOCK_SIZES; do
     else
       # strip everything before the CSV header ncu prints ("ID",...).
       NCU_CSV=$(echo "$NCU_OUT" | sed -n '/"ID"/,$p')
+
+      # convert an averaged bytes/s figure to GB/s (1e9 bytes); passes NA through.
+      to_gbps() { awk -v v="$1" 'BEGIN { if (v == "NA") print "NA"; else printf "%.2f", v / 1e9 }'; }
+
       XS_OCC=$(ncu_metric "$NCU_CSV" 'computeXSweep'        "$NCU_OCC_METRIC")
       XS_REG=$(ncu_metric "$NCU_CSV" 'computeXSweep'        "$NCU_REG_METRIC")
+      XS_BWP=$(ncu_metric "$NCU_CSV" 'computeXSweep'        "$NCU_BW_PCT_METRIC")
+      XS_BWG=$(to_gbps "$(ncu_metric "$NCU_CSV" 'computeXSweep'        "$NCU_BW_BPS_METRIC")")
       YS_OCC=$(ncu_metric "$NCU_CSV" 'computeYSweep'        "$NCU_OCC_METRIC")
       YS_REG=$(ncu_metric "$NCU_CSV" 'computeYSweep'        "$NCU_REG_METRIC")
+      YS_BWP=$(ncu_metric "$NCU_CSV" 'computeYSweep'        "$NCU_BW_PCT_METRIC")
+      YS_BWG=$(to_gbps "$(ncu_metric "$NCU_CSV" 'computeYSweep'        "$NCU_BW_BPS_METRIC")")
       WD_OCC=$(ncu_metric "$NCU_CSV" 'applyWetDryThreshold' "$NCU_OCC_METRIC")
       WD_REG=$(ncu_metric "$NCU_CSV" 'applyWetDryThreshold' "$NCU_REG_METRIC")
+      WD_BWP=$(ncu_metric "$NCU_CSV" 'applyWetDryThreshold' "$NCU_BW_PCT_METRIC")
+      WD_BWG=$(to_gbps "$(ncu_metric "$NCU_CSV" 'applyWetDryThreshold' "$NCU_BW_BPS_METRIC")")
     fi
   fi
 
-  echo "${N},${TPB},${NS_PER_CELL:-NA},${TOTAL_MS},${XS_MS},${YS_MS},${WD_MS},${XS_OCC},${XS_REG},${YS_OCC},${YS_REG},${WD_OCC},${WD_REG}" >> "$CSV"
+  echo "${N},${TPB},${NS_PER_CELL:-NA},${TOTAL_MS},${XS_MS},${YS_MS},${WD_MS},${XS_OCC},${XS_REG},${XS_BWP},${XS_BWG},${YS_OCC},${YS_REG},${YS_BWP},${YS_BWG},${WD_OCC},${WD_REG},${WD_BWP},${WD_BWG}" >> "$CSV"
 done
 
 echo
@@ -184,10 +198,15 @@ fi
 
 echo
 if [ "$NCU" = "1" ]; then
-  echo "note: occupancy_pct is achieved occupancy (${NCU_OCC_METRIC}),"
-  echo "      *_regs is registers/thread (${NCU_REG_METRIC}), both averaged over the"
-  echo "      profiled ncu launches. Set NCU=0 to skip the ncu pass."
+  echo "note: per-kernel ncu columns, averaged over the profiled launches:"
+  echo "      *_occ_pct   = achieved occupancy   (${NCU_OCC_METRIC})"
+  echo "      *_regs      = registers/thread     (${NCU_REG_METRIC})"
+  echo "      *_dram_pct  = DRAM BW % of peak    (${NCU_BW_PCT_METRIC})"
+  echo "      *_dram_gbps = DRAM bandwidth GB/s  (${NCU_BW_BPS_METRIC})"
+  echo "      DRAM metrics may require multiple kernel replays; lower NCU_LAUNCHES"
+  echo "      if the ncu pass is too slow. Set NCU=0 to skip the ncu pass."
 else
-  echo "note: ncu profiling was skipped (NCU=0 or ncu unavailable); occupancy and"
-  echo "      registers/thread columns are NA. Re-run with NCU=1 and ncu on PATH."
+  echo "note: ncu profiling was skipped (NCU=0 or ncu unavailable); the occupancy,"
+  echo "      registers/thread and DRAM bandwidth columns are NA. Re-run with NCU=1"
+  echo "      and ncu on PATH."
 fi
