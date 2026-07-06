@@ -299,28 +299,6 @@
 ---
 
 ### Task 8: Final Benchmarking & Optimization Report
-- [ ] Run complete simulations
-  - [ ] Implement y-sweep kernel (or use baseline)
-  - [ ] Create benchmark that runs x-sweep + y-sweep
-  - [ ] Run on 500×500 grid for 10 timesteps
-  - [ ] Run on 1000×1000 grid for 10 timesteps
-  - [ ] Run on 2000×2000 grid for 5 timesteps
-  - [ ] Run on 4000×4000 grid for 3 timesteps
-- [ ] Profile full pipeline
-  - [ ] Use nsys to capture entire simulation
-  - [ ] Identify remaining bottlenecks
-  - [ ] Analyze kernel launch overhead
-  - [ ] Analyze memory transfer overhead
-  - [ ] Check for GPU stalls
-- [ ] Create comprehensive table
-  - [ ] Rows: all tested configurations
-  - [ ] Columns: Grid Size | Block Size | Layout | Sync Strategy | Time (ms) | Speedup vs CPU
-  - [ ] Calculate speedup ratio
-  - [ ] Highlight best configuration
-- [ ] Summarize performance impact
-  - [ ] Which parameters had biggest impact?
-  - [ ] Rank by performance contribution: thread count, memory layout, synchronization
-  - [ ] Quantify performance gain from each decision
 - [ ] Document best configuration
   - [ ] Best thread count: ___
   - [ ] Best memory layout: ___
@@ -342,12 +320,6 @@
   - [ ] Analysis: which parameters matter most
   - [ ] Recommendations: best configuration for cluster
   - [ ] Future work: opportunities for further optimization
-- [ ] Create deployment guide
-  - [ ] Best parameters for different grid sizes
-  - [ ] Performance expectations
-  - [ ] Build instructions for cluster
-  - [ ] Profiling commands for cluster verification
-  - [ ] Troubleshooting guide
 
 **Validation Checklist:**
 - [ ] Complete simulations run successfully
@@ -357,7 +329,6 @@
 - [ ] Best configuration clearly identified
 - [ ] Future optimization opportunities documented
 - [ ] Final report is comprehensive and clear
-- [ ] Deployment guide is actionable
 
 ---
 
