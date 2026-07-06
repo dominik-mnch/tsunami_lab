@@ -390,6 +390,87 @@ Per-kernel time and the CUDA-API overhead split from the same runs:
      - 91.5
      - 7.3
 
+Achieved occupancy and DRAM bandwidth per kernel, captured with Nsight Compute
+(``ncu``) from the same sweep. Registers per thread are fixed by the compiler and
+do not vary with block size: 35 for the x-sweep, 33 for the y-sweep and 16 for
+wet/dry. DRAM bandwidth is reported both as a percentage of the device peak and
+as an absolute figure in GB/s.
+
+.. list-table:: Per-kernel occupancy and DRAM bandwidth (ncu)
+   :header-rows: 1
+   :widths: 8 10 10 10 10 10 10 10 10 10
+
+   * - Block width
+     - X occ %
+     - X DRAM %
+     - X GB/s
+     - Y occ %
+     - Y DRAM %
+     - Y GB/s
+     - WD occ %
+     - WD DRAM %
+     - WD GB/s
+   * - 1×1
+     - 32.5
+     - 5.0
+     - 42.9
+     - 34.9
+     - 4.6
+     - 39.5
+     - 22.9
+     - 3.3
+     - 28.3
+   * - 2×2
+     - 33.9
+     - 19.0
+     - 164.1
+     - 38.1
+     - 16.6
+     - 143.0
+     - 24.3
+     - 12.8
+     - 110.6
+   * - 4×4
+     - 39.1
+     - 66.0
+     - 569.4
+     - 47.0
+     - 39.8
+     - 343.6
+     - 28.7
+     - 49.5
+     - 427.4
+   * - 8×8
+     - 87.5
+     - 94.4
+     - 814.8
+     - 89.3
+     - 74.5
+     - 643.0
+     - 88.8
+     - 94.3
+     - 813.7
+   * - **16×16**
+     - **84.7**
+     - **94.5**
+     - **815.0**
+     - **82.7**
+     - **80.6**
+     - **695.2**
+     - **87.3**
+     - **94.7**
+     - **816.5**
+   * - 32×32
+     - 56.1
+     - 93.9
+     - 809.7
+     - 55.1
+     - 83.3
+     - 718.2
+     - 54.7
+     - 93.5
+     - 806.3
+
 Analysis
 ~~~~~~~~
 
@@ -419,6 +500,19 @@ shrinks while the fixed per-launch cost stays constant. The host-to-device
 transfer volume (~130 MB over the two profiled runs) and bandwidth (~21.6 GB/s)
 are constant across all block sizes — a sanity check that only the launch
 configuration changed.
+
+**Occupancy and DRAM bandwidth confirm the picture.** The ``ncu`` metrics show
+the same story from the hardware side. At 1×1 the kernels achieve only ~3–5 % of
+peak DRAM bandwidth because a single active lane per warp cannot generate enough
+in-flight memory requests to saturate the bus. Widening the block raises both
+achieved occupancy and bandwidth in lockstep until, at 8×8 and 16×16, the compute
+sweeps reach ~94 % of peak DRAM throughput (~815 GB/s) — the solver is firmly
+bandwidth-bound at the sweet spot. At 32×32 occupancy drops back to ~55 % because
+fewer 1024-thread blocks fit per SM, yet DRAM utilisation stays near peak, which
+is exactly why the wall-clock time barely changes: the memory bus is already the
+bottleneck, so losing occupancy costs little. The **y-sweep** consistently
+achieves lower DRAM efficiency than the x-sweep (e.g. 80.6 % vs 94.5 % at 16×16),
+reflecting its strided, less-coalesced access pattern in the row-major layout.
 
 **Recommendation.** 16×16 (256 threads/block) is the best configuration and is
 used as the default throughout the solver. 8×8 is within ~18 % and is a
