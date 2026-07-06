@@ -1,3 +1,88 @@
+============================================================
+CUDA Memory Layout Transformations: Column-Major and Tiled
+============================================================
+
+Memory Layout Frameworks
+========================
+
+To maximize global memory throughput on the GPU, data layout must align with hardware 
+coalescing behaviors. Below are the three memory access models evaluated:
+
+Row-Major (Baseline)
+--------------------
+Consecutive threads in a warp step through adjacent column indices. Memory stride is 
+governed by the total width of the grid, including ghost boundaries:
+
+.. code-block:: c
+
+   #define ROW_MAJOR(row, col, stride) ((row) * (stride) + (col))
+
+Column-Major
+------------
+Consecutive elements in a column are contiguous in memory. This shifts the unit-stride 
+to the vertical dimension ($y$-axis), optimizing sweeps that process data column-wise:
+
+.. code-block:: c
+
+   #define COLUMN_MAJOR(row, col, height) ((col) * (height) + (row))
+
+Tiled 32x32 Assembly
+--------------------
+Data is broken down into a two-dimensional grid of independent $32 \times 32$ tiles. 
+Within each tile, memory is row-major. This configuration localizes thread blocks to 
+structured hardware boundaries:
+
+.. code-block:: c
+
+   const t_idx l_tileX = i_col / i_tileSize;
+   const t_idx l_tileY = i_row / i_tileSize;
+   const t_idx l_localX = i_col % i_tileSize;
+   const t_idx l_localY = i_row % i_tileSize;
+   const t_idx l_tileOffset = ((l_tileY * i_nTilesX + l_tileX) * i_tileSize * i_tileSize);
+   return l_tileOffset + (l_localY * i_tileSize + l_localX);
+
+---
+
+Kernel Modifications & Dimensional Shifts
+=========================================
+
+1. Ghost Cell Boundary Enforcements
+-----------------------------------
+
+Boundary kernels are highly sensitive to layout orientation due to memory coalescing.
+
+* **Left/Right Boundaries:**
+  
+  * *Column-Major:* Threads process a continuous vertical column vector. Consecutive thread IDs read and write to sequential addresses, creating perfectly coalesced global memory operations.
+  * *Tiled:* Linear index mappings split these boundaries into individual segments across multiple coordinate blocks, requiring explicit evaluation via ``tileLinearIndex``.
+
+* **Bottom/Top Boundaries:**
+  
+  * *Column-Major:* Because stride jumps across entire column heights (``l_col * i_height``), a linear row access patterns requires strided steps, impacting vectorization efficiency relative to Row-Major.
+
+2. Finite Volume Sweeps (X and Y Passes)
+----------------------------------------
+
+The operator-splitting scheme introduces contrasting performance footprints between layouts:
+
+.. list-table:: Dimensional Stride Comparison
+   :widths: 25 35 40
+   :header-rows: 1
+
+   * - Layout Model
+     - X-Sweep Neighbor Stride
+     - Y-Sweep Neighbor Stride
+   * - **Row-Major**
+     - $\pm 1$ (Coalesced)
+     - $\pm \text{Stride}$ (Strided)
+   * - **Column-Major**
+     - $\pm \text{Height}$ (Strided)
+     - $\pm 1$ (Coalesced)
+     - **Tiled (32x32)**
+     - Local: $\pm 1$ / Edge: Complex
+     - Local: $\pm 32$ / Edge: Complex
+
+
 L1/L2 Cache Hit Rate
 =====================
 
