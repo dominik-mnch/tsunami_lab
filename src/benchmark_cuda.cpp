@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <nvtx3/nvToolsExt.h>
+#include <cstudio>
 
 namespace {
   struct RunResult {
@@ -534,10 +536,19 @@ namespace {
         double l_paddingPct    = 0.0;  // static per grid size/layout, keep last value
 
         for( unsigned int l_rep = 0; l_rep < l_numRepeats; l_rep++ ) {
+
+          // unique tag of nvtx3
+          char rangeName[64];
+          sprintf(rangeName, sizeof(rangeName), "Bench_%d_%s_%d", l_size.first, l_layoutSpec.name, l_rep); 
+
+          nvtxRangePushA(rangeName);
+
           LayoutBenchmarkResult const l_result = runLayoutBenchmark(
             l_size.first, l_size.second,
             l_layoutSpec.blockWidth, l_layoutSpec.layout, l_layoutSpec.name
           );
+
+          nvtxRangePop();
 
           l_sumConversion += l_result.layoutConversionSeconds;
           l_sumCompute    += l_result.computeSeconds;
