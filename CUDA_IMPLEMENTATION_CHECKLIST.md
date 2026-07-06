@@ -182,10 +182,10 @@
   - [ ] Analyze memory coalescing efficiency
   - [ ] Identify cache misses
   - [ ] Calculate achieved memory bandwidth
-- [ ] Account for overhead
-  - [ ] Measure transpose/layout conversion time
-  - [ ] Measure memory padding overhead
-  - [ ] Include in total time calculation
+- [x] Account for overhead
+  - [x] Measure transpose/layout conversion time
+  - [x] Measure memory padding overhead
+  - [x] Include in total time calculation
 - [ ] Create visualization
   - [ ] Performance vs grid size for each layout
   - [ ] Cache hit rate comparison
