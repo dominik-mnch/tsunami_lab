@@ -936,3 +936,62 @@ The lock-free approach is faster at every resolution and correct by design
 avoiding atomic serialization. Since finite-volume tsunami simulation is
 memory-bound, removing redundant memory traffic is the most effective
 optimization available.
+
+
+CPU vs GPU Performance
+----------------------
+
+To put the GPU figures in context, they can be compared against the OpenMP CPU
+benchmark from the :doc:`parallelization` chapter. Both benchmarks isolate the
+same F-Wave time-stepping loop and report the same normalised metric — time per
+cell per iteration — which cancels out the differing grid sizes (the CPU runs use
+2160×1200 ≈ 2.59 M cells, the GPU runs 2700×1500 ≈ 4.05 M at 1000 m) and step
+counts, making the numbers directly comparable.
+
+.. note::
+
+   The two platforms are different machines. The CPU results were measured on an
+   **NVIDIA Grace** node (Arm, dual-socket, 72 cores per socket = 144 cores); the
+   GPU results on a single **NVIDIA L40S**. This is a cross-platform comparison of
+   a CPU node against a data-center GPU, not two configurations of the same box.
+
+.. list-table:: Time per cell per iteration, CPU (OpenMP) vs GPU (lock-free)
+   :header-rows: 1
+   :widths: 26 22 18 20
+
+   * - Platform
+     - Configuration
+     - ns / cell / iter
+     - Speedup vs 1 CPU core
+   * - CPU (Grace)
+     - 1 thread
+     - 15.7107
+     - 1.0×
+   * - CPU (Grace)
+     - 64 threads (best)
+     - 0.4101
+     - 38.3×
+   * - CPU (Grace)
+     - 144 threads
+     - 4.0032
+     - 3.9×
+   * - **GPU (L40S)**
+     - **lock-free, 1000 m**
+     - **0.0580**
+     - **271×**
+
+The GPU processes a cell-iteration in **0.058 ns**, versus **0.410 ns** for the
+best CPU configuration (64 threads) and **15.7 ns** for a single core. That is a
+**~7.1× speedup over the fully parallel CPU run** and **~271× over a single
+core**. Across the GPU's own resolution range the figure spans 0.0528 ns/cell/iter
+(2000 m) to 0.1019 ns/cell/iter (500 m), so the L40S stays several times ahead of
+the saturated 64-thread CPU at every grid size.
+
+The reason is the same memory-bandwidth argument that runs through this chapter.
+The solver is bandwidth-bound, and the L40S streams state from GDDR6 at up to
+864 GB/s — far more than a CPU node can sustain from DRAM — while its hundreds of
+thousands of resident threads hide memory latency more effectively than 64–144 CPU
+cores can. Notably the CPU *loses* performance beyond 64 threads (NUMA and
+cross-socket effects on the dual-socket Grace node), whereas the GPU keeps scaling
+with problem size; the accelerator's advantage is therefore both larger and more
+robust than the raw 7× headline suggests.
