@@ -120,10 +120,6 @@ differences are harmless in a single step but accumulate over thousands of steps
 particularly near shocks. The lock-free kernel instead sums each cell in a fixed
 order inside a single thread, making its results bit-for-bit deterministic.
 
-**A note on correctness (what is *not* a problem)**:
-
-The atomic kernels are **not** affected by classic inter-kernel race conditions. All kernels are launched into the same (default) CUDA stream, and CUDA guarantees that each kernel completes — with its memory writes visible — before the next one begins. So ``initNewCells`` always finishes before the x-sweep reads the buffers, and the x-sweep always finishes before the y-sweep. Within a single sweep, concurrent ``atomicAdd`` calls to a shared cell are also safe: atomics guarantee no lost updates. The only genuine correctness concern is the floating-point non-determinism described above — not memory-visibility hazards.
-
 **Comparison with the lock-free approach**
 
 Compared with the atomic version, the lock-free, operator-split design avoids
@@ -209,6 +205,68 @@ The test sources are split to keep the CUDA and host compilers apart:
 reference, and ``CudaRegressionTest.h`` declares the shared interface. The split
 avoids symbol clashes (such as a duplicate ``freeGPUMemory()``) that would arise if
 CPU and GPU code shared one translation unit.
+
+
+Test Hardware
+-------------
+
+All GPU measurements in this chapter were collected on a single **NVIDIA L40S**,
+a data-center card built on the Ada Lovelace architecture (AD102). Its key
+specifications are summarised below.
+
+.. list-table:: NVIDIA L40S — key specifications
+   :header-rows: 1
+   :widths: 34 26
+
+   * - Property
+     - Value
+   * - Architecture
+     - Ada Lovelace (AD102)
+   * - Streaming multiprocessors (SMs)
+     - 142
+   * - CUDA cores
+     - 18,176
+   * - Memory
+     - 48 GB GDDR6 with ECC
+   * - Memory interface
+     - 384-bit
+   * - Peak memory bandwidth
+     - 864 GB/s
+   * - FP32 (single precision)
+     - 91.6 TFLOPS
+   * - Max. power (TDP)
+     - 350 W
+
+FP32 throughput and board power are taken from the `NVIDIA L40S product page
+<https://www.nvidia.com/de-de/data-center/l40s/>`_; the CUDA-core count, memory
+configuration and bandwidth are from the L40S datasheet.
+
+The **864 GB/s peak bandwidth** is the most relevant figure for this solver.
+Because the finite-volume scheme is memory-bandwidth bound (see the profiling
+sections below), the achievable throughput is capped by how fast the L40S can
+stream state in and out of GDDR6.
+
+Maximum concurrent threads
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The L40S has **142 SMs**, and each Ada Lovelace SM (compute capability 8.9) can
+keep up to **1536 resident threads** (48 warps) in flight. The maximum number of
+threads that can be *simultaneously resident* on the whole GPU is therefore
+
+.. math::
+
+   142 \text{ SMs} \times 1536 \text{ threads/SM} = 218\,112 \text{ threads}.
+
+This is distinct from the 18,176 CUDA cores, which is the number of FP32 lanes
+and thus the peak number of single-precision operations that can be *issued in a
+single clock* (142 SMs × 128 lanes). The 218,112 figure is the hardware
+occupancy ceiling — how many threads can have live state and be interleaved for
+latency hiding at once.
+
+Both numbers are far smaller than the grids used here: at 1000 m the domain is
+~4.05 M cells and the solver launches one thread per cell, so ~4.05 million
+threads are requested but at most 218,112 are ever co-resident. The GPU streams
+the remaining blocks through the SMs as earlier ones retire.
 
 
 The Benchmark Harness
