@@ -297,16 +297,152 @@ Column-Major track each other closely on conversion and total time, with
 the larger differences showing up in ``AvgComputeSec`` instead, consistent
 with the coalescing behavior described above.
 
-.. image:: images/Speed.png
-   :alt: Different computing averages for the memory Layouts
-   :width: 600px
-   :height: 400px
-   :scale: 50%
-   :align: center
+.. list-table:: Cache hit rate, coalescing efficiency, and DRAM bandwidth by grid size and layout
+   :header-rows: 1
+   :widths: 8 14 10 10 12 12 14 12
 
-.. image:: images/L1_vs._L2.png
-   :alt: L1 vs. L2 cache hit rate and achieved bandwidth for the memory Layouts
-   :width: 600px
-   :height: 400px
-   :scale: 50%
-   :align: center
+   * - Grid
+     - Layout
+     - L1 Hit %
+     - L2 Hit %
+     - Load Coal %
+     - Store Coal %
+     - DRAM BW (GB/s)
+     - DRAM Thpt %
+   * - 500
+     - RowMajor
+     - 56.6
+     - 76.5
+     - 23.6
+     - 24.8
+     - 4.74e-09
+     - 55.2
+   * - 500
+     - ColumnMajor
+     - 63.6
+     - 59.1
+     - 10.1
+     - 24.9
+     - 3.68e-09
+     - 45.8
+   * - 500
+     - Tile32
+     - 56.0
+     - 50.8
+     - 92.7
+     - 97.4
+     - 4.39e-09
+     - 56.0
+   * - 1000
+     - RowMajor
+     - 56.5
+     - 61.3
+     - 70.6
+     - 24.0
+     - 6.54e-09
+     - 75.9
+   * - 1000
+     - ColumnMajor
+     - 84.2
+     - 65.5
+     - 24.9
+     - 92.5
+     - 5.02e-09
+     - 58.2
+   * - 1000
+     - Tile32
+     - 55.0
+     - 47.4
+     - 92.8
+     - 98.3
+     - 6.27e-09
+     - 72.7
+   * - 4000
+     - RowMajor
+     - 53.9
+     - 62.3
+     - 70.7
+     - 72.5
+     - 7.45e-09
+     - 86.3
+   * - 4000
+     - ColumnMajor
+     - 83.9
+     - 77.1
+     - 23.7
+     - 25.0
+     - 4.39e-09
+     - 50.9
+   * - 4000
+     - Tile32
+     - 53.9
+     - 49.3
+     - 93.3
+     - 99.6
+     - 7.65e-09
+     - 88.6
+
+.. list-table:: Runtime timing and padding overhead by grid size and layout
+   :header-rows: 1
+   :widths: 8 14 16 16 16 12
+
+   * - Grid
+     - Layout
+     - Avg Conversion (s)
+     - Avg Compute (s)
+     - Avg Total (s)
+     - Padding %
+   * - 500
+     - RowMajor
+     - 0.000309767
+     - 3.91442e-05
+     - 0.000348911
+     - 0.8016
+   * - 500
+     - ColumnMajor
+     - 0.000304765
+     - 4.75213e-05
+     - 0.000352287
+     - 0.8016
+   * - 500
+     - Tile32
+     - 0.0160497
+     - 3.90291e-04
+     - 0.00164372
+     - 4.8576
+   * - 1000
+     - RowMajor
+     - 0.000821736
+     - 5.95305e-05
+     - 0.000881266
+     - 0.4004
+   * - 1000
+     - ColumnMajor
+     - 0.000812725
+     - 9.98103e-05
+     - 0.000912535
+     - 0.4004
+   * - 1000
+     - Tile32
+     - 0.004486
+     - 6.76389e-05
+     - 0.00455364
+     - 4.8576
+   * - 4000
+     - RowMajor
+     - 0.0145732
+     - 0.00169889
+     - 0.0162721
+     - 0.100025
+   * - 4000
+     - ColumnMajor
+     - 0.0145503
+     - 0.00367448
+     - 0.0182248
+     - 0.100025
+   * - 4000
+     - Tile32
+     - 0.0589948
+     - 0.00157297
+     - 0.0605678
+     - 1.6064
