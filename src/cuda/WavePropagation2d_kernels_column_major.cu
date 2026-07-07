@@ -113,7 +113,7 @@ namespace tsunami_lab {
        * @param io_hv y-momentum (modified in place).
        * @param i_nCellsX number of interior cells in x-direction.
        * @param i_nCellsY number of interior cells in y-direction.
-       * @param i_height column height in elements (nCellsX + 2).
+       * @param i_height column height in elements (nCellsY + 2).
        **/
       TSUNAMI_CUDA_GLOBAL
       void setGhostOutflowLeftRightKernelColumnMajor( t_real *io_h,
