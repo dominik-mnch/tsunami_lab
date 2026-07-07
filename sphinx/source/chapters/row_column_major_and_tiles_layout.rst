@@ -132,8 +132,6 @@ needed), then reduced to a per-(grid size, layout) average:
        .groupby(['GridDim', 'Layout'])[['L1_HitRate_pct', 'L2_HitRate_pct']].mean()
    agg.to_csv("hit_rate_avg_by_layout.csv")
 
-Output: a 9-row table (``hit_rate_avg_by_layout.csv``) of average L1/L2
-hit rate per (grid size, layout) condition.
 
 Memory Coalescing and Achieved Bandwidth
 =========================================
