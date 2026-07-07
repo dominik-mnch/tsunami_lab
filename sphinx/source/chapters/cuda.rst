@@ -921,7 +921,7 @@ adjacent cells. The lock-free y-sweep reads a strided, less-coalesced pattern in
 the row-major layout, which is why its DRAM efficiency is the lowest cell in the
 table, yet it still wins on wall-clock time because it does far less total work.
 
-**``initNewCells`` is pure bandwidth waste.** The atomic-only copy kernel runs at
+** ``initNewCells`` is pure bandwidth waste.** The atomic-only copy kernel runs at
 86–95 % of peak DRAM bandwidth while performing no computation — it merely shovels
 the old state into the new buffers. Its high bandwidth number is exactly the
 overhead the lock-free design removes, and it lines up with the 17–23 % of GPU
