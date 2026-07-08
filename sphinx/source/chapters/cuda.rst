@@ -983,9 +983,12 @@ counts, making the numbers directly comparable.
 The GPU processes a cell-iteration in **0.058 ns**, versus **0.410 ns** for the
 best CPU configuration (64 threads) and **15.7 ns** for a single core. That is a
 **~7.1× speedup over the fully parallel CPU run** and **~271× over a single
-core**. Across the GPU's own resolution range the figure spans 0.0528 ns/cell/iter
-(2000 m) to 0.1019 ns/cell/iter (500 m), so the L40S stays several times ahead of
-the saturated 64-thread CPU at every grid size.
+core**. Comparing each platform at its *own* fastest, the GPU reaches
+0.0528 ns/cell/iter (2000 m) against the CPU's best of 0.4101 ns/cell/iter
+(64 threads) — a **~7.8× best-to-best speedup**. Across the GPU's own resolution
+range the figure spans 0.0528 ns/cell/iter (2000 m) to 0.1019 ns/cell/iter
+(500 m), so the L40S stays several times ahead of the saturated 64-thread CPU at
+every grid size.
 
 The reason is the same memory-bandwidth argument that runs through this chapter.
 The solver is bandwidth-bound, and the L40S streams state from GDDR6 at up to
