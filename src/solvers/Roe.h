@@ -84,7 +84,7 @@ class tsunami_lab::solvers::Roe {
       // compute inverse of right eigenvector-matrix
       t_real l_detInv = 1 / (i_waveSpeedR - i_waveSpeedL);
 
-      t_real l_rInv[2][2] = {0};
+      t_real l_rInv[2][2] = {};
       l_rInv[0][0] =  l_detInv * i_waveSpeedR;
       l_rInv[0][1] = -l_detInv;
       l_rInv[1][0] = -l_detInv * i_waveSpeedL;
