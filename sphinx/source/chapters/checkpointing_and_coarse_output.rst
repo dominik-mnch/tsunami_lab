@@ -282,16 +282,22 @@ The coarse output is written to a separate NetCDF file, which can be used for vi
 Simulating Tohoku earthquake and tsunami with coarse output
 ------------------------------------------------------------
 
+To test how much of an effect this actually has, we ran the Tohoku simulation with a coarse factor of :math:'k=50'.
+
 .. code-block:: bash
 
-  ./build/tsunami_lab 100m -200000 2500000 -750000 750000 50 1 3600 2d outflow tsunami2d \
-      data/output/tohoku_gebco20_ucsb3_250m_bath.nc \
-      data/output/tohoku_gebco20_ucsb3_250m_displ.nc
+  ./build/tsunami_lab 50m -200000 2500000 -750000 750000 50 1 3600 2d outflow tsunami2d \
+      data/output/tohoku_gebco20_ucsb3_100m_bath_fixed.nc \
+      data/output/tohoku_gebco20_ucsb3_100m_displ_fixed.nc
 
-We tried to run the simulation on the elaine machine over night since it would take a long amount of time.
-However, the simulation was killed after a few hours due to a disconnect of the SSH session.
-Unfortunately, after that, we did not have enough time to complete the simulation again.
+Unfortunately, this simulation does take a while to run, so we only have the first 945 seconds of simulation time. The resulting video looks like this:
 
+.. video:: ../../../res/checkpointing_and_coarse_output/coarse_output.mp4
+   :align: center
+   :width: 100%
+
+The filesize of the solution.nc file is only around 5GB which is remarkably small for a simulation of this size. But even with this coarse factor,
+we can still see the simulation is running correctly and the tsunami wave is propagating as expected.
 
 Indiviual Contributions
 -----------------------
