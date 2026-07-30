@@ -143,7 +143,8 @@ The experiments were performed on the GPU partition because the short
 partition was fully allocated at the time. All measurements were performed
 on compute nodes and not on login nodes.
 
-The benchmark case used was a one-dimensional shock-shock problem:
+The benchmark case used for all compiler experiments was a one-dimensional
+shock-shock problem:
 
 * resolution: ``50m``
 * domain: ``0 <= x <= 5000``
@@ -152,7 +153,7 @@ The benchmark case used was a one-dimensional shock-shock problem:
 
 The measured quantity is the time per cell and iteration.
 
-Task 1: Support for generic compilers
+Support for generic compilers
 -------------------------------------
 
 The build system was extended to support different C++ compilers using the
@@ -172,7 +173,7 @@ or
 The compiler is read from the environment in the SCons build script and
 forwarded to the local SCons environment.
 
-Task 2: Comparison of GCC and Clang
+Comparison of GCC and Clang
 -----------------------------------
 
 The solver was compiled with both GCC and Clang using the ``-O2``
@@ -236,7 +237,7 @@ can occur due to system effects such as scheduling and cache effects.
 Nevertheless, the difference between GCC and Clang was consistent across
 the three Clang measurements.
 
-Task 3: Optimization flags and runtime comparison
+Optimization flags and runtime comparison
 -------------------------------------------------
 
 The effect of compiler optimization flags was investigated using GCC.
@@ -301,27 +302,36 @@ because the ``clang++`` compiler was not available in the environment. The
 Clang ``-O2`` results above were obtained from an environment where Clang was
 available.
 
-Effect of optimization flags on numerical accuracy
---------------------------------------------------
+Including report to find vectorization opportunities
+----------------------------------------------------
 
-The optimization level can influence both runtime and numerical behaviour.
+To investigate possible vectorization opportunities, GCC optimization reports
+were enabled using ``-fopt-info-vec-all``. The report was generated during
+compilation with:
 
-``-O2`` enables many performance optimizations while preserving relatively
-strict floating-point behaviour. It generally keeps the numerical results
-more predictable.
+.. code-block:: bash
 
-``-Ofast`` enables more aggressive optimizations and includes fast floating
-point optimizations. These optimizations may:
+   scons report=1
 
-* reorder floating-point operations,
-* use approximations that are faster but less precise,
-* assume that NaNs and infinities do not occur,
-* violate strict IEEE floating-point rules.
+The generated report analyzed the wave propagation implementation in
+``WavePropagation1d``. No successful vectorizations were reported for the
+inspected sections. The main reasons given by GCC for failed vectorization were:
 
-For scientific simulations such as tsunami propagation, these changes can
-affect reproducibility and may introduce small differences in the numerical
-solution. Therefore, ``-Ofast`` should only be used after verifying that the
-resulting accuracy is acceptable.
+* non-consecutive memory accesses,
+* insufficient independent data references,
+* missing grouped stores.
+
+These limitations are caused by the current memory access patterns and data
+dependencies in the implementation.
+
+Including report to find vectorization opportunities
+----------------------------------------------------
+I enabled GCC optimization reports using -fopt-info-vec-all. The report
+shows that GCC analyzes the wave propagation implementation in WavePropagation1d. 
+No loops were successfully vectorized in the inspected sections. The main reasons
+for failed vectorization were non-consecutive memory accesses, insufficient
+independent data references, and missing grouped stores. These limitations are
+related to the current memory layout and data dependencies of the algorithm.
 
 Conclusion
 ----------
