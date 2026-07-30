@@ -1,9 +1,3 @@
-##
-# @author Alexander Breuer (alex.breuer AT uni-jena.de)
-#
-# @section DESCRIPTION
-# Entry-point for builds.
-##
 import os
 import SCons
 
@@ -20,7 +14,7 @@ print('runnning build script')
 # 1. Try CUDA_PATH env variable
 cuda_path = os.environ.get('CUDA_PATH','')
 
-# 2. Fall back to common default location if not set 
+# 2. Fall back to common default location if not set
 if not cuda_path:
         candidates = ['/usr/local/cuda', '/usr/cuda']
         for path in candidates:
@@ -59,7 +53,16 @@ vars.AddVariables(
                 'release',
                 allowed_values=('release', 'debug', 'release+san', 'debug+san' )
               ),
-  ('CXX', 'C++ compiler executable', 'g++')
+  ('CXX', 'C++ compiler executable', 'g++'),
+  EnumVariable( 'opt',
+                'optimization level passed to the compiler as -O<opt>',
+                '2',
+                allowed_values=('0', '1', '2', '3', 'fast')
+              ),
+  BoolVariable( 'report',
+                'enable compiler optimization remarks (vectorization/inlining reports)',
+                False
+              )
 )
 
 # exit in the case of unknown variables
@@ -68,8 +71,23 @@ if vars.UnknownVariables():
   exit(1)
 
 # create environment
-env = Environment( variables = vars )
+# ENV=os.environ forwards the surrounding shell environment (PATH,
+# LD_LIBRARY_PATH, loaded modules, etc.) into SCons' subprocess environment,
+# so e.g. `module load llvm` on the login/compute node is visible here too.
+env = Environment( variables = vars, ENV = os.environ )
 env.Append(CPPPATH=['src'])
+
+# Task 1: generic compiler support via the CXX environment variable.
+# Usage:   CXX=clang++ scons
+#          CXX=g++     scons
+# An explicit `scons CXX=...` command-line argument still wins over the
+# environment variable, since it was already applied by vars.Update() above;
+# we only fall back to the shell's CXX if the user did not pass it on the
+# command line.
+if 'CXX' in os.environ and 'CXX' not in ARGUMENTS:
+  env['CXX'] = os.environ['CXX']
+
+print(f"Using CXX = {env['CXX']}")
 
 # Configure CUDA if available
 if cuda_available:
@@ -144,11 +162,15 @@ env.Append(CPPDEFINES=[
 ])
 
 # set optimization mode
+# Task 3: the optimization level is now selectable via the `opt` build
+# variable, e.g.  scons opt=fast   (-> -Ofast)   or   scons opt=3 (-> -O3)
+# `mode=debug` still forces -O0 -g regardless of `opt`, matching the
+# previous behaviour.
 if 'debug' in env['mode']:
   env.Append( CXXFLAGS = [ '-g',
                            '-O0' ] )
 else:
-  env.Append( CXXFLAGS = [ '-O2' ] )
+  env.Append( CXXFLAGS = [ '-O' + env['opt'] ] )
 
 # add sanitizers
 if 'san' in  env['mode']:
@@ -163,6 +185,25 @@ if 'san' in  env['mode']:
                             '-fsanitize=undefined' ] )
 else:
   env.Append( CXXFLAGS = [ '-Werror' ] )
+
+# Task 4: optimization reports.
+# Usage: scons report=1
+# Clang uses -Rpass / -Rpass-missed / -Rpass-analysis remarks; GCC uses the
+# -fopt-info family. We detect the compiler front-end from $CXX (this is a
+# heuristic string check, not a compiler invocation) and emit the matching
+# flags. Remarks go to stderr, so redirect the build to a file to inspect
+# them, e.g.:  CXX=clang++ scons report=1 2> opt_report.txt
+if env['report']:
+  cxx_name = os.path.basename(env['CXX'])
+  if 'clang' in cxx_name:
+    env.Append( CXXFLAGS = [ '-Rpass=.*',
+                             '-Rpass-missed=.*',
+                             '-Rpass-analysis=.*' ] )
+  else:
+    # gcc (and g++-compatible front ends)
+    env.Append( CXXFLAGS = [ '-fopt-info-all' ] )
+  # Keep debug info so line numbers in the remarks are meaningful.
+  env.Append( CXXFLAGS = [ '-gline-tables-only' ] if 'clang' in cxx_name else [ '-g' ] )
 
 # add Catch2
 env.Append( CXXFLAGS = [ '-isystem', 'submodules/Catch2/single_include' ] )
