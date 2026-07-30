@@ -136,7 +136,206 @@ is already a pretty powerful machine with a good CPU (AMD Ryzen 5 9600X) so we s
 The next chapter will be about parallelization and we should expect to see a much bigger improvement from the cluster then because we 
 will actually be using more of the cores.
 
+Compiler and Optimization Experiments
+=====================================
+
+The experiments were performed on the GPU partition because the short
+partition was fully allocated at the time. All measurements were performed
+on compute nodes and not on login nodes.
+
+The benchmark case used was a one-dimensional shock-shock problem:
+
+* resolution: ``50m``
+* domain: ``0 <= x <= 5000``
+* end time: ``1.0``
+* solver: ``FWave``
+
+The measured quantity is the time per cell and iteration.
+
+Task 1: Support for generic compilers
+-------------------------------------
+
+The build system was extended to support different C++ compilers using the
+``CXX`` environment variable. This allows selecting the compiler during the
+SCons build process, for example:
+
+.. code-block:: bash
+
+   CXX=g++ scons
+
+or
+
+.. code-block:: bash
+
+   CXX=clang++ scons
+
+The compiler is read from the environment in the SCons build script and
+forwarded to the local SCons environment.
+
+Task 2: Comparison of GCC and Clang
+-----------------------------------
+
+The solver was compiled with both GCC and Clang using the ``-O2``
+optimization level. Each configuration was executed three times.
+
+GCC ``-O2`` results:
+
++------+-----------------------------+
+| Run  | Time per cell and iteration |
++======+=============================+
+| 1    | 2.2988e-07                 |
++------+-----------------------------+
+| 2    | 5.5373e-07                 |
++------+-----------------------------+
+| 3    | 2.76615e-07                |
++------+-----------------------------+
+
+The average runtime for GCC was:
+
+::
+
+   (2.2988e-07 + 5.5373e-07 + 2.76615e-07) / 3
+   = 3.53e-07 seconds per cell and iteration
+
+
+Clang ``-O2`` results:
+
++------+-----------------------------+
+| Run  | Time per cell and iteration |
++======+=============================+
+| 1    | 6.37281e-06                |
++------+-----------------------------+
+| 2    | 5.87092e-06                |
++------+-----------------------------+
+| 3    | 6.77842e-06                |
++------+-----------------------------+
+
+The average runtime for Clang was:
+
+::
+
+   (6.37281e-06 + 5.87092e-06 + 6.77842e-06) / 3
+   = 6.34e-06 seconds per cell and iteration
+
+
+Comparison:
+
++----------+-----------------------------+
+| Compiler | Average time                |
++==========+=============================+
+| GCC      | 3.53e-07 s/cell/iteration   |
++----------+-----------------------------+
+| Clang    | 6.34e-06 s/cell/iteration   |
++----------+-----------------------------+
+
+For this benchmark, GCC generated faster code. The GCC executable was
+approximately 18 times faster than the Clang executable.
+
+The benchmark problem is relatively small, so some variation between runs
+can occur due to system effects such as scheduling and cache effects.
+Nevertheless, the difference between GCC and Clang was consistent across
+the three Clang measurements.
+
+Task 3: Optimization flags and runtime comparison
+-------------------------------------------------
+
+The effect of compiler optimization flags was investigated using GCC.
+The optimization levels ``-O2`` and ``-Ofast`` were compared.
+
+GCC ``-O2`` results:
+
++------+-----------------------------+
+| Run  | Time per cell and iteration |
++======+=============================+
+| 1    | 3.49127e-07                |
++------+-----------------------------+
+| 2    | 2.61535e-07                |
++------+-----------------------------+
+| 3    | 1.26583e-07                |
++------+-----------------------------+
+
+Average:
+
+::
+
+   (3.49127e-07 + 2.61535e-07 + 1.26583e-07) / 3
+   = 2.46e-07 seconds per cell and iteration
+
+
+GCC ``-Ofast`` results:
+
++------+-----------------------------+
+| Run  | Time per cell and iteration |
++======+=============================+
+| 1    | 2.43328e-07                |
++------+-----------------------------+
+| 2    | 1.31695e-07                |
++------+-----------------------------+
+| 3    | 4.83725e-07                |
++------+-----------------------------+
+
+Average:
+
+::
+
+   (2.43328e-07 + 1.31695e-07 + 4.83725e-07) / 3
+   = 2.86e-07 seconds per cell and iteration
+
+
+Comparison:
+
++----------------+---------------------------+
+| Configuration  | Average time              |
++================+===========================+
+| GCC ``-O2``    | 2.46e-07 s/cell/iteration |
++----------------+---------------------------+
+| GCC ``-Ofast`` | 2.86e-07 s/cell/iteration |
++----------------+---------------------------+
+
+For this benchmark, ``-Ofast`` did not improve the measured runtime compared
+to ``-O2``. The difference between the runs is small and the benchmark size
+causes noticeable measurement variation.
+
+Additional Clang optimization tests could not be performed on this cluster
+because the ``clang++`` compiler was not available in the environment. The
+Clang ``-O2`` results above were obtained from an environment where Clang was
+available.
+
+Effect of optimization flags on numerical accuracy
+--------------------------------------------------
+
+The optimization level can influence both runtime and numerical behaviour.
+
+``-O2`` enables many performance optimizations while preserving relatively
+strict floating-point behaviour. It generally keeps the numerical results
+more predictable.
+
+``-Ofast`` enables more aggressive optimizations and includes fast floating
+point optimizations. These optimizations may:
+
+* reorder floating-point operations,
+* use approximations that are faster but less precise,
+* assume that NaNs and infinities do not occur,
+* violate strict IEEE floating-point rules.
+
+For scientific simulations such as tsunami propagation, these changes can
+affect reproducibility and may introduce small differences in the numerical
+solution. Therefore, ``-Ofast`` should only be used after verifying that the
+resulting accuracy is acceptable.
+
+Conclusion
+----------
+
+The experiments show that compiler choice and optimization settings can have
+a significant influence on runtime.
+
+For this benchmark:
+
+* GCC produced faster code than Clang at ``-O2``.
+* GCC ``-Ofast`` did not provide a measurable speedup over ``-O2``.
+* Aggressive optimization flags should be evaluated carefully in numerical
+  simulations because they may affect floating-point accuracy.
+
 Individual Contributions
 ------------------------
-Due to time constraints for us this week, we didn't have time to do task 8.2 and 8.3. They will be done at a later time.
-Dominik Münch did task 8.1 this week.
+Dominik Münch did task 8.1 this week. Magdalena Schwarzkopf did task 8.2, and 8.3 but did them at a later time, due to time constraints in this week. 
