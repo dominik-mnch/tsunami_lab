@@ -1461,9 +1461,8 @@ Runtime timing and padding overhead by grid size and layout
 Discussion
 ~~~~~~~~~~
 
-Tile32 wins on cache and coalescing metrics, but that doesn't make it the
-fastest option
-^^^^^^^^^^^^^^
+Tile32 wins on cache and coalescing metrics, but that doesn't make it the fastest option
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Across all three grid sizes, Tile32 has by far the highest load and store
 coalescing efficiency (92-99%, versus 10-72% for Row-/Column-Major) because
@@ -1477,9 +1476,8 @@ close to Row-Major's at every grid size, so the coalescing advantage mostly
 just keeps it competitive rather than making it dominant, once you look
 past the conversion step (below).
 
-Column-Major trades L1/L2 hit rate for the DRAM bandwidth it can't fully
-use
-^^^
+Column-Major trades L1/L2 hit rate for the DRAM bandwidth it can't fully use
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Column-Major has the highest L1 (up to 84.2%) and, at large grids, the
 highest L2 hit rate (77.1% at grid 4000) of the three layouts. But it
@@ -1520,9 +1518,8 @@ along the boundary. As a result, Tile32's ``AvgTotalSec`` is 3-5x higher
 than Row-/Column-Major's at every grid size tested, even though its
 in-kernel coalescing efficiency is the best of the three.
 
-Row-Major vs. Column-Major: conversion and total time track closely;
-compute time is where they diverge
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Row-Major vs. Column-Major: conversion and total time track closely compute time is where they diverge
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Because Column-Major is just a different indexing scheme over the same
 contiguous buffer, its ``AvgConversionSec`` and ``AvgTotalSec`` are nearly
