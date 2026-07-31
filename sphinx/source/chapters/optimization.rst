@@ -137,7 +137,7 @@ The next chapter will be about parallelization and we should expect to see a muc
 will actually be using more of the cores.
 
 Compiler and Optimization Experiments
-=====================================
+--------------------------------------
 
 The experiments were performed on the GPU partition because the short
 partition was fully allocated at the time. All measurements were performed
@@ -154,7 +154,7 @@ shock-shock problem:
 The measured quantity is the time per cell and iteration.
 
 Support for generic compilers
--------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The build system was extended to support different C++ compilers using the
 ``CXX`` environment variable. This allows selecting the compiler during the
@@ -174,7 +174,7 @@ The compiler is read from the environment in the SCons build script and
 forwarded to the local SCons environment.
 
 Comparison of GCC and Clang
------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The solver was compiled with both GCC and Clang using the ``-O2``
 optimization level. Each configuration was executed three times.
@@ -238,7 +238,7 @@ Nevertheless, the difference between GCC and Clang was consistent across
 the three Clang measurements.
 
 Optimization flags and runtime comparison
--------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The effect of compiler optimization flags was investigated using GCC.
 The optimization levels ``-O2`` and ``-Ofast`` were compared.
@@ -303,7 +303,7 @@ Clang ``-O2`` results above were obtained from an environment where Clang was
 available.
 
 Including report to find vectorization opportunities
-----------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To investigate possible vectorization opportunities, GCC optimization reports
 were enabled using ``-fopt-info-vec-all``. The report was generated during
@@ -325,7 +325,7 @@ These limitations are caused by the current memory access patterns and data
 dependencies in the implementation.
 
 Including report to find vectorization opportunities
-----------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 I enabled GCC optimization reports using -fopt-info-vec-all. The report
 shows that GCC analyzes the wave propagation implementation in WavePropagation1d. 
 No loops were successfully vectorized in the inspected sections. The main reasons
@@ -334,7 +334,7 @@ independent data references, and missing grouped stores. These limitations are
 related to the current memory layout and data dependencies of the algorithm.
 
 Conclusion
-----------
+~~~~~~~~~~
 
 The experiments show that compiler choice and optimization settings can have
 a significant influence on runtime.
@@ -349,10 +349,10 @@ For this benchmark:
 .. _vtune-profiling:
 
 VTune Profiling of the Tsunami Simulator
-==========================================
+----------------------------------------
 
 Build Configuration for Profiling
------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To obtain meaningful, line-level profiling data, the build system
 (``SConstruct``) was extended with a new boolean build variable, ``profile``,
@@ -390,7 +390,7 @@ The resulting binary was verified to contain debug information:
    with debug_info, not stripped
 
 Running the Hotspots Analysis via the Command Line (Batch Job)
-------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Rather than running the analysis interactively on the login node, the
 ``Hotspots`` collection was launched from a Slurm batch job so that the
@@ -437,7 +437,7 @@ finalization completed without errors:
    vtune: Executing actions 100 % done
 
 Hotspot Analysis Results
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 The benchmark executable was run on the fixed 2160 × 1200-cell Tohoku 2011
 tsunami setup for a simulated end time of 600 s, using 8 OpenMP threads.
@@ -477,7 +477,7 @@ Additionally, VTune reported low core utilization for this run:
 * Effective Logical Core Utilization: **6.4 %** (6.2 of 96 logical cores)
 
 Which parts are compute-intensive? Was this expected?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The dominant cost, combining ``netUpdates`` and the enclosing ``timeStep``
 loop, accounts for roughly **84 %** of total CPU time. This matches
@@ -498,7 +498,7 @@ requested threads across physical cores — a parallel-efficiency issue
 distinct from the per-cell algorithmic cost discussed above.
 
 Optimization Ideas
-----------------------
+~~~~~~~~~~~~~~~~~~
 
 Based on the above hotspot data, the following concrete optimization
 directions were identified:
@@ -535,5 +535,5 @@ directions were identified:
    measured utilization.
 
 Individual Contributions
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 Dominik Münch did task 8.1 this week. Magdalena Schwarzkopf did task 8.2, and 8.3 but did them at a later time, due to time constraints in this week. 
