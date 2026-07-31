@@ -5,12 +5,12 @@ CUDA Memory Layout Transformations: Column-Major and Tiled
 Memory Layout Frameworks
 ========================
 
-To maximize global memory throughput on the GPU, data layout must align with hardware 
+To maximize global memory throughput on the GPU, data layout must align with hardware
 coalescing behaviors. Below are the three memory access models we evaluated:
 
 Row-Major (Baseline)
 --------------------
-Consecutive threads in a warp step through adjacent column indices. Memory stride is 
+Consecutive threads in a warp step through adjacent column indices. Memory stride is
 governed by the total width of the grid, including ghost boundaries:
 
 .. code-block:: c
@@ -19,7 +19,7 @@ governed by the total width of the grid, including ghost boundaries:
 
 Column-Major
 ------------
-Consecutive elements in a column are contiguous in memory. This shifts the unit-stride 
+Consecutive elements in a column are contiguous in memory. This shifts the unit-stride
 to the vertical dimension ($y$-axis), optimizing sweeps that process data column-wise:
 
 .. code-block:: c
@@ -28,8 +28,8 @@ to the vertical dimension ($y$-axis), optimizing sweeps that process data column
 
 Tiled 32x32 Assembly
 --------------------
-Data is broken down into a two-dimensional grid of independent $32 \times 32$ tiles. 
-Within each tile, memory is row-major. This configuration localizes thread blocks to 
+Data is broken down into a two-dimensional grid of independent $32 \times 32$ tiles.
+Within each tile, memory is row-major. This configuration localizes thread blocks to
 structured hardware boundaries:
 
 .. code-block:: c
@@ -52,18 +52,25 @@ Kernel Modifications & Dimensional Shifts
 Boundary kernels are highly sensitive to layout orientation due to memory coalescing.
 
 * **Left/Right Boundaries:**
-  
-  * *Column-Major:* Threads process a continuous vertical column vector. Consecutive thread IDs read and write to sequential addresses, creating perfectly coalesced global memory operations.
-  * *Tiled:* Linear index mappings split these boundaries into individual segments across multiple coordinate blocks, requiring explicit evaluation via ``tileLinearIndex``.
+
+  * *Column-Major:* Threads process a continuous vertical column vector. Consecutive
+    thread IDs read and write to sequential addresses, creating perfectly coalesced
+    global memory operations.
+  * *Tiled:* Linear index mappings split these boundaries into individual segments
+    across multiple coordinate blocks, requiring explicit evaluation via
+    ``tileLinearIndex``.
 
 * **Bottom/Top Boundaries:**
-  
-  * *Column-Major:* Because stride jumps across entire column heights (``l_col * i_height``), a linear row access patterns requires strided steps, impacting vectorization efficiency relative to Row-Major.
+
+  * *Column-Major:* Because stride jumps across entire column heights
+    (``l_col * i_height``), a linear row access pattern requires strided steps,
+    impacting vectorization efficiency relative to Row-Major.
 
 2. Finite Volume Sweeps (X and Y Passes)
 ----------------------------------------
 
-The operator-splitting scheme introduces contrasting performance footprints between layouts:
+The operator-splitting scheme introduces contrasting performance footprints between
+layouts:
 
 .. list-table:: Dimensional Stride Comparison
    :widths: 25 35 40
@@ -73,15 +80,18 @@ The operator-splitting scheme introduces contrasting performance footprints betw
      - X-Sweep Neighbor Stride
      - Y-Sweep Neighbor Stride
    * - **Row-Major**
-     - $\pm 1$ (Coalesced)
-     - $\pm \text{Stride}$ (Strided)
+     - :math:`\pm 1` (Coalesced)
+     - :math:`\pm \text{Stride}` (Strided)
    * - **Column-Major**
-     - $\pm \text{Height}$ (Strided)
-     - $\pm 1$ (Coalesced)
-     - **Tiled (32x32)**
-     - Local: $\pm 1$ / Edge: Complex
-     - Local: $\pm 32$ / Edge: Complex
+     - :math:`\pm \text{Height}` (Strided)
+     - :math:`\pm 1` (Coalesced)
+   * - **Tiled (32x32)**
+     - Local: :math:`\pm 1` / Edge: Complex
+     - Local: :math:`\pm 32` / Edge: Complex
 
+This table sets up the expectation checked against measured data below: Row-Major
+should favor X-sweeps, Column-Major should favor Y-sweeps, and Tiled should be
+roughly stride-agnostic *within* a tile but pay a penalty at tile edges.
 
 L1/L2 Cache Hit Rate
 =====================
@@ -265,7 +275,7 @@ Cache/Bandwidth Metrics vs. Runtime Timing
    :widths: 25 35 40
    :header-rows: 1
 
-   * - 
+   * -
      - Cache / Coalescing / Bandwidth
      - Runtime Timing Sweep
    * - Tool
@@ -287,15 +297,13 @@ Cache/Bandwidth Metrics vs. Runtime Timing
      - 1 (access pattern is deterministic, not timing-sensitive)
      - 10 (averaged to reduce timing noise)
 
-Because Tiled 32x32 requires an explicit re-layout pass, its
-``AvgConversionSec`` is roughly 20-50x higher than Row-/Column-Major at
-every grid size tested, and its ``PaddingPct`` is also higher whenever the
-grid dimensions are not exact multiples of the tile size. Row-Major and
-Column-Major track each other closely on conversion and total time, with
-the larger differences showing up in ``AvgComputeSec`` instead, consistent
-with the coalescing behavior described above.
+Results
+=======
 
-.. list-table:: Cache hit rate, coalescing efficiency, and DRAM bandwidth by grid size and layout
+Cache hit rate, coalescing efficiency, and DRAM bandwidth by grid size and layout
+----------------------------------------------------------------------------------
+
+.. list-table::
    :header-rows: 1
    :widths: 8 14 10 10 12 12 14 12
 
@@ -380,7 +388,10 @@ with the coalescing behavior described above.
      - 7.65e-09
      - 88.6
 
-.. list-table:: Runtime timing and padding overhead by grid size and layout
+Runtime timing and padding overhead by grid size and layout
+--------------------------------------------------------------
+
+.. list-table::
    :header-rows: 1
    :widths: 8 14 16 16 16 12
 
@@ -444,3 +455,92 @@ with the coalescing behavior described above.
      - 0.00157297
      - 0.0605678
      - 1.6064
+
+Discussion
+==========
+
+Tile32 wins on cache and coalescing metrics, but that doesn't make it the
+fastest option
+------------------------------------------------------------------------------
+
+Across all three grid sizes, Tile32 has by far the highest load and store
+coalescing efficiency (92-99%, versus 10-72% for Row-/Column-Major) because
+its 32x32 blocking keeps warps working inside small, contiguous chunks
+regardless of X- or Y-sweep direction. Its L2 hit rate, however, is
+consistently the *lowest* of the three layouts (47-51% vs. up to 84% for
+Column-Major), since tiling scatters logically adjacent rows/columns across
+many separate 4 KB blocks, which reduces reuse across tile boundaries in L2.
+The net effect on DRAM throughput is a wash: Tile32's throughput-vs-peak is
+close to Row-Major's at every grid size, so the coalescing advantage mostly
+just keeps it competitive rather than making it dominant, once you look
+past the conversion step (below).
+
+Column-Major trades L1/L2 hit rate for the DRAM bandwidth it can't fully
+use
+------------------------------------------------------------------------------
+
+Column-Major has the highest L1 (up to 84.2%) and, at large grids, the
+highest L2 hit rate (77.1% at grid 4000) of the three layouts. But it
+consistently has the lowest achieved DRAM bandwidth and lowest
+throughput-vs-peak (45.8-58.2%). This is the signature of its asymmetric
+stride behavior described earlier: one sweep direction is perfectly
+coalesced while the other is strided by the full column height, so half of
+the two-pass finite-volume sweep undershoots peak bandwidth even though a
+larger fraction of accesses are served from cache.
+
+Row-Major is the most balanced, and that shows up in compute time
+------------------------------------------------------------------------------
+
+Row-Major's load and store coalescing percentages are close to each other
+at every grid size (unlike Column-Major's lopsided 10-25% vs. 25-92% split),
+because its single stride-1 dimension is shared symmetrically enough across
+both sweep passes at these grid sizes. It also reaches the highest DRAM
+throughput-vs-peak of the three layouts at grid 4000 (86.3%). This tracks
+with the timing table: Row-Major has the lowest ``AvgComputeSec`` at every
+grid size, confirming that raw memory-access efficiency (not cache hit
+rate) is the better predictor of compute-kernel speed here.
+
+Layout conversion cost dominates Tile32's wall-clock time
+------------------------------------------------------------------------------
+
+The cache/bandwidth counters only describe the sweep kernels, not the
+up-front re-layout pass — and that pass is where Tile32 loses most of its
+apparent advantage. ``AvgConversionSec`` for Tile32 is roughly 20-50x
+higher than for Row- or Column-Major at every grid size (e.g. 0.059s vs.
+~0.0146s at grid 4000), since building the tiled layout requires an
+explicit scatter of every element into its tile-local offset, whereas
+Row-/Column-Major differ only in indexing arithmetic on data that's
+already contiguous. Padding overhead compounds this: Tile32's
+``PaddingPct`` is consistently 4-12x higher than Row-/Column-Major's at
+the same grid size (e.g. 4.86% vs. 0.40% at grid 1000), because grid
+dimensions that aren't exact multiples of 32 leave partially-empty tiles
+along the boundary. As a result, Tile32's ``AvgTotalSec`` is 3-5x higher
+than Row-/Column-Major's at every grid size tested, even though its
+in-kernel coalescing efficiency is the best of the three.
+
+Row-Major vs. Column-Major: conversion and total time track closely;
+compute time is where they diverge
+------------------------------------------------------------------------------
+
+Because Column-Major is just a different indexing scheme over the same
+contiguous buffer, its ``AvgConversionSec`` and ``AvgTotalSec`` are nearly
+identical to Row-Major's at every grid size (e.g. 0.0146s vs. 0.0146s
+conversion, 0.0182s vs. 0.0163s total at grid 4000). The gap that does
+appear is in ``AvgComputeSec``: Column-Major's compute time is 1.2-2.2x
+higher than Row-Major's at every grid size, growing to over 2x at grid
+4000 (0.00367s vs. 0.00170s). This is consistent with the DRAM
+throughput-vs-peak numbers above — Column-Major's asymmetric stride
+pattern leaves more of its bandwidth on the table during the strided
+sweep direction, and that shows up directly as extra compute time.
+
+Takeaway
+--------
+
+No single layout wins on every axis. Tile32 has the best in-kernel
+coalescing but the worst L2 reuse and by far the worst conversion/padding
+overhead, making it the slowest end-to-end option at every grid size
+tested. Column-Major has the best cache hit rates but the worst DRAM
+throughput and the slowest compute kernels. Row-Major, despite posting
+no single best cache or coalescing number, is the most evenly balanced
+across sweep directions and ends up fastest in both compute time and
+total wall-clock time at every grid size measured.
