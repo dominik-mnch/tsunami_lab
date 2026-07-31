@@ -346,6 +346,194 @@ For this benchmark:
 * Aggressive optimization flags should be evaluated carefully in numerical
   simulations because they may affect floating-point accuracy.
 
+.. _vtune-profiling:
+
+VTune Profiling of the Tsunami Simulator
+==========================================
+
+Build Configuration for Profiling
+-----------------------------------
+
+To obtain meaningful, line-level profiling data, the build system
+(``SConstruct``) was extended with a new boolean build variable, ``profile``,
+which appends the required compiler flags:
+
+.. code-block:: python
+
+   BoolVariable('profile',
+                'add -g and disable inlining (-fno-inline) for profiling with VTune',
+                False)
+
+   # later in the file:
+   if env['profile']:
+     env.Append( CXXFLAGS = [ '-g', '-fno-inline' ] )
+
+* ``-g`` embeds debug symbols, allowing VTune to map hotspots back to
+  source-level functions and lines.
+* ``-fno-inline`` disables function inlining, so that individually small
+  but hot functions (e.g. flux/Riemann-solver kernels) show up as distinct
+  entries in the profiler instead of being merged into their callers.
+
+The benchmark target was then rebuilt with these flags enabled, alongside
+the project's normal release optimizations:
+
+.. code-block:: bash
+
+   scons build/benchmark mode=release opt=2 profile=1
+
+The resulting binary was verified to contain debug information:
+
+.. code-block:: text
+
+   $ file build/benchmark
+   build/benchmark: ELF 64-bit LSB executable, x86-64, ...,
+   with debug_info, not stripped
+
+Running the Hotspots Analysis via the Command Line (Batch Job)
+------------------------------------------------------------------
+
+Rather than running the analysis interactively on the login node, the
+``Hotspots`` collection was launched from a Slurm batch job so that the
+actual profiling work executes on an allocated compute node.
+
+**Job script** (``profile.sh``):
+
+.. code-block:: bash
+
+   #!/bin/bash
+   #SBATCH --job-name=vtune-hotspots
+   #SBATCH -N 1
+   #SBATCH -n 8
+   #SBATCH -p short
+   #SBATCH -t 00:30:00
+   #SBATCH -o vtune_job.out
+   #SBATCH -e vtune_job.err
+
+   export PATH=/cluster/intel/oneapi/2025.0.0/vtune/2025.0/bin64:$PATH
+   export OMP_NUM_THREADS=8
+
+   cd $SLURM_SUBMIT_DIR
+
+   vtune -collect hotspots -result-dir r001hs -- ./build/benchmark 1 8 600
+
+The job was submitted with:
+
+.. code-block:: bash
+
+   $ sbatch profile.sh
+   Submitted batch job 8522676
+
+and executed successfully on ``node010`` (partition ``short``), producing a
+result directory ``r001hs`` (~6.8 MB) containing the collected profiling
+data. Aside from expected warnings about missing debug information for
+system libraries (``libgomp``, ``libpthread``, ``libc``, ``libnetcdf``,
+``libhdf5`` — none of which were compiled with ``-g``), the collection and
+finalization completed without errors:
+
+.. code-block:: text
+
+   vtune: Collection started.
+   vtune: Collection stopped.
+   vtune: Executing actions 100 % done
+
+Hotspot Analysis Results
+---------------------------
+
+The benchmark executable was run on the fixed 2160 × 1200-cell Tohoku 2011
+tsunami setup for a simulated end time of 600 s, using 8 OpenMP threads.
+
+.. list-table:: Top Hotspots (Hotspots analysis, ``benchmark`` executable)
+   :header-rows: 1
+   :widths: 45 15 20 20
+
+   * - Function
+     - Module
+     - CPU Time
+     - % of CPU Time
+   * - ``tsunami_lab::solvers::F_wave::netUpdates``
+     - benchmark
+     - 53.112 s
+     - 44.7 %
+   * - ``tsunami_lab::patches::WavePropagation2d::timeStep._omp_fn.0``
+     - benchmark
+     - 46.328 s
+     - 39.0 %
+   * - ``std::sqrt``
+     - benchmark
+     - 10.780 s
+     - 9.1 %
+   * - OpenMP runtime (``func@0x1dfb0``)
+     - libgomp.so.1
+     - 5.349 s
+     - 4.5 %
+   * - ``NC_get_vara`` (netCDF I/O)
+     - libnetcdf.so.15
+     - 1.610 s
+     - 1.4 %
+
+Additionally, VTune reported low core utilization for this run:
+
+* Effective Physical Core Utilization: **6.5 %** (3.1 of 48 physical cores)
+* Effective Logical Core Utilization: **6.4 %** (6.2 of 96 logical cores)
+
+Which parts are compute-intensive? Was this expected?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The dominant cost, combining ``netUpdates`` and the enclosing ``timeStep``
+loop, accounts for roughly **84 %** of total CPU time. This matches
+expectations: these functions implement the F-Wave Riemann solver's flux
+computation and the per-cell time-stepping loop, which is the numerical
+core of a finite-volume shallow-water solver. Seeing the vast majority of
+time spent here — rather than in I/O or runtime overhead — indicates the
+profiled workload is genuinely compute-bound in the expected place.
+
+One less expected, but notable, finding is that ``std::sqrt`` alone
+accounts for **9.1 %** of total CPU time. This points to the wave-speed
+computations (e.g. ``sqrt(g * h)``) inside ``netUpdates`` as a specific,
+addressable cost within the dominant hotspot.
+
+Separately, the low physical/logical core utilization (6.5 % / 6.4 %)
+suggests the OpenMP parallelization is not effectively using the 8
+requested threads across physical cores — a parallel-efficiency issue
+distinct from the per-cell algorithmic cost discussed above.
+
+Optimization Ideas
+----------------------
+
+Based on the above hotspot data, the following concrete optimization
+directions were identified:
+
+1. **Reuse of computed values.** Check whether wave-speed terms such as
+   ``sqrt(g * h)`` are recomputed multiple times for the same cell across
+   neighboring interface evaluations inside ``netUpdates``; caching such a
+   value once per cell per time step would directly reduce the 9.1 %
+   ``std::sqrt`` cost.
+
+2. **Avoiding unnecessary square roots.** Where only a *comparison* of wave
+   speeds is required (e.g. for CFL/time-step control), squared quantities
+   may be usable instead of an explicit ``sqrt`` call.
+
+3. **Re-enabling inlining.** ``-fno-inline`` was used only to get
+   fine-grained profiling data. ``netUpdates`` is called once per
+   cell-interface per time step, so it is exactly the kind of small, hot
+   function that benefits from inlining (or being placed in a header) in
+   the actual performance build; ``-fno-inline`` should be removed again
+   once profiling is complete.
+
+4. **Templates instead of runtime branching.** If ``netUpdates`` currently
+   branches at runtime on solver mode (Roe vs. F-Wave) or dimensionality
+   (1D vs. 2D), templating on these as compile-time parameters would let
+   the compiler generate a fully specialized, branch-free version per case
+   — directly inside the hottest function of the program.
+
+5. **Investigating parallel efficiency.** Given the low core utilization
+   observed, it is worth separately checking whether the OpenMP loop in
+   ``timeStep`` parallelizes over a sufficiently fine-grained dimension,
+   whether the grid decomposition (2160 × 1200 cells) splits evenly across
+   threads, and whether thread affinity/oversubscription (8 requested
+   threads on a node with 2 hardware threads per physical core) affects the
+   measured utilization.
+
 Individual Contributions
 ------------------------
 Dominik Münch did task 8.1 this week. Magdalena Schwarzkopf did task 8.2, and 8.3 but did them at a later time, due to time constraints in this week. 
