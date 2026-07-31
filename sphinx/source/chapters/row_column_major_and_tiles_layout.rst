@@ -20,7 +20,7 @@ governed by the total width of the grid, including ghost boundaries:
 Column-Major
 ------------
 Consecutive elements in a column are contiguous in memory. This shifts the unit-stride
-to the vertical dimension ($y$-axis), optimizing sweeps that process data column-wise:
+to the vertical dimension, optimizing sweeps that process data column-wise:
 
 .. code-block:: c
 
@@ -28,7 +28,7 @@ to the vertical dimension ($y$-axis), optimizing sweeps that process data column
 
 Tiled 32x32 Assembly
 --------------------
-Data is broken down into a two-dimensional grid of independent $32 \times 32$ tiles.
+Data is broken down into a two-dimensional grid of independent 32 * 32 tiles.
 Within each tile, memory is row-major. This configuration localizes thread blocks to
 structured hardware boundaries:
 
